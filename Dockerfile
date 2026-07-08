@@ -46,7 +46,9 @@ COPY --from=client-build /app/client/dist /app/client/dist
 # This change is harmless when running locally as root.
 ENV HF_HOME=/app/server/.cache/huggingface \
     SENTENCE_TRANSFORMERS_HOME=/app/server/.cache/huggingface \
-    TRANSFORMERS_CACHE=/app/server/.cache/huggingface
+    TRANSFORMERS_CACHE=/app/server/.cache/huggingface \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 RUN useradd -m -u 1000 user \
  && mkdir -p /app/server/.cache/huggingface /app/server/rag/.cache \
  && chown -R user:user /app
@@ -59,4 +61,4 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
   CMD curl -fsS http://localhost:${PORT:-7860}/api/health || exit 1
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860}"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860} --log-level warning"]
