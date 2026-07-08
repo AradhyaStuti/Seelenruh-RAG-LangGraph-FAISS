@@ -57,14 +57,7 @@ USER user
 # Pre-build the FAISS index and download HF models at image-build time.
 # This means cold-start is instant — no 3-4 min index rebuild on every restart.
 # VOLUME is intentionally NOT declared so the baked-in cache is used.
-RUN python - <<'EOF'
-import sys, os, asyncio
-sys.path.insert(0, "/app/server")
-os.chdir("/app/server")
-from rag import retriever
-asyncio.run(retriever.init())
-print("RAG index pre-built successfully", flush=True)
-EOF
+RUN python prebuild_rag.py
 
 EXPOSE 7860
 
