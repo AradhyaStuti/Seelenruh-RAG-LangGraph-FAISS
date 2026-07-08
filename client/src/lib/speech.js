@@ -2,10 +2,33 @@ import { getToken } from "@/lib/auth";
 
 let currentAudio = null;
 let currentUtterance = null;
+let currentFetchAbortCtrl = null; // AbortController for in-flight /api/tts request
 
 // Safari requires a user-gesture to unlock audio. We keep a flag and
 // try to unlock on the first interaction.
 let _safariUnlocked = false;
+
+/**
+ * Truncate text at the last sentence boundary before maxLen chars.
+ * Avoids cutting mid-sentence which sounds bad in TTS.
+ */
+function _truncateAtSentence(text, maxLen) {
+  if (text.length <= maxLen) return text;
+  const sub = text.slice(0, maxLen);
+  // Find last sentence-ending punctuation — include Devanagari danda (।)
+  const lastEnd = Math.max(
+    sub.lastIndexOf(". "),
+    sub.lastIndexOf("! "),
+    sub.lastIndexOf("? "),
+    sub.lastIndexOf("।"),
+    sub.lastIndexOf("\n"),
+  );
+  // Only use the boundary if it's past the halfway point (avoids tiny fragments)
+  if (lastEnd > maxLen * 0.45) {
+    return sub.slice(0, lastEnd + 1).trim();
+  }
+  return sub.trimEnd() + "…";
+}
 
 function isSafari() {
   return (
@@ -65,19 +88,27 @@ function loadWithTimeout(audio, ms = 6000) {
 }
 
 async function speakViaServer(text, opts) {
+  // Cancel any previous in-flight TTS fetch before starting a new one
+  currentFetchAbortCtrl?.abort();
+  const ctrl = new AbortController();
+  currentFetchAbortCtrl = ctrl;
+
   const token = getToken();
   const res = await fetch("/api/tts", {
     method: "POST",
+    signal: ctrl.signal,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({
-      text: text.slice(0, 800),
+      // Truncate at sentence boundary — never mid-word / mid-sentence
+      text: _truncateAtSentence(text, 800),
       domain: opts?.domain ?? "Mental Health",
       lang: opts?.lang ?? "en",
     }),
   });
+  currentFetchAbortCtrl = null; // fetch completed — clear ref
   if (!res.ok) throw new Error(`TTS ${res.status}`);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -245,9 +276,10 @@ function speakViaBrowser(text, opts) {
   utt.onend = fireEnd;
   utt.onerror = fireEnd;
 
-  // Estimated duration fallback — ~14 chars/sec
-  const estMs = Math.max(3000, (text.length / 14) * 1000);
-  setTimeout(fireEnd, estMs + 2000);
+  // Safety timeout — ~11 chars/sec (slower than English for Hindi/German).
+  // fireEnd is idempotent so this is a no-op if onend fires correctly.
+  const estMs = Math.max(5000, (text.length / 11) * 1000) + 4000;
+  setTimeout(fireEnd, estMs);
 
   currentUtterance = utt;
   window.speechSynthesis.speak(utt);
@@ -274,13 +306,20 @@ export function speak(text, opts) {
     return;
   }
   speakViaServer(text, opts).catch((err) => {
-    // NotAllowedError is already handled inside speakViaServer — don't fall through
+    // NotAllowedError handled inside speakViaServer — don't fall through
     if (err?.name === "NotAllowedError") return;
+    // AbortError: cancelSpeech() was called mid-fetch — don't start new audio
+    if (err?.name === "AbortError") return;
     speakViaBrowser(text, opts);
   });
 }
 
 export function cancelSpeech() {
+  // Abort any in-flight /api/tts fetch so the response is never played
+  if (currentFetchAbortCtrl) {
+    try { currentFetchAbortCtrl.abort(); } catch (_) {}
+    currentFetchAbortCtrl = null;
+  }
   if (currentAudio) {
     try { currentAudio.pause(); } catch (_) {}
     currentAudio = null;

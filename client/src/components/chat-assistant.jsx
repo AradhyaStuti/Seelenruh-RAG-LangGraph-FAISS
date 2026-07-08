@@ -214,14 +214,15 @@ export default function ChatAssistant({ onDomainChange }) {
       if (!text?.trim()) return;
       cancelSpeech();
       setSpeakingId(null);
-      form.setValue("message", text);
-      // Auto-submit after brief delay so user sees what was heard
+      form.setValue("message", text, { shouldValidate: true });
+      // Flush react-hook-form's internal state before submitting.
+      // Recognition has already ended (2s silence gate passed) — no need for long delay.
       setTimeout(() => {
         const vals = form.getValues();
         if (vals.message?.trim()) {
           form.handleSubmit((v) => sendTextMessage(v.message))();
         }
-      }, 600);
+      }, 80);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [form]),
     onError: useCallback((msg) => {
