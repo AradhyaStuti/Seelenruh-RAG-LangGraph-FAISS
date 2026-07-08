@@ -54,11 +54,21 @@ RUN useradd -m -u 1000 user \
  && chown -R user:user /app
 USER user
 
-VOLUME ["/app/server/.cache/huggingface", "/app/server/rag/.cache"]
+# Pre-build the FAISS index and download HF models at image-build time.
+# This means cold-start is instant — no 3-4 min index rebuild on every restart.
+# VOLUME is intentionally NOT declared so the baked-in cache is used.
+RUN python - <<'EOF'
+import sys, os, asyncio
+sys.path.insert(0, "/app/server")
+os.chdir("/app/server")
+from rag import retriever
+asyncio.run(retriever.init())
+print("RAG index pre-built successfully", flush=True)
+EOF
 
 EXPOSE 7860
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
-  CMD curl -fsS http://localhost:${PORT:-7860}/api/health || exit 1
+# No HEALTHCHECK — HuggingFace Spaces has its own port-listening check.
+# Docker's HEALTHCHECK was killing the container during model warm-up.
 
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860} --log-level warning"]
