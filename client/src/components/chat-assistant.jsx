@@ -207,6 +207,13 @@ export default function ChatAssistant({ onDomainChange }) {
     return () => cancelSpeech();
   }, []);
 
+  // form must be declared BEFORE useVoice — the onResult callback's dependency
+  // array reads `form` synchronously, so it must be initialized first.
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: { message: "" },
+  });
+
   // Voice input hook — uses Web Speech API (primary) or Whisper fallback
   const { isListening, interimTranscript, start: startListening, stop: stopListening, supported: voiceSupported } = useVoice({
     lang,
@@ -228,11 +235,6 @@ export default function ChatAssistant({ onDomainChange }) {
     onError: useCallback((msg) => {
       toast({ title: "Voice input error", description: msg, variant: "destructive" });
     }, [toast]),
-  });
-
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: { message: "" },
   });
 
   // Hydrate persisted state on mount
