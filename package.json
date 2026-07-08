@@ -1,0 +1,18 @@
+{
+  "name": "seelenruh",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Seelenruh (peace of the soul) — RAG civic-support assistant. Python + LangGraph + FAISS backend, React + Vite frontend.",
+  "scripts": {
+    "install:all": "npm install && npm --prefix client install && py -3.10 -m venv server/.venv && server/.venv/Scripts/python -m pip install -r server/requirements.txt",
+    "dev": "concurrently -n server,client -c green,cyan \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cross-env PYTHONUNBUFFERED=1 server/.venv/Scripts/python -m uvicorn main:app --reload --port 5000 --app-dir server",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "cross-env PYTHONUNBUFFERED=1 server/.venv/Scripts/python -m uvicorn main:app --port 5000 --app-dir server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3"
+  }
+}

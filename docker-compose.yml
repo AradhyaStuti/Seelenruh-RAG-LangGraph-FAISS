@@ -1,0 +1,91 @@
+# Production-ready Seelenruh stack:
+#   nginx  — reverse proxy, SSE-aware, serves static assets
+#   api    — FastAPI + uvicorn
+#   mongo  — MongoDB primary
+#   redis  — rate-limit counter persistence
+#
+# Quick start:
+#   cp .env.example server/.env   # fill in secrets
+#   docker compose up --build -d
+#   docker compose logs -f api
+
+services:
+  # ── nginx (public entry point) ────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: seelenruh-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro   # mount TLS certs here for HTTPS
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── FastAPI server ────────────────────────────────────────────────────────
+  api:
+    build: .
+    image: seelenruh:latest
+    container_name: seelenruh-api
+    # Not exposed to host — only reachable through nginx
+    expose:
+      - "5000"
+    env_file: server/.env
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:?GROQ_API_KEY required}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET required (32+ random bytes)}
+      - SEELENRUH_ENV=prod
+      - MONGODB_URI=mongodb://mongo:27017
+      - MONGODB_DB=seelenruh
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - hf_cache:/app/server/.cache/huggingface
+      - rag_cache:/app/server/rag/.cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  # ── MongoDB ───────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: seelenruh-mongo
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis (rate-limit persistence) ────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: seelenruh-redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  hf_cache:
+  rag_cache:
+  mongo_data:
+  redis_data:

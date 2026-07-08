@@ -1,0 +1,56 @@
+# Production deps with pinned versions for reproducibility. Bump
+# deliberately; an uncontrolled bump invalidates every cached number
+# under server/results/ because the embedder / re-ranker / LangGraph
+# version can shift retrieval and routing behaviour.
+
+# --- web framework / IO ---
+gTTS==2.5.1
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+pydantic==2.10.4
+python-dotenv==1.0.1
+httpx==0.28.1
+structlog==24.4.0
+
+# --- LLM provider clients ---
+groq==0.13.1
+# Optional local fallback. Pinned the HTTP client; the model itself is
+# selected via OLLAMA_MODEL in config.py.
+
+# --- retrieval stack ---
+# Bumping any of these three will invalidate the FAISS cache under
+# server/rag/.cache because the produced vectors / cross-encoder
+# logits change. The eval scripts re-build automatically.
+sentence-transformers==3.3.1
+faiss-cpu==1.9.0.post1
+numpy==1.26.4
+
+# --- graph orchestration ---
+langgraph==0.2.62
+langchain-core==0.3.28
+
+# --- persistence + auth ---
+motor==3.6.0
+bcrypt==4.2.1
+PyJWT==2.10.1
+email-validator==2.2.0
+slowapi==0.1.9
+
+# --- optional features (install as needed) ---
+# pdfplumber          # PDF text extraction — required for /api/parse-document with .pdf files
+# python-docx         # Word document extraction — required for /api/parse-document with .docx files
+# aiosmtplib          # Async SMTP for sending password-reset + verification emails
+
+# --- dev / eval ---
+pytest==8.3.4              # run with `python -m pytest tests/`
+pyflakes==3.2.0            # static dead-code check, see RESULTS.md
+
+# --- pinned model identifiers (not pip deps; documented here so the
+#     repo encodes the exact LLM + embedder + reranker that produced
+#     every number in RESULTS.md) ---
+#   embedder         : intfloat/multilingual-e5-small      (HF tag pinned in config.py)
+#   cross-encoder    : cross-encoder/ms-marco-MiniLM-L-6-v2 (HF tag pinned in config.py)
+#   smart LLM (Groq) : llama-3.3-70b-versatile             (snapshot logged per run)
+#   fast LLM (Groq)  : llama-3.1-8b-instant                (snapshot logged per run)
+#   STT              : whisper-large-v3-turbo

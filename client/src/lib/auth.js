@@ -1,0 +1,220 @@
+// Tiny auth state: token + user persisted in localStorage,
+// a subscribe() / emit() pattern so the App can re-render on login/logout.
+
+const TOKEN_KEY = "seelenruh:token:v1";
+const REFRESH_KEY = "seelenruh:refresh:v1";
+const USER_KEY = "seelenruh:user:v1";
+
+// Per-user data kept in localStorage. Wiped when the user picks "also clear my
+// data on this device" at logout. Preferences (theme, language) are intentionally
+// excluded so they survive a sign-out on a shared device.
+const USER_DATA_KEYS = [
+  "seelenruh:sessions:v1",
+  "seelenruh:saved:v1",
+  "seelenruh:mood:v1",
+  "seelenruh:active-domain:v1",
+];
+
+const listeners = new Set();
+
+function emit() {
+  listeners.forEach((cb) => cb());
+}
+
+export function subscribe(cb) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+export function getToken() {
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function getRefreshToken() {
+  try {
+    return window.localStorage.getItem(REFRESH_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function getUser() {
+  try {
+    const raw = window.localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setAuth({ token, refreshToken, user }) {
+  try {
+    window.localStorage.setItem(TOKEN_KEY, token);
+    if (refreshToken) window.localStorage.setItem(REFRESH_KEY, refreshToken);
+    window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // ignore
+  }
+  emit();
+}
+
+export function clearAuth({ wipeUserData = false } = {}) {
+  // Best-effort server-side revocation: tells the backend to blacklist this
+  // JWT's jti so the token can't be reused even if it leaks. Fire-and-forget —
+  // a network failure here shouldn't block the user from signing out locally.
+  const token = (() => {
+    try {
+      return window.localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  })();
+  if (token) {
+    try {
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // ignore — local clear below is what actually signs the user out
+    }
+  }
+  try {
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(REFRESH_KEY);
+    window.localStorage.removeItem(USER_KEY);
+    if (wipeUserData) {
+      USER_DATA_KEYS.forEach((k) => window.localStorage.removeItem(k));
+    }
+  } catch {
+    // ignore
+  }
+  emit();
+}
+
+/**
+ * Silently exchange the refresh token for a fresh access + refresh token pair.
+ * Returns true if the refresh succeeded (new tokens stored), false otherwise.
+ * Never throws — any failure results in false so the caller can sign out cleanly.
+ */
+export async function silentRefresh() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data?.token) return false;
+    setAuth({ token: data.token, refreshToken: data.refreshToken, user: data.user });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isAuthed() {
+  return !!getToken();
+}
+
+export async function signup({ email, name, password }) {
+  return _post("/api/auth/signup", { email, name, password });
+}
+
+export async function login({ email, password }) {
+  return _post("/api/auth/login", { email, password });
+}
+
+export async function deleteAccount() {
+  const token = getToken();
+  if (!token) throw new Error("You're not signed in.");
+  let res;
+  try {
+    res = await fetch("/api/auth/me", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error("Can't reach the backend. Is the Python server running on port 5000?");
+  }
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // empty body is fine on success
+  }
+  if (!res.ok) {
+    const msg = data?.detail || data?.error || `HTTP ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  return data || { ok: true };
+}
+
+export async function forgotPassword(email) {
+  return _postRaw("/api/auth/forgot-password", { email });
+}
+
+export async function resetPassword(token, newPassword) {
+  return _postRaw("/api/auth/reset-password", { token, newPassword });
+}
+
+export async function verifyEmail(token) {
+  return _postRaw("/api/auth/verify-email", { token });
+}
+
+async function _postRaw(path, body) {
+  let res;
+  try {
+    res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Can't reach the backend. Is the Python server running on port 5000?");
+  }
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Backend returned a non-JSON response (HTTP ${res.status}).`);
+  }
+  if (!res.ok) {
+    const msg = data?.detail || data?.error || `HTTP ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  return data;
+}
+
+async function _post(path, body) {
+  let res;
+  try {
+    res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Can't reach the backend. Is the Python server running on port 5000?");
+  }
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Backend returned a non-JSON response (HTTP ${res.status}).`);
+  }
+  if (!res.ok) {
+    const msg = data?.detail || data?.error || `HTTP ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  setAuth({ token: data.token, refreshToken: data.refreshToken, user: data.user });
+  return data;
+}

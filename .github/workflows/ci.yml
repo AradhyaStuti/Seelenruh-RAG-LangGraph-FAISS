@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Python backend ──────────────────────────────────────────────────────────
+  backend:
+    name: Backend — lint + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: server/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio ruff
+
+      - name: Lint (ruff)
+        run: ruff check . --select=E,F,W --ignore=E501
+
+      - name: Run tests
+        env:
+          # Minimal env so config.py doesn't error out on missing vars
+          GROQ_API_KEY: "test-key-ci"
+          JWT_SECRET: "ci-test-secret-32-chars-minimum!!"
+          MONGODB_URI: ""          # in-memory fallback
+          SEELENRUH_ENV: "dev"
+        run: pytest tests/ -v --tb=short
+
+  # ── React frontend ──────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend — build check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  # ── Docker image build check ────────────────────────────────────────────────
+  docker:
+    name: Docker — build check
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: seelenruh:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

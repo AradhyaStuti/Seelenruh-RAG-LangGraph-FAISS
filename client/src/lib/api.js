@@ -1,0 +1,275 @@
+import { getToken, clearAuth, silentRefresh } from "@/lib/auth";
+
+// Prevent concurrent refresh storms: one in-flight refresh promise shared by all callers
+let _refreshPromise = null;
+
+async function _tryRefresh() {
+  if (!_refreshPromise) {
+    _refreshPromise = silentRefresh().finally(() => { _refreshPromise = null; });
+  }
+  return _refreshPromise;
+}
+
+function authHeaders() {
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+async function post(path, body, { _retried = false, timeoutMs = 120000 } = {}) {
+  let res;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timer));
+  } catch (err) {
+    if (err?.name === "AbortError") throw new Error("Request timed out. The server is taking too long — please try again.");
+    throw new Error("Can't reach the server. Please check your connection.");
+  }
+  if (res.status === 401) {
+    if (!_retried) {
+      const refreshed = await _tryRefresh();
+      if (refreshed) return post(path, body, { _retried: true });
+    }
+    clearAuth();
+    throw new Error("Your session expired. Please sign in again.");
+  }
+  if (res.status === 403) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.detail || "Please verify your email before continuing.");
+  }
+  if (res.status === 429) {
+    throw new Error("You're sending messages too fast. Please wait a moment and try again.");
+  }
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(`Server returned an unexpected response (HTTP ${res.status}).`);
+    }
+  }
+  if (!res.ok) {
+    const msg = data?.detail || data?.error || `Request failed (HTTP ${res.status})`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  if (!data) throw new Error("Server returned an empty response.");
+  return data;
+}
+
+async function get(path, { _retried = false } = {}) {
+  let res;
+  try {
+    res = await fetch(path, { headers: authHeaders() });
+  } catch {
+    throw new Error("Can't reach the server. Please check your connection.");
+  }
+  if (res.status === 401) {
+    if (!_retried) {
+      const refreshed = await _tryRefresh();
+      if (refreshed) return get(path, { _retried: true });
+    }
+    clearAuth();
+    throw new Error("Your session expired. Please sign in again.");
+  }
+  if (res.status === 429) {
+    throw new Error("Too many requests. Please wait a moment.");
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let data = null;
+    try { data = JSON.parse(text); } catch { /* ignore */ }
+    const msg = data?.detail || data?.error || `Request failed (HTTP ${res.status})`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  return res.json();
+}
+
+export function processUserMessage(input) {
+  return post("/api/chat", input);
+}
+
+/**
+ * Stream a chat response via SSE.
+ * Calls `onToken(text)` for each streamed token, then resolves with the final
+ * metadata object (same shape as processUserMessage response).
+ *
+ * Falls back to the non-streaming endpoint on any SSE error.
+ */
+export async function streamUserMessage(input, { onToken, timeoutMs = 60000 } = {}) {
+  const token = getToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch("/api/chat/stream", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err?.name === "AbortError") throw new Error("Response timed out. Please try again.");
+    // Network error — fall back to regular endpoint
+    return processUserMessage(input);
+  }
+  // Do NOT clear the timer here — keep it running to abort stalled stream reads too
+  if (res.status === 401) {
+    const refreshed = await _tryRefresh();
+    if (refreshed) return streamUserMessage(input, { onToken });
+    clearAuth();
+    throw new Error("Your session expired. Please sign in again.");
+  }
+  if (res.status === 429) throw new Error("You're sending messages too fast. Please wait a moment and try again.");
+  if (!res.ok) return processUserMessage(input);
+
+  const reader = res.body?.getReader();
+  if (!reader) return processUserMessage(input);
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalMeta = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        let event;
+        try { event = JSON.parse(line.slice(6)); } catch { continue; }
+        if (event.error) throw new Error(event.error);
+        if (event.done) {
+          finalMeta = event;
+        } else if (event.token) {
+          onToken?.(event.token);
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+    reader.releaseLock();
+  }
+
+  return finalMeta || {};
+}
+
+export function processUserAudio(input) {
+  return post("/api/audio", input);
+}
+
+export function transcribeAudio(input) {
+  return post("/api/transcribe", input);
+}
+
+export function matchSchemes(input) {
+  return post("/api/schemes/match", input);
+}
+
+export function renderTemplate(input) {
+  return post("/api/templates/render", input);
+}
+
+export function summarizeConversation(messages, opts = {}) {
+  return post("/api/summary", {
+    messages,
+    persona: opts.persona,
+    sessionId: opts.sessionId,
+  });
+}
+
+export async function fetchAllSummaries() {
+  const token = getToken();
+  if (!token) return { summaries: [] };
+  try {
+    const res = await fetch("/api/summary/all", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return { summaries: [] };
+    return await res.json();
+  } catch {
+    return { summaries: [] };
+  }
+}
+
+export function changePassword(currentPassword, newPassword) {
+  return post("/api/auth/change-password", { currentPassword, newPassword });
+}
+
+/**
+ * Upload a document file and get extracted text back.
+ * Supports .txt, .md, .csv, .json, .log, .pdf, .docx (max 5 MB).
+ * Returns { text, name, truncated, chars }.
+ */
+export async function parseDocument(file) {
+  const token = getToken();
+  const form = new FormData();
+  form.append("file", file);
+  let res;
+  try {
+    res = await fetch("/api/parse-document", {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+  } catch {
+    throw new Error("Can't reach the server. Please check your connection.");
+  }
+  if (res.status === 401) {
+    clearAuth();
+    throw new Error("Your session expired. Please sign in again.");
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.detail || `Upload failed (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+/** Fire-and-forget feedback — never throws so localStorage stays as primary. */
+export async function submitFeedbackToServer(messageId, vote, domain) {
+  try {
+    await post("/api/feedback", { messageId, vote, domain });
+  } catch {
+    // localStorage is the primary store; server sync is best-effort
+  }
+}
+
+/**
+ * Returns { online: bool, dbConnected: bool }.
+ * `online` = server responded with HTTP 200.
+ * `dbConnected` = MongoDB is connected (false → in-memory fallback active).
+ */
+export async function checkServerHealth() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch("/api/health", { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return { online: false, dbConnected: true };
+    const data = await res.json().catch(() => ({}));
+    return { online: true, dbConnected: data.dbConnected !== false };
+  } catch {
+    clearTimeout(timer);
+    return { online: false, dbConnected: true };
+  }
+}
+
+export function buildHistory(messages, n = 6) {
+  return messages
+    .slice(1)
+    .slice(-n)
+    .map((m) => ({ role: m.role, content: m.content }));
+}

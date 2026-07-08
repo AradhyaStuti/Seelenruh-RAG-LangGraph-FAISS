@@ -1,0 +1,82 @@
+{
+  "tool": "eval.py",
+  "timestamp": "2026-05-31T17:36:17.080928+00:00",
+  "testset_hash": "567c901e28ba",
+  "n_queries": 100,
+  "bootstrap": {
+    "samples": 1000,
+    "seed": 1729
+  },
+  "python": "3.10.8",
+  "retrieval": {
+    "n": 100,
+    "p1_mean": 0.84,
+    "p1_ci95": [
+      0.76,
+      0.9
+    ],
+    "mrr_mean": 0.9003333333333333,
+    "mrr_ci95": [
+      0.8503333333333333,
+      0.9419999999999998
+    ],
+    "latency_ms": {
+      "p50": 30.0217866897583,
+      "mean": 32.698814868927,
+      "max": 78.70960235595703
+    },
+    "domain": {
+      "Government Schemes": {
+        "n": 25,
+        "p1": 1.0,
+        "mrr": 1.0
+      },
+      "Legal": {
+        "n": 25,
+        "p1": 0.8,
+        "mrr": 0.8813333333333333
+      },
+      "Mental Health": {
+        "n": 25,
+        "p1": 0.72,
+        "mrr": 0.8266666666666665
+      },
+      "Safety": {
+        "n": 25,
+        "p1": 0.84,
+        "mrr": 0.8933333333333334
+      }
+    },
+    "weakest_domain": "Mental Health"
+  },
+  "routing": {
+    "n": 100,
+    "accuracy_mean": 0.95,
+    "accuracy_ci95": [
+      0.91,
+      0.99
+    ],
+    "latency_ms": {
+      "p50": 8593.27495098114,
+      "mean": 8202.790625095367
+    },
+    "domain": {
+      "Government Schemes": {
+        "n": 25,
+        "accuracy": 1.0
+      },
+      "Legal": {
+        "n": 25,
+        "accuracy": 1.0
+      },
+      "Mental Health": {
+        "n": 25,
+        "accuracy": 0.92
+      },
+      "Safety": {
+        "n": 25,
+        "accuracy": 0.88
+      }
+    }
+  }
+}
