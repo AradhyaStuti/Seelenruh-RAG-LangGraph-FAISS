@@ -213,6 +213,11 @@ export function useVoice({ lang = "hi", onResult, onError }) {
       recognition.onstart = () => _setListening(true);
 
       let silenceTimer = null;
+      // Accumulate ALL transcript text (final + interim) across events.
+      // Chrome with continuous=true often never marks results isFinal — we
+      // fire whatever we have accumulated when the session ends (onend).
+      let accumulatedFinal  = "";  // text from isFinal results
+      let lastInterim       = "";  // most recent interim text
 
       recognition.onresult = (event) => {
         // Clear any pending silence auto-stop
@@ -222,12 +227,18 @@ export function useVoice({ lang = "hi", onResult, onError }) {
         let finalText = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) finalText += t + " ";
-          else interim += t;
+          if (event.results[i].isFinal) {
+            finalText += t + " ";
+            accumulatedFinal += t + " ";
+          } else {
+            interim += t;
+          }
         }
 
-        setInterimTranscript(interim || finalText.trim());
+        lastInterim = interim;
+        setInterimTranscript(interim || finalText.trim() || accumulatedFinal.trim());
 
+        // Fire immediately when a chunk is marked final (short sentences, punctuation pauses)
         if (finalText.trim()) {
           _fireResult(finalText.trim());
         }
@@ -255,14 +266,24 @@ export function useVoice({ lang = "hi", onResult, onError }) {
           onError?.("Network error during voice recognition. Please check your connection.");
           return;
         }
-        // audio-capture, language-not-supported, etc. — fall through to Whisper
-        // by not calling onError so user doesn't see a confusing message
+        // audio-capture, language-not-supported, etc. — fall through silently
       };
 
       recognition.onend = () => {
         clearTimeout(silenceTimer);
         _setListening(false);
         recognitionRef.current = null;
+
+        // Chrome with continuous=true often never fires isFinal — flush
+        // whatever text accumulated (prefer confirmed final, then interim).
+        const best = (accumulatedFinal || lastInterim).trim();
+        if (best && !accumulatedFinal.trim()) {
+          // Only interim text was received — fire it now as the result
+          _fireResult(best);
+        }
+        // If accumulatedFinal already fired, _fireResult's dedup guard prevents double-send
+        accumulatedFinal = "";
+        lastInterim      = "";
       };
 
       try {
