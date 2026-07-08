@@ -284,3 +284,81 @@
       0 0 0 10px hsl(var(--primary) / 0.04);
   }
 }
+
+/* ── Mobile / Responsive Fixes ─────────────────────────────────────────────── */
+
+/* Use dynamic viewport height so the chat fills screen correctly on mobile
+   (avoids iOS Safari address-bar overlap and Android keyboard shrink issues) */
+html, body {
+  height: 100%;
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh; /* dynamic viewport — adapts when keyboard opens/closes */
+}
+
+/* Prevent horizontal overflow on small screens */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Safe area insets for notched phones (iPhone X+, Android with cutouts) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth momentum scrolling on iOS */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* Chat message bubbles: prevent overflow on narrow screens */
+.chat-bubble {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Input area: prevent keyboard from hiding input on mobile */
+@media (max-width: 640px) {
+  .input-area-mobile {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: hsl(var(--background) / 0.95);
+    backdrop-filter: blur(12px);
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+  }
+
+  /* Tighten card padding on mobile */
+  .card-mobile-px {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Smaller avatars on mobile */
+  .avatar-mobile {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.65rem;
+  }
+}
+
+/* Tablet tweaks */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .max-w-chat {
+    max-width: 680px;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -99,22 +99,18 @@ async def _classify(state: ChatState) -> dict:
     history_len = len(state.get("history", []))
 
     intent_task = intent_flow.detect(state["query"])
-    # run emotion + goal from the 2nd exchange onwards — catches emotional context early
-    # first message (history_len==0) skips to keep the very first response fast
-    run_extras = history_len >= 2
-    emotion_task = emotion_flow.detect(state["query"]) if run_extras else None
+    # Run emotion always (turn 1+) — even first message can signal emotional state
+    # Run goal from turn 1 — user may state a goal in their very first message
+    emotion_task = emotion_flow.detect(state["query"])
     goal_task = memory_flow.detect_goal(
         query=state["query"],
         domain=state.get("domain", "Mental Health"),
         history=state.get("history", []),
-    ) if run_extras else None
+    )
 
-    tasks = [t for t in [intent_task, emotion_task, goal_task] if t is not None]
-    results = await asyncio.gather(*tasks)
+    results = await asyncio.gather(intent_task, emotion_task, goal_task)
 
-    i = results[0]
-    e = results[1] if run_extras else None
-    goal = results[2] if run_extras else None
+    i, e, goal = results
 
     return {
         "intent": i["intent"],
@@ -177,11 +173,25 @@ async def _generate(state: ChatState) -> dict:
     web_results = state.get("web_results", [])
     emotion_arc = state.get("emotion_arc", [])
 
+    emotion = state.get("emotion", "neutral")
+    # Emotion-driven tone hint — gives persona explicit guidance without overriding character
+    _TONE_HINT = {
+        "sad":     "The user seems sad or low. Be especially gentle, warm, and present. Don't rush to solutions.",
+        "angry":   "The user seems frustrated or angry. Acknowledge their feeling first before any information.",
+        "scared":  "The user seems scared or anxious. Be calm, grounding, and reassuring first.",
+        "confused": "The user seems confused. Be clear, structured, and patient — avoid jargon.",
+        "happy":   "The user seems positive. Match their energy while staying helpful.",
+        "neutral": "",
+    }
+    tone_hint = _TONE_HINT.get(emotion, "")
+
     ctx_parts = [
         f"Domain: {state['routed_domain']}.",
-        f"Emotion: {state.get('emotion')}.",
+        f"User emotion: {emotion}.",
         f"Intent: {state.get('reasoning')}.",
     ]
+    if tone_hint:
+        ctx_parts.append(f"Tone guidance: {tone_hint}")
     user_memory = state.get("user_memory")
     if user_memory:
         ctx_parts.append(f"What is known about this user across past conversations: {user_memory[:900]}")
@@ -189,7 +199,7 @@ async def _generate(state: ChatState) -> dict:
         ctx_parts.append(f"Memory from earlier in this conversation: {memory_summary}")
     if emotion_arc:
         arc_str = " → ".join(emotion_arc[-5:])
-        ctx_parts.append(f"Emotional arc: {arc_str}")
+        ctx_parts.append(f"Emotional arc (recent): {arc_str}")
     if active_goal:
         ctx_parts.append(
             f"The user's current goal: '{active_goal}'. "

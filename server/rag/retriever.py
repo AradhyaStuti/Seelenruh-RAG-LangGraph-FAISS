@@ -19,13 +19,24 @@ _HINGLISH_MAP = {
     "kaise": "how to", "karu": "do", "kru": "do", "karein": "how to",
     "karna": "to do", "kya": "what", "mera": "my", "mere": "my",
     "mujhe": "me", "chahiye": "need", "milega": "get", "milegi": "get",
-    "nahi": "not", "hai": "is", "hain": "are", "tha": "was",
+    "nahi": "not", "nahin": "not", "hai": "is", "hain": "are", "tha": "was",
     "apply": "apply", "form": "form", "yojana": "scheme", "sarkari": "government",
     "madad": "help", "paisa": "money", "paise": "money", "rupaye": "rupees",
     "lakh": "lakh", "hazaar": "thousand", "card": "card", "banwana": "make",
     "eligible": "eligible", "laabh": "benefit", "labh": "benefit",
     "abhi": "now", "jaldi": "urgently", "please": "please",
     "aaj": "today", "kal": "tomorrow", "mahina": "month",
+    # legal Hinglish
+    "adhikar": "rights", "aadhikar": "rights", "kanoon": "law", "kanooni": "legal",
+    "samasya": "problem", "shikayat": "complaint", "darj": "file register",
+    "girftari": "arrest", "bail": "bail", "vakeel": "lawyer", "adalat": "court",
+    "muavza": "compensation", "zameen": "land property", "makaan": "house property",
+    # scheme Hinglish
+    "berojgar": "unemployed unemployment", "naukri": "job employment",
+    "kisan": "farmer agriculture", "garib": "poor poverty",
+    "penshn": "pension", "ration": "ration food",
+    "awas": "housing shelter", "bijli": "electricity",
+    "paani": "water", "shauchalay": "toilet sanitation",
 }
 
 _DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]+")
@@ -145,12 +156,23 @@ async def ingest(chunks: list[dict]) -> int:
     return len(chunks)
 
 
+def _overfetch_k(k: int, domain: Optional[str]) -> int:
+    """Legal and scheme queries benefit from more candidates before reranking —
+    they have denser knowledge chunks and small wording differences matter."""
+    if not reranker.is_enabled():
+        return k
+    base = max(k, RETRIEVAL_OVERFETCH)
+    if domain in ("Legal", "Government Schemes"):
+        return max(base, 20)  # larger candidate pool for high-stakes domains
+    return base
+
+
 async def retrieve(query: str, *, domain: Optional[str] = None, k: int = RETRIEVAL_TOP_K) -> list[dict]:
     if not _ready:
         await init()
     query = _normalize_query(query)
     qv = await asyncio.to_thread(embedder.embed_one, f"query: {query}")
-    fetch_k = max(k, RETRIEVAL_OVERFETCH) if reranker.is_enabled() else k
+    fetch_k = _overfetch_k(k, domain)
     candidates = _store.search(qv, k=fetch_k, domain=domain)
 
     for c in candidates:
