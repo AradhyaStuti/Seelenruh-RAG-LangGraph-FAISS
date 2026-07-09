@@ -214,6 +214,12 @@ export default function ChatAssistant({ onDomainChange }) {
     defaultValues: { message: "" },
   });
 
+  // Always-fresh ref to sendTextMessage — avoids stale closure in onResult.
+  // useForm returns a stable `form` reference, so useCallback([form]) never
+  // recreates onResult, which would capture sendTextMessage from the initial
+  // render only (wrong domain, stale history). The ref is updated every render.
+  const sendTextMessageRef = useRef(null);
+
   // Voice input hook — uses Web Speech API (primary) or Whisper fallback
   const { isListening, interimTranscript, start: startListening, stop: stopListening, supported: voiceSupported } = useVoice({
     lang,
@@ -227,15 +233,17 @@ export default function ChatAssistant({ onDomainChange }) {
       setTimeout(() => {
         const vals = form.getValues();
         if (vals.message?.trim()) {
-          form.handleSubmit((v) => sendTextMessage(v.message))();
+          form.handleSubmit((v) => sendTextMessageRef.current?.(v.message))();
         }
       }, 80);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [form]),
     onError: useCallback((msg) => {
       toast({ title: "Voice input error", description: msg, variant: "destructive" });
     }, [toast]),
   });
+
+  // Keep ref in sync with latest sendTextMessage on every render
+  sendTextMessageRef.current = sendTextMessage;
 
   // Hydrate persisted state on mount
   useEffect(() => {
