@@ -44,15 +44,18 @@ async def lifespan(_app: FastAPI):
             "in your Atlas cluster settings to protect sensitive user data."
         )
 
-    await db.connect()
-    log.info("database connected")
-
-    async def _bootstrap_rag():
+    # Run DB connect + RAG warmup as background tasks so the lifespan
+    # completes immediately and uvicorn starts accepting requests right away.
+    # HF Spaces health-check fires within seconds of port open — if we block
+    # here (db.connect takes ~6s) the check times out and HF marks us "down".
+    async def _bootstrap():
+        await db.connect()
+        log.info("database connected")
         await retriever.init()
         await retriever.warmup()
         log.info("RAG index ready", chunks=retriever._store.size())
 
-    asyncio.create_task(_bootstrap_rag())
+    asyncio.create_task(_bootstrap())
     yield
     log.info("server shutting down")
 
