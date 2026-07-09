@@ -212,33 +212,18 @@ export default function ChatAssistant({ onDomainChange }) {
     defaultValues: { message: "" },
   });
 
-  // Ref to the latest sendTextMessage — set after sendTextMessage is declared below.
-  // useVoice's onResultRef always calls the latest onVoiceResult which closes over
-  // this ref, so voice recognition always dispatches with up-to-date component state.
-  const sendTextRef = useRef(null);
+  // voiceResultRef holds the latest handleVoiceResult function.
+  // It is updated every render (below, after sendTextMessage is declared)
+  // so the voice hook always calls a fresh version with current state.
+  const voiceResultRef = useRef(null);
 
-  // Voice input hook — uses Web Speech API (primary) or Whisper fallback.
-  // onResult is NOT memoized — useVoice stores it in onResultRef each render,
-  // so it always calls the latest version with fresh state (no stale closure).
   const { isListening, interimTranscript, start: startListening, stop: stopListening, supported: voiceSupported } = useVoice({
     lang,
-    onResult: (text) => {
-      if (!text?.trim()) return;
-      console.log("[chat] voice onResult received:", JSON.stringify(text));
-      cancelSpeech();
-      setSpeakingId(null);
-      form.setValue("message", text);
-      // Call via ref so we always get the sendTextMessage with current domain/session state.
-      if (sendTextRef.current) {
-        console.log("[chat] calling sendTextMessage from voice");
-        sendTextRef.current(text);
-      } else {
-        console.error("[chat] sendTextRef.current is null — voice result dropped!");
-      }
-    },
-    onError: (msg) => {
-      toast({ title: "Voice input error", description: msg, variant: "destructive" });
-    },
+    // onResult is called by useVoice via its internal onResultRef — always fresh.
+    // We delegate to voiceResultRef so we get the sendTextMessage bound to current
+    // domain / session state without needing useCallback deps.
+    onResult: (text) => voiceResultRef.current?.(text),
+    onError:  (msg)  => toast({ title: "Voice input error", description: msg, variant: "destructive" }),
   });
 
   // Hydrate persisted state on mount
@@ -788,9 +773,15 @@ export default function ChatAssistant({ onDomainChange }) {
     }
   };
 
-  // Update ref every render — gives onVoiceResult the latest sendTextMessage
-  // with current selectedDomain, activeSession, lang, etc. (no stale closure).
-  sendTextRef.current = sendTextMessage;
+  // Set every render so voiceResultRef.current always has the sendTextMessage
+  // that captures the current selectedDomain, activeSession, lang, etc.
+  voiceResultRef.current = (text) => {
+    if (!text?.trim()) return;
+    cancelSpeech();
+    setSpeakingId(null);
+    form.setValue("message", text);
+    sendTextMessage(text);
+  };
 
   const onSubmit = (values) => sendTextMessage(values.message);
 
