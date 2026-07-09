@@ -242,9 +242,6 @@ export default function ChatAssistant({ onDomainChange }) {
     }, [toast]),
   });
 
-  // Keep ref in sync with latest sendTextMessage on every render
-  sendTextMessageRef.current = sendTextMessage;
-
   // Hydrate persisted state on mount
   useEffect(() => {
     setDomainSessions(loadAll());
@@ -791,6 +788,10 @@ export default function ChatAssistant({ onDomainChange }) {
       setDomainLoading(false);
     }
   };
+
+  // Keep ref in sync with latest sendTextMessage on every render.
+  // Must be after sendTextMessage is declared (avoids TDZ crash).
+  sendTextMessageRef.current = sendTextMessage;
 
   const onSubmit = (values) => sendTextMessage(values.message);
 
