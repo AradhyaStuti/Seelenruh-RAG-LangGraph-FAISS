@@ -47,8 +47,7 @@ COPY --from=client-build /app/client/dist /app/client/dist
 ENV HF_HOME=/app/server/.cache/huggingface \
     SENTENCE_TRANSFORMERS_HOME=/app/server/.cache/huggingface \
     TRANSFORMERS_CACHE=/app/server/.cache/huggingface \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONUNBUFFERED=1
 RUN useradd -m -u 1000 user \
  && mkdir -p /app/server/.cache/huggingface /app/server/rag/.cache \
  && chown -R user:user /app
@@ -58,6 +57,9 @@ USER user
 # This means cold-start is instant — no 3-4 min index rebuild on every restart.
 # VOLUME is intentionally NOT declared so the baked-in cache is used.
 RUN python prebuild_rag.py
+# Compile all Python source to .pyc bytecode so runtime imports skip re-compilation.
+# Without this, Python must recompile every .py on every cold start (~5-8s saved).
+RUN python -m compileall -q /app/server
 
 EXPOSE 7860
 
