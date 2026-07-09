@@ -19,9 +19,9 @@ export function subscribeLang(cb) {
 
 export function getLang() {
   try {
-    return window.localStorage.getItem(KEY) || "hi";
+    return window.localStorage.getItem(KEY) || "en";
   } catch {
-    return "hi";
+    return "en";
   }
 }
 

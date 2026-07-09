@@ -14,7 +14,8 @@ const RECOGNITION_LANG = {
   en:   "en-US",
   hi:   "hi-IN",
   de:   "de-DE",
-  auto: "hi-IN",
+  // auto: use whatever language the browser is configured for
+  auto: typeof navigator !== "undefined" ? (navigator.language || "en-US") : "en-US",
 };
 
 const WHISPER_LANG = {
@@ -188,6 +189,21 @@ export function useVoice({ lang = "hi", onResult, onError }) {
         recognitionRef.current = null;
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
           onErrorRef.current?.("Microphone access denied. Please allow microphone access in browser settings.");
+        } else if (event.error === "language-not-supported") {
+          // Retry with English if the selected language pack isn't available
+          console.warn("[voice] language not supported — retrying with en-US");
+          const rec2 = new SR();
+          recognitionRef.current = rec2;
+          rec2.lang = "en-US";
+          rec2.continuous = false;
+          rec2.interimResults = true;
+          rec2.maxAlternatives = 1;
+          let t2 = "";
+          rec2.onstart  = () => _setListening(true);
+          rec2.onresult = (e) => { t2 = ""; for (let i=0;i<e.results.length;i++) t2+=e.results[i][0].transcript; setInterimTranscript(t2); };
+          rec2.onerror  = () => { _setListening(false); recognitionRef.current = null; };
+          rec2.onend    = () => { _setListening(false); recognitionRef.current = null; const f=t2.trim(); t2=""; if(f) _fire(f); };
+          try { rec2.start(); } catch(_) { _setListening(false); }
         } else if (event.error === "network") {
           onErrorRef.current?.("Network error during voice recognition. Please check your connection.");
         }
