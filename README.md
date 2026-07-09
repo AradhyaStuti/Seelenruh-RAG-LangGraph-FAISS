@@ -4,7 +4,7 @@ emoji: 🌸
 colorFrom: pink
 colorTo: purple
 sdk: docker
-app_port: 5000
+app_port: 7860
 pinned: false
 ---
 # Seelenruh: A LangGraph-Powered Agentic RAG System for Multi-Domain Civic and Mental Health Support
