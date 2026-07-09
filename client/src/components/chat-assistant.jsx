@@ -212,18 +212,21 @@ export default function ChatAssistant({ onDomainChange }) {
     defaultValues: { message: "" },
   });
 
-  // voiceResultRef holds the latest handleVoiceResult function.
-  // It is updated every render (below, after sendTextMessage is declared)
-  // so the voice hook always calls a fresh version with current state.
-  const voiceResultRef = useRef(null);
+  // sendTextRef always points to the latest sendTextMessage (declared later in this function).
+  // useVoice stores onResult in its own ref each render, so it always calls the latest
+  // onResult arrow below — which reads sendTextRef.current — giving fresh state every time.
+  const sendTextRef = useRef(null);
 
   const { isListening, interimTranscript, start: startListening, stop: stopListening, supported: voiceSupported } = useVoice({
     lang,
-    // onResult is called by useVoice via its internal onResultRef — always fresh.
-    // We delegate to voiceResultRef so we get the sendTextMessage bound to current
-    // domain / session state without needing useCallback deps.
-    onResult: (text) => voiceResultRef.current?.(text),
-    onError:  (msg)  => toast({ title: "Voice input error", description: msg, variant: "destructive" }),
+    onResult: (text) => {
+      if (!text?.trim()) return;
+      cancelSpeech();
+      setSpeakingId(null);
+      form.setValue("message", text);
+      sendTextRef.current?.(text);
+    },
+    onError: (msg) => toast({ title: "Voice input error", description: msg, variant: "destructive" }),
   });
 
   // Hydrate persisted state on mount
@@ -773,15 +776,8 @@ export default function ChatAssistant({ onDomainChange }) {
     }
   };
 
-  // Set every render so voiceResultRef.current always has the sendTextMessage
-  // that captures the current selectedDomain, activeSession, lang, etc.
-  voiceResultRef.current = (text) => {
-    if (!text?.trim()) return;
-    cancelSpeech();
-    setSpeakingId(null);
-    form.setValue("message", text);
-    sendTextMessage(text);
-  };
+  // Updated every render — always points to the sendTextMessage with current state.
+  sendTextRef.current = sendTextMessage;
 
   const onSubmit = (values) => sendTextMessage(values.message);
 
