@@ -1,27 +1,27 @@
 /**
- * useVoice — production-quality voice input hook
+ * useVoice — voice input hook
  *
  * Architecture:
- *   Primary:  Web Speech API (Chrome/Edge/Safari) — instant, silence-aware, no latency
+ *   Primary:  Web Speech API (Chrome/Edge/Safari) — instant, no latency
  *   Fallback: MediaRecorder → Whisper server (Firefox, unsupported browsers)
  *
  * Key design decisions:
- *   - continuous=true + manual silence detection → avoids premature cutoff on pause
- *   - Dedup guard prevents identical final transcripts firing twice (Chrome bug)
- *   - Hallucination filter rejects known Whisper noise responses
- *   - Auto-retry once on Whisper network failure
- *   - AbortController cancels in-flight Whisper request when stop() is called
- *   - Minimum audio duration (1.2s) rejects accidental taps
+ *   - onResultRef / onErrorRef: updated every render so event handlers never
+ *     call a stale callback regardless of when they fire.
+ *   - _fireResult has [] deps (stable) — no stale-closure risk from onResult.
+ *   - continuous=true + 2s silence gate → avoids premature cutoff.
+ *   - Dedup guard prevents identical transcripts firing twice (Chrome quirk).
+ *   - Hallucination filter rejects known Whisper noise phrases.
  */
 import { useRef, useState, useCallback, useEffect } from "react";
 import { getToken } from "@/lib/auth";
 
-// BCP-47 locale codes for Web Speech API recognition
+// BCP-47 locale codes for Web Speech API
 const RECOGNITION_LANG = {
   en:   "en-US",
-  hi:   "hi-IN",   // Handles Devanagari AND Hinglish
+  hi:   "hi-IN",
   de:   "de-DE",
-  auto: "hi-IN",   // Indian-app default
+  auto: "hi-IN",
 };
 
 // Whisper language codes sent to the server
@@ -32,8 +32,6 @@ const WHISPER_LANG = {
   auto: "hi",
 };
 
-// Known Whisper hallucinations on silence / background noise.
-// Normalised to lowercase with punctuation stripped.
 const HALLUCINATIONS = new Set([
   "thank you", "thank you for watching", "thanks for watching",
   "please subscribe", "like and subscribe", "see you next time",
@@ -54,16 +52,10 @@ function isHallucination(text) {
   if (!text?.trim()) return true;
   const norm = _normalise(text);
   if (HALLUCINATIONS.has(norm)) return true;
-
-  // Pure digits / timestamps
   if (/^[\d\s:.\-,/]+$/.test(text.trim())) return true;
-
-  // Contains only non-ASCII (non-Latin) characters other than Devanagari
-  // — e.g. random Unicode artifact
   const hasDevanagari = /[\u0900-\u097F]/.test(text);
-  const hasLatin = /[a-zA-Z]/.test(text);
+  const hasLatin      = /[a-zA-Z]/.test(text);
   if (!hasDevanagari && !hasLatin) return true;
-
   return false;
 }
 
@@ -87,17 +79,26 @@ export function useVoice({ lang = "hi", onResult, onError }) {
   const [isListening, setIsListening]             = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
 
-  // Refs (stable across renders — never stale)
-  const recognitionRef    = useRef(null);
-  const recorderRef       = useRef(null);
-  const audioChunksRef    = useRef([]);
-  const abortedRef        = useRef(false);
-  const abortCtrlRef      = useRef(null);  // AbortController for in-flight Whisper request
-  const langRef           = useRef(lang);
-  const lastFinalRef      = useRef("");    // dedup: last fired final transcript
-  const recordStartRef    = useRef(0);     // timestamp when recording started
-  const retryCountRef     = useRef(0);     // Whisper retry counter (max 1)
-  langRef.current = lang;
+  // Core refs
+  const recognitionRef  = useRef(null);
+  const recorderRef     = useRef(null);
+  const audioChunksRef  = useRef([]);
+  const abortedRef      = useRef(false);
+  const abortCtrlRef    = useRef(null);
+  const langRef         = useRef(lang);
+  const lastFinalRef    = useRef("");
+  const recordStartRef  = useRef(0);
+  const retryCountRef   = useRef(0);
+
+  // ── Always-fresh callback refs ────────────────────────────────────────────
+  // Updated on every render so recognition event handlers (which close over
+  // these refs) always call the latest onResult/onError from the parent —
+  // even if the parent re-renders with new state while recognition is running.
+  const onResultRef = useRef(onResult);
+  const onErrorRef  = useRef(onError);
+  onResultRef.current = onResult;
+  onErrorRef.current  = onError;
+  langRef.current     = lang;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -106,29 +107,35 @@ export function useVoice({ lang = "hi", onResult, onError }) {
     if (!v) setInterimTranscript("");
   }, []);
 
+  // Stable ([] deps) — uses refs so it never goes stale no matter when called.
   const _fireResult = useCallback((text) => {
     const clean = text?.trim();
-    if (!clean) return;
-    if (isHallucination(clean)) return;
-    // Dedup: don't fire the same final transcript twice in a row (Chrome bug)
-    if (clean === lastFinalRef.current) return;
+    if (!clean) {
+      console.log("[voice] _fireResult: empty — skipping");
+      return;
+    }
+    if (isHallucination(clean)) {
+      console.log("[voice] _fireResult: hallucination filtered:", JSON.stringify(clean));
+      return;
+    }
+    if (clean === lastFinalRef.current) {
+      console.log("[voice] _fireResult: dedup — same as last result, skipping");
+      return;
+    }
     lastFinalRef.current = clean;
-    // Reset dedup after 3s so repeated identical messages are allowed
     setTimeout(() => { if (lastFinalRef.current === clean) lastFinalRef.current = ""; }, 3000);
-    onResult?.(clean);
-  }, [onResult]);
+    console.log("[voice] ✅ firing result:", JSON.stringify(clean));
+    onResultRef.current?.(clean);
+  }, []); // intentionally empty — uses onResultRef
 
   // ── Stop ──────────────────────────────────────────────────────────────────
 
   const stop = useCallback(() => {
+    console.log("[voice] stop() called");
     abortedRef.current = true;
-
-    // Cancel any in-flight Whisper request
     abortCtrlRef.current?.abort();
     abortCtrlRef.current = null;
-
     _setListening(false);
-
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (_) {}
       recognitionRef.current = null;
@@ -139,11 +146,15 @@ export function useVoice({ lang = "hi", onResult, onError }) {
     }
   }, [_setListening]);
 
-  // ── Whisper fallback (called after recorder.onstop) ───────────────────────
+  // ── Whisper fallback ──────────────────────────────────────────────────────
 
   const _sendToWhisper = useCallback(async (blob, attempt = 0) => {
     if (abortedRef.current) return;
-    if (blob.size < 3000) return; // < 3 KB ≈ under ~0.3s — discard
+    if (blob.size < 3000) {
+      console.log("[voice] blob too small (<3 KB) — discarding");
+      return;
+    }
+    console.log(`[voice] sending to Whisper — ${(blob.size / 1024).toFixed(1)} KB, attempt ${attempt + 1}`);
 
     const ctrl = new AbortController();
     abortCtrlRef.current = ctrl;
@@ -166,37 +177,50 @@ export function useVoice({ lang = "hi", onResult, onError }) {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        console.log("[voice] Whisper response:", data);
         if (data.text?.trim()) {
           _fireResult(data.text.trim());
         } else if (data.error && !abortedRef.current) {
-          onError?.(data.error);
+          console.warn("[voice] STT error from server:", data.error);
+          onErrorRef.current?.(data.error);
+        } else {
+          console.log("[voice] Whisper returned empty text — nothing to send");
         }
       } catch (err) {
-        if (err.name === "AbortError") return; // Intentional cancel
-        // Retry once on network failure
+        if (err.name === "AbortError") {
+          console.log("[voice] Whisper request aborted");
+          return;
+        }
+        console.error("[voice] Whisper fetch error:", err);
         if (attempt === 0 && !abortedRef.current) {
           retryCountRef.current += 1;
+          console.log("[voice] retrying Whisper in 500ms");
           await new Promise((r) => setTimeout(r, 500));
           _sendToWhisper(blob, 1);
         } else if (!abortedRef.current) {
-          onError?.("Transcription failed. Please try again.");
+          onErrorRef.current?.("Transcription failed. Please try again.");
         }
       }
     };
     reader.readAsDataURL(blob);
-  }, [_fireResult, onError]);
+  }, [_fireResult]); // _fireResult is stable so this is effectively []
 
   // ── Start ─────────────────────────────────────────────────────────────────
 
   const start = useCallback(async () => {
-    if (isListening) { stop(); return; }
+    if (isListening) {
+      console.log("[voice] already listening — stopping");
+      stop();
+      return;
+    }
 
-    abortedRef.current  = false;
-    lastFinalRef.current = "";
+    abortedRef.current    = false;
+    lastFinalRef.current  = "";
     retryCountRef.current = 0;
     setInterimTranscript("");
 
     const SR = getSR();
+    console.log(`[voice] start() — SR available: ${!!SR}, lang: ${langRef.current}`);
 
     // ── Primary: Web Speech API ────────────────────────────────────────────
     if (SR) {
@@ -204,31 +228,28 @@ export function useVoice({ lang = "hi", onResult, onError }) {
       recognitionRef.current = recognition;
 
       recognition.lang            = RECOGNITION_LANG[langRef.current] || "hi-IN";
-      // continuous=true: don't stop on first pause — let user finish their thought.
-      // We stop manually when user taps stop.
       recognition.continuous      = true;
       recognition.interimResults  = true;
       recognition.maxAlternatives = 1;
 
-      recognition.onstart = () => _setListening(true);
+      recognition.onstart = () => {
+        console.log(`[voice] 🎤 recognition started, lang: ${recognition.lang}`);
+        _setListening(true);
+      };
 
-      let silenceTimer = null;
-      // Accumulate ALL transcript text (final + interim) across events.
-      // Chrome with continuous=true often never marks results isFinal — we
-      // fire whatever we have accumulated when the session ends (onend).
-      let accumulatedFinal  = "";  // text from isFinal results
-      let lastInterim       = "";  // most recent interim text
+      let silenceTimer     = null;
+      let accumulatedFinal = "";
+      let lastInterim      = "";
 
       recognition.onresult = (event) => {
-        // Clear any pending silence auto-stop
         clearTimeout(silenceTimer);
-
-        let interim = "";
+        let interim   = "";
         let finalText = "";
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const t = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalText += t + " ";
+            finalText        += t + " ";
             accumulatedFinal += t + " ";
           } else {
             interim += t;
@@ -237,14 +258,15 @@ export function useVoice({ lang = "hi", onResult, onError }) {
 
         lastInterim = interim;
         setInterimTranscript(interim || finalText.trim() || accumulatedFinal.trim());
+        console.log(`[voice] onresult — interim: ${JSON.stringify(interim)} final: ${JSON.stringify(finalText.trim())}`);
 
-        // Fire immediately when a chunk is marked final (short sentences, punctuation pauses)
         if (finalText.trim()) {
           _fireResult(finalText.trim());
         }
 
-        // Auto-stop after 2s of silence following speech
+        // Auto-stop after 2s of silence
         silenceTimer = setTimeout(() => {
+          console.log("[voice] silence timeout — stopping recognition");
           if (recognitionRef.current) {
             try { recognitionRef.current.stop(); } catch (_) {}
           }
@@ -253,58 +275,63 @@ export function useVoice({ lang = "hi", onResult, onError }) {
 
       recognition.onerror = (event) => {
         clearTimeout(silenceTimer);
+        const { error } = event;
+        console.warn("[voice] recognition error:", error);
         _setListening(false);
         recognitionRef.current = null;
 
-        const { error } = event;
         if (error === "not-allowed" || error === "service-not-allowed") {
-          onError?.("Microphone access denied. Please allow microphone access in browser settings.");
+          onErrorRef.current?.("Microphone access denied. Please allow microphone access in browser settings.");
           return;
         }
-        if (error === "no-speech" || error === "aborted") return;
+        if (error === "no-speech" || error === "aborted") return; // silent — expected
         if (error === "network") {
-          onError?.("Network error during voice recognition. Please check your connection.");
+          onErrorRef.current?.("Network error during voice recognition. Please check your connection.");
           return;
         }
-        // audio-capture, language-not-supported, etc. — fall through silently
+        // audio-capture, language-not-supported — fall through silently
       };
 
       recognition.onend = () => {
         clearTimeout(silenceTimer);
+        console.log(`[voice] recognition ended — accumulated: ${JSON.stringify(accumulatedFinal.trim())} interim: ${JSON.stringify(lastInterim)}`);
         _setListening(false);
         recognitionRef.current = null;
 
-        // Chrome with continuous=true often never fires isFinal — flush
-        // whatever text accumulated (prefer confirmed final, then interim).
+        // Chrome with continuous=true often never marks results isFinal.
+        // Flush whatever accumulated (prefer confirmed final, then interim).
         const best = (accumulatedFinal || lastInterim).trim();
         if (best && !accumulatedFinal.trim()) {
-          // Only interim text was received — fire it now as the result
+          console.log("[voice] flushing interim as result:", JSON.stringify(best));
           _fireResult(best);
         }
-        // If accumulatedFinal already fired, _fireResult's dedup guard prevents double-send
         accumulatedFinal = "";
         lastInterim      = "";
       };
 
       try {
         recognition.start();
-      } catch {
+        console.log("[voice] recognition.start() called");
+      } catch (err) {
+        console.error("[voice] recognition.start() threw:", err);
         _setListening(false);
-        onError?.("Could not start voice input. Please try again.");
+        onErrorRef.current?.("Could not start voice input. Please try again.");
       }
       return;
     }
 
     // ── Fallback: MediaRecorder → Whisper ──────────────────────────────────
+    console.log("[voice] using MediaRecorder fallback (no Web Speech API)");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation:  true,
-          noiseSuppression:  true,
-          autoGainControl:   true,
-          channelCount:      1,    // Mono — Whisper doesn't benefit from stereo
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl:  true,
+          channelCount:     1,
         },
       });
+      console.log("[voice] 🎤 microphone stream acquired");
 
       const mime = [
         "audio/webm;codecs=opus",
@@ -312,12 +339,13 @@ export function useVoice({ lang = "hi", onResult, onError }) {
         "audio/ogg;codecs=opus",
         "audio/mp4",
       ].find((m) => MediaRecorder.isTypeSupported(m)) || "";
+      console.log("[voice] MIME type:", mime || "(browser default)");
 
       const recorder = mime
         ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 16000 })
         : new MediaRecorder(stream);
 
-      recorderRef.current   = recorder;
+      recorderRef.current    = recorder;
       audioChunksRef.current = [];
       recordStartRef.current = Date.now();
 
@@ -325,43 +353,50 @@ export function useVoice({ lang = "hi", onResult, onError }) {
         if (e.data?.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        _setListening(false);
-
-        if (abortedRef.current) return;
-
-        const durationMs = Date.now() - recordStartRef.current;
-        if (durationMs < 1200) return; // < 1.2s — accidental tap, discard
-
-        const blob = new Blob(audioChunksRef.current, { type: mime || "audio/webm" });
-        _sendToWhisper(blob);
-      };
-
-      // 250ms timeslice → prevents empty blob on very quick stop
-      recorder.start(250);
-      _setListening(true);
-
-      // Safety auto-stop after 45 seconds
       const safetyTimer = setTimeout(() => {
         if (recorderRef.current?.state === "recording") {
+          console.log("[voice] safety stop after 45s");
           recorderRef.current.stop();
         }
       }, 45000);
 
-      // Attach cleanup to recorder stop
-      const origOnStop = recorder.onstop;
-      recorder.onstop = (e) => { clearTimeout(safetyTimer); origOnStop(e); };
+      recorder.onstop = () => {
+        clearTimeout(safetyTimer);
+        stream.getTracks().forEach((t) => t.stop());
+        _setListening(false);
+        console.log("[voice] 🎤 recording stopped");
+
+        if (abortedRef.current) {
+          console.log("[voice] aborted — discarding recording");
+          return;
+        }
+
+        const durationMs = Date.now() - recordStartRef.current;
+        console.log(`[voice] recording duration: ${durationMs}ms`);
+        if (durationMs < 1200) {
+          console.log("[voice] too short (<1.2s) — discarding");
+          return;
+        }
+
+        const blob = new Blob(audioChunksRef.current, { type: mime || "audio/webm" });
+        console.log(`[voice] 📦 audio blob: ${(blob.size / 1024).toFixed(1)} KB`);
+        _sendToWhisper(blob);
+      };
+
+      recorder.start(250);
+      _setListening(true);
+      console.log("[voice] MediaRecorder started");
 
     } catch (err) {
+      console.error("[voice] media access error:", err);
       _setListening(false);
       if (err.name === "NotAllowedError") {
-        onError?.("Microphone access denied. Please allow microphone access in browser settings.");
+        onErrorRef.current?.("Microphone access denied. Please allow microphone access in browser settings.");
       } else {
-        onError?.("Could not access microphone. Please check your device settings.");
+        onErrorRef.current?.("Could not access microphone. Please check your device settings.");
       }
     }
-  }, [isListening, stop, _setListening, _fireResult, _sendToWhisper, onError]);
+  }, [isListening, stop, _setListening, _fireResult, _sendToWhisper]);
 
   // Cleanup on unmount
   useEffect(() => {
