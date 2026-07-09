@@ -227,14 +227,11 @@ export default function ChatAssistant({ onDomainChange }) {
       if (!text?.trim()) return;
       cancelSpeech();
       setSpeakingId(null);
-      form.setValue("message", text, { shouldValidate: true });
-      // Flush react-hook-form's internal state before submitting.
-      // Recognition has already ended (2s silence gate passed) — no need for long delay.
+      // Show transcript in input briefly, then send directly.
+      // Bypasses form.handleSubmit validation — text is already clean from _fireResult.
+      form.setValue("message", text);
       setTimeout(() => {
-        const vals = form.getValues();
-        if (vals.message?.trim()) {
-          form.handleSubmit((v) => sendTextMessageRef.current?.(v.message))();
-        }
+        sendTextMessageRef.current?.(text);
       }, 80);
     }, [form]),
     onError: useCallback((msg) => {
