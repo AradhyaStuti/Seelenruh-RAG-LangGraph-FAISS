@@ -10,7 +10,7 @@ os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-PORT = int(os.getenv("PORT", "7860"))
+PORT = int(os.getenv("PORT", "5000"))  # local dev uses 5000; HF uses 7860 via Dockerfile CMD
 CLIENT_ORIGIN = os.getenv("CLIENT_ORIGIN", "")
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")

@@ -64,4 +64,4 @@ EXPOSE 7860
 # No HEALTHCHECK — HuggingFace Spaces has its own port-listening check.
 # Docker's HEALTHCHECK was killing the container during model warm-up.
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860} --log-level warning"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--log-level", "info"]
