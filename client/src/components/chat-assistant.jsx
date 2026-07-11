@@ -16,9 +16,6 @@ import {
   BlossomLogo,
   HeartBookmark,
   SoftAlert,
-  SoftMic,
-  SoftStop,
-  SoftSpeaker,
 } from "@/components/icons";
 
 import { Button } from "@/components/ui/button";
@@ -56,9 +53,7 @@ import { EligibilityChecker } from "@/components/eligibility-checker";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useVoice } from "@/hooks/use-voice";
 import { getLang, setLang, subscribeLang, LANGS } from "@/lib/lang";
-import { speak, cancelSpeech, isSpeaking, primeVoices } from "@/lib/speech";
 
 const formSchema = z.object({
   message: z
@@ -184,9 +179,7 @@ export default function ChatAssistant({ onDomainChange }) {
   const [attachedContext, setAttachedContext] = useState(null); // { name, text }
   // ID of the assistant message currently being streamed (null when not streaming)
   const [streamingMsgId, setStreamingMsgId] = useState(null);
-  // ID of the assistant message whose TTS is playing (null = silent)
-  const [speakingId, setSpeakingId] = useState(null);
-  // Language preference — drives STT lang, Whisper lang, LLM lang, TTS lang
+  // Language preference — drives LLM response lang
   const [lang, setLangState] = useState(() => getLang());
 
   const fileInputRef = useRef(null);
@@ -201,32 +194,9 @@ export default function ChatAssistant({ onDomainChange }) {
     return unsub;
   }, []);
 
-  // Prime browser TTS voices on mount (Chrome loads them async)
-  useEffect(() => {
-    primeVoices();
-    return () => cancelSpeech();
-  }, []);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: { message: "" },
-  });
-
-  // sendTextRef always points to the latest sendTextMessage (declared later in this function).
-  // useVoice stores onResult in its own ref each render, so it always calls the latest
-  // onResult arrow below — which reads sendTextRef.current — giving fresh state every time.
-  const sendTextRef = useRef(null);
-
-  const { isListening, interimTranscript, start: startListening, stop: stopListening, supported: voiceSupported } = useVoice({
-    lang,
-    onResult: (text) => {
-      if (!text?.trim()) return;
-      cancelSpeech();
-      setSpeakingId(null);
-      form.setValue("message", text);
-      sendTextRef.current?.(text);
-    },
-    onError: (msg) => toast({ title: "Voice input error", description: msg, variant: "destructive" }),
   });
 
   // Hydrate persisted state on mount
@@ -610,10 +580,6 @@ export default function ChatAssistant({ onDomainChange }) {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    // Stop any ongoing TTS and voice input when user sends
-    cancelSpeech();
-    setSpeakingId(null);
-    if (isListening) stopListening();
 
     // If a file is attached, prepend it as context for this message then clear it
     const ctx = attachedContext;
@@ -730,17 +696,6 @@ export default function ChatAssistant({ onDomainChange }) {
         return { ...prev, [selectedDomain]: { ...ds, sessions } };
       });
 
-      // Auto-play TTS for the completed assistant response
-      if (result.response?.trim()) {
-        const ttsText = result.response.trim();
-        setSpeakingId(streamMsgId);
-        speak(ttsText, {
-          lang,
-          domain: selectedDomain,
-          onEnd: () => setSpeakingId(null),
-          onPlayBlocked: () => setSpeakingId(null),
-        });
-      }
     } catch (error) {
       // Replace placeholder with error message
       setDomainSessions((prev) => {
@@ -775,9 +730,6 @@ export default function ChatAssistant({ onDomainChange }) {
       setDomainLoading(false);
     }
   };
-
-  // Updated every render — always points to the sendTextMessage with current state.
-  sendTextRef.current = sendTextMessage;
 
   const onSubmit = (values) => sendTextMessage(values.message);
 
@@ -1063,35 +1015,6 @@ export default function ChatAssistant({ onDomainChange }) {
 
                               {message.role === "assistant" && (
                                 <div className="mt-2 -mb-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {/* TTS play/stop button */}
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={cn("h-7 w-7 rounded-full", speakingId === message.id && "text-primary")}
-                                        onClick={() => {
-                                          if (speakingId === message.id && isSpeaking()) {
-                                            cancelSpeech();
-                                            setSpeakingId(null);
-                                          } else {
-                                            cancelSpeech();
-                                            setSpeakingId(message.id);
-                                            speak(message.content, {
-                                              lang,
-                                              domain: selectedDomain,
-                                              onEnd: () => setSpeakingId(null),
-                                              onPlayBlocked: () => setSpeakingId(null),
-                                            });
-                                          }
-                                        }}
-                                      >
-                                        <SoftSpeaker className={cn("h-3.5 w-3.5 transition-all", speakingId === message.id && "scale-110")} />
-                                        <span className="sr-only">{speakingId === message.id ? "Stop" : "Listen"}</span>
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{speakingId === message.id ? "Stop" : "Listen"}</TooltipContent>
-                                  </Tooltip>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
@@ -1309,34 +1232,6 @@ export default function ChatAssistant({ onDomainChange }) {
                         "bg-card/80 backdrop-blur-sm",
                         "border-border/55 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
                       )}>
-                        {/* Mic button */}
-                        {voiceSupported && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                size="icon"
-                                aria-label={isListening ? "Stop recording" : "Voice input"}
-                                onClick={() => isListening ? stopListening() : startListening()}
-                                disabled={isLoading}
-                                className={cn(
-                                  "shrink-0 h-9 w-9 rounded-xl transition-all duration-300",
-                                  isListening
-                                    ? "bg-red-500/20 text-red-500 animate-pulse"
-                                    : "bg-accent/20 text-accent-foreground hover:bg-accent/35"
-                                )}
-                              >
-                                {isListening
-                                  ? <SoftStop className="h-4 w-4" />
-                                  : <SoftMic className="h-4 w-4" />}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {isListening ? "Stop listening" : `Voice input (${LANGS.find(l=>l.code===lang)?.label || lang})`}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-
                         {/* Attach file button */}
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1369,20 +1264,13 @@ export default function ChatAssistant({ onDomainChange }) {
                             <FormItem className="flex-grow">
                               <FormControl>
                                 <Input
-                                  placeholder={isListening
-                                    ? (interimTranscript || "Listening…")
-                                    : `Message ${currentPersona.persona}...`}
+                                  placeholder={`Message ${currentPersona.persona}...`}
                                   {...field}
-                                  value={isListening && interimTranscript ? interimTranscript : field.value}
                                   ref={(el) => { field.ref(el); inputRef.current = el; }}
                                   disabled={isLoading}
                                   maxLength={4000}
-                                  className={cn(
-                                    "border-0 bg-transparent h-9 px-1 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm",
-                                    isListening ? "placeholder:text-primary/70 italic" : "placeholder:text-muted-foreground/50"
-                                  )}
+                                  className="border-0 bg-transparent h-9 px-1 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/50"
                                   autoComplete="off"
-                                  readOnly={isListening}
                                 />
                               </FormControl>
                             </FormItem>
@@ -1417,7 +1305,7 @@ export default function ChatAssistant({ onDomainChange }) {
                       </div>
 
                       <p className="mt-1.5 text-center text-[10px] text-muted-foreground/50">
-                        {isListening ? "Listening… speak now, auto-sends when you stop" : "Enter to send · tap mic for voice"}
+                        Press Enter or tap Send
                       </p>
                     </form>
                   </Form>
