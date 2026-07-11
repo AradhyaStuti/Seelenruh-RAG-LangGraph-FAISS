@@ -537,7 +537,7 @@ export function VoiceConversationScreen({
           </button>
         </div>
         <p className="text-sm font-medium" style={{ color: isRecording ? "#B91C1C" : "#64748b" }}>
-          {isThinking ? "Thinking..." : isRecording ? "🔴 Listening — tap to send" : isSpeakingAI ? "Tap mic to interrupt" : "Tap to speak"}
+          {isThinking ? "Thinking..." : isRecording ? "🔴 Listening — speak now" : isSpeakingAI ? "Tap mic to interrupt" : "Tap to speak"}
         </p>
       </div>
     </div>

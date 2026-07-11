@@ -162,7 +162,7 @@ export function useVoice({ lang = "en", onResult, onError }) {
       recogRef.current = rec;
 
       rec.lang            = recognitionLang;
-      rec.continuous      = true;   // user taps stop — no auto-cutoff surprises
+      rec.continuous      = false;  // single-utterance: browser auto-fires onend when speech ends
       rec.interimResults  = true;
       rec.maxAlternatives = 1;
 

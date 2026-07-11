@@ -1417,7 +1417,7 @@ export default function ChatAssistant({ onDomainChange }) {
                       </div>
 
                       <p className="mt-1.5 text-center text-[10px] text-muted-foreground/50">
-                        {isListening ? "Listening… tap stop when done" : "Enter to send · tap mic for voice"}
+                        {isListening ? "Listening… speak now, auto-sends when you stop" : "Enter to send · tap mic for voice"}
                       </p>
                     </form>
                   </Form>
