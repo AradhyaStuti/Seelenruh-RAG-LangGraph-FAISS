@@ -60,7 +60,6 @@ One thing that took a while: getting the intent classifier to correctly handle H
 ## Other features
 
 - **RAG pipeline**: `multilingual-e5-small` embeddings → FAISS vector search (overfetch 15) → cross-encoder reranker (`ms-marco-MiniLM-L-6-v2`). Confidence shown per-response (High / Medium / Low / None). OCR artifact cleanup before embedding lookup.
-- **Voice**: speak → Whisper transcribes → LLM responds → gTTS reads aloud → mic auto-restarts. Server-side TTS because browser speech synthesis breaks inside HF iframes. Safari needed separate fixes for AudioContext unlock and a 15s pause bug.
 - **Scheme eligibility checker**: rule-based, not LLM. I tried LLMs for eligibility and they were too vague. The deterministic checker takes state, age, income, and category and returns exactly which schemes match.
 - **Legal document templates**: RTI, consumer complaint, rent notice — filled from form inputs, not AI-generated. Keeps them legally consistent.
 - **Automatic intent routing**: ask a legal question in the mental health tab and the agent detects it and reroutes. The UI shows the reasoning.
@@ -76,8 +75,6 @@ One thing that took a while: getting the intent classifier to correctly handle H
 | Frontend      | React 18, Vite, Tailwind CSS, shadcn/ui, Radix UI                                |
 | Backend       | Python 3.10, FastAPI, LangGraph                                                  |
 | LLMs          | Groq API — Llama 3.3 70B (responses), Llama 3.1 8B (intent/emotion/goal/memory) |
-| STT           | Groq Whisper large-v3-turbo                                                      |
-| TTS           | gTTS (server-side, returns MP3)                                                  |
 | Embeddings    | `intfloat/multilingual-e5-small`                                                 |
 | Vector search | FAISS (CPU)                                                                      |
 | Reranker      | `cross-encoder/ms-marco-MiniLM-L-6-v2`                                          |
