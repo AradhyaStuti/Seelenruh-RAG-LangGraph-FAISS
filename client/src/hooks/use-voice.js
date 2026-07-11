@@ -55,14 +55,15 @@ export function useVoice({ lang = "en", onResult, onError }) {
   const [isListening, setIsListening]             = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
 
-  const recogRef       = useRef(null);
-  const recorderRef    = useRef(null);
-  const audioChunksRef = useRef([]);
-  const abortedRef     = useRef(false);
-  const abortCtrlRef   = useRef(null);
-  const langRef        = useRef(lang);
-  const recordStartRef = useRef(0);
-  const transcriptRef  = useRef(""); // accumulates speech during session
+  const recogRef        = useRef(null);
+  const recorderRef     = useRef(null);
+  const audioChunksRef  = useRef([]);
+  const abortedRef      = useRef(false);  // true only on unmount — prevents post-unmount state updates
+  const userStopRef     = useRef(false);  // true when user tapped stop deliberately (suppress "no speech" toast)
+  const abortCtrlRef    = useRef(null);
+  const langRef         = useRef(lang);
+  const recordStartRef  = useRef(0);
+  const transcriptRef   = useRef(""); // accumulates speech during session
 
   // Always-fresh callbacks — updated every render
   const onResultRef = useRef(onResult);
@@ -92,11 +93,15 @@ export function useVoice({ lang = "en", onResult, onError }) {
 
   const stop = useCallback(() => {
     console.log("[voice] stop()");
-    abortedRef.current = true;
+    // Do NOT set abortedRef here — that would block the MediaRecorder Whisper upload.
+    // abortedRef is only set on unmount to prevent post-unmount state updates.
+    // userStopRef lets onend know this was a deliberate user action (suppresses "no speech" toast).
+    userStopRef.current = true;
     abortCtrlRef.current?.abort();
     abortCtrlRef.current = null;
     _setListening(false);
     if (recogRef.current) {
+      clearTimeout(recogRef.current._safetyTimer); // prevent orphaned timer
       try { recogRef.current.stop(); } catch (_) {}
       // don't null here — let onend handle cleanup and fire transcript
     }
@@ -204,15 +209,16 @@ export function useVoice({ lang = "en", onResult, onError }) {
         recogRef.current = null;
         const final = transcriptRef.current.trim();
         transcriptRef.current = "";
+        const wasUserStop = userStopRef.current;
+        userStopRef.current = false;
         if (final) {
           _fire(final);
-        } else {
-          // Only show "no speech" if we were actively listening (not aborted)
-          if (!abortedRef.current) {
-            console.log("[voice] onend with empty transcript");
-            onErrorRef.current?.("No speech detected. Please tap the mic and speak clearly.");
-          }
+        } else if (!abortedRef.current && !wasUserStop) {
+          // Auto-ended with no speech (browser timeout / network) — tell the user
+          console.log("[voice] onend with empty transcript");
+          onErrorRef.current?.("No speech detected. Please tap the mic and speak clearly.");
         }
+        // wasUserStop && !final → user tapped stop without speaking; stay silent (no toast)
       };
 
       try {
@@ -261,7 +267,8 @@ export function useVoice({ lang = "en", onResult, onError }) {
         clearTimeout(safetyTimer);
         stream.getTracks().forEach(t => t.stop());
         _setListening(false);
-        if (abortedRef.current) return;
+        userStopRef.current = false;
+        if (abortedRef.current) return; // only true on unmount — skip upload
         const ms = Date.now() - recordStartRef.current;
         if (ms < 1200) { onErrorRef.current?.("Recording too short. Please hold the mic and speak."); return; }
         const blob = new Blob(audioChunksRef.current, { type: mime || "audio/webm" });
