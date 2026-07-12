@@ -10,27 +10,64 @@ FALLBACK_LINKS = {
     "Mental Health": """
 - iCall: https://icallhelpline.org (+91 9152987821)
 - Vandrevala Foundation: 1860-2662-345 (24x7)
-- Tele-MANAS: 14416
-- AASRA: +91 9820466726
-- NIMHANS: https://nimhans.ac.in/resources/""",
+- Tele-MANAS: 14416 | https://telemanas.mohfw.gov.in/
+- AASRA: +91 9820466726 | https://www.aasra.info/
+- NIMHANS: https://nimhans.ac.in/
+- Ministry of Health: https://www.mohfw.gov.in/
+- WHO Mental Health: https://www.who.int/health-topics/mental-health""",
+
     "Legal": """
-- Indian laws (Min of Law & Justice): https://legislative.gov.in/
-- RTI online portal: https://rtionline.gov.in/
-- Consumer Helpline: https://consumerhelpline.gov.in (1915)
+- India Code (all laws): https://www.indiacode.nic.in/
+- Ministry of Law & Justice: https://www.legislative.gov.in/
+- RTI online filing: https://rtionline.gov.in/
+- Consumer Helpline 1915: https://consumerhelpline.gov.in/
 - NALSA free legal aid: https://nalsa.gov.in/
-- She-Box (workplace harassment): https://shebox.wcd.gov.in/""",
+- NCW (women's rights): https://ncw.nic.in/
+- She-Box (POSH complaints): https://shebox.wcd.gov.in/
+- eCourts case status: https://services.ecourts.gov.in/
+- Supreme Court: https://www.supremecourt.gov.in/
+- NHRC (human rights): https://nhrc.nic.in/
+- CERT-In (cyber law): https://www.cert-in.org.in/""",
+
     "Government Schemes": """
-- India.gov.in scheme directory: https://india.gov.in/
-- Ayushman Bharat (PM-JAY): https://pmjay.gov.in/
+- All schemes directory: https://www.myscheme.gov.in/
+- National Portal of India: https://www.india.gov.in/
+- Ayushman Bharat PM-JAY: https://pmjay.gov.in/
 - PM Kisan: https://pmkisan.gov.in/
 - National Scholarships Portal: https://scholarships.gov.in/
-- MGNREGA: https://nrega.nic.in/""",
+- MGNREGA: https://nrega.nic.in/
+- PM Awas Yojana: https://pmaymis.gov.in/
+- Mudra Loan: https://www.mudra.org.in/
+- Jan Dhan Yojana: https://pmjdy.gov.in/
+- Jan Suraksha (PMSBY/PMJJBY/APY): https://www.jansuraksha.gov.in/
+- eShram (unorganised workers): https://eshram.gov.in/
+- PM Vishwakarma: https://pmvishwakarma.gov.in/
+- Startup India: https://www.startupindia.gov.in/
+- PFMS (DBT status): https://pfms.nic.in/""",
+
     "Safety": """
-- 112 unified emergency, 100 police, 101 fire, 102/108 ambulance
-- 1091 women helpline, 1098 child helpline, 1930 cyber-fraud
-- Cybercrime portal: https://cybercrime.gov.in/
-- iCall (mental health crisis): +91 9152987821""",
+- 112 unified emergency (police + fire + ambulance)
+- 100 police | 101 fire | 102/108 ambulance | 1091 women | 1098 child
+- 1930 cyber fraud helpline
+- National Cyber Crime Portal: https://cybercrime.gov.in/
+- 112 India app: https://www.112.gov.in/
+- CERT-In: https://www.cert-in.org.in/
+- NDRF: https://www.ndrf.gov.in/
+- NCW (women): https://ncw.nic.in/
+- NALSA (legal aid): https://nalsa.gov.in/
+- iCall crisis support: https://icallhelpline.org/""",
 }
+
+# Shared instruction injected into every persona's system prompt.
+# Tells the LLM how to format the trailing Sources section.
+SOURCES_SECTION_PROMPT = """\
+SOURCES SECTION — After your main response, add a blank line then a **Sources** section.
+List ONLY the numbered sources you actually cited with [N] references above.
+Format each line as:
+  [N] Topic · Authority · URL
+Include the URL only if it was explicitly provided in the source block header above.
+NEVER write a URL you did not receive. NEVER fabricate source names or links.
+If you cited no sources, omit the Sources section entirely."""
 
 SCOPE_MAP = """
 USHA (Mental Health) handles:

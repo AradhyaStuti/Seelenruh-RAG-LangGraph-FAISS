@@ -2,11 +2,11 @@
 import asyncio
 import re
 import time
-from datetime import date
 from typing import Optional
 
 from rag import embedder, reranker
 from rag.knowledge import CHUNKS
+from rag.knowledge_meta import enrich_chunk
 from rag.store import VectorStore
 from config import RETRIEVAL_TOP_K, RETRIEVAL_OVERFETCH
 from logger import get_logger
@@ -41,6 +41,77 @@ _HINGLISH_MAP = {
 
 _DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]+")
 
+# Legal query expansion — appends domain-specific terminology before embedding
+# so vague natural-language queries map to the right knowledge chunks.
+# Each tuple: (compiled regex pattern, extra terms to append)
+_LEGAL_EXPANSIONS: list[tuple] = [
+    (re.compile(r"husband|wife|spouse|partner.{0,30}(beat|hit|hurt|abuse|slap|kick|threaten|violence|assault|torture)", re.I),
+     "domestic violence PWDVA protection order Section 18 DV Act BNS 85 498A shelter home"),
+    (re.compile(r"(beat|hit|hurt|abuse|slap|violence|assault).{0,30}(husband|wife|spouse|partner|family|in-law)", re.I),
+     "domestic violence PWDVA BNS 85 498A cruelty protection order"),
+    (re.compile(r"dowry", re.I),
+     "dowry Prohibition Act BNS 80 dowry death BNS 85 cruelty 498A Section 304B"),
+    (re.compile(r"cheque.{0,15}(bounce|return|dishonour|dishonor)", re.I),
+     "Section 138 Negotiable Instruments Act criminal offence magistrate demand notice 30 days"),
+    (re.compile(r"FIR.{0,20}(refuse|not|register|denied|won.t)", re.I),
+     "Section 154 BNSS 173 mandatory registration magistrate Section 156(3) SP complaint"),
+    (re.compile(r"landlord.{0,30}(evict|leave|throw|illegal)", re.I),
+     "Transfer of Property Act rent control eviction notice tenant rights 15 days"),
+    (re.compile(r"(fired|terminated|dismissed|sacked).{0,30}(job|work|employ|company)", re.I),
+     "Industrial Disputes Act retrenchment wrongful termination labour court gratuity notice pay"),
+    (re.compile(r"sexual harass|workplace harass|POSH", re.I),
+     "POSH Act Internal Complaints Committee ICC workplace harassment employer obligation"),
+    (re.compile(r"\brti\b|right to information", re.I),
+     "RTI Act Section 6 CPIO Public Information Officer 30 days first appeal second appeal CIC"),
+    (re.compile(r"consumer.{0,20}(complain|fraud|defect|cheat|scam)", re.I),
+     "Consumer Protection Act 2019 District Commission deficiency unfair trade practice Section 35"),
+    (re.compile(r"\bbail\b|anticipatory bail|arrest", re.I),
+     "BNSS 480 482 anticipatory bail non-bailable bailable offence sessions court surety"),
+    (re.compile(r"(rape|sexual assault|molestation)", re.I),
+     "BNS 64 65 66 POCSO special court FIR mandatory medical examination victim protection"),
+    (re.compile(r"child.{0,20}(abuse|harm|exploit|traffick|labour)", re.I),
+     "POCSO JJ Act child welfare committee special court mandatory reporting"),
+    (re.compile(r"cyber.{0,20}(fraud|scam|hack|phish|black ?mail|stalk)", re.I),
+     "IT Act Section 66 66C 66D 67 cybercrime.gov.in 1930 DPDP Act online fraud"),
+    (re.compile(r"maintenance.{0,20}(wife|husband|child|parent)", re.I),
+     "CrPC 125 BNSS 144 HMA Section 24 25 alimony interim maintenance family court"),
+    (re.compile(r"\bdivorce\b|talaq|khula|dissolution of marriage", re.I),
+     "Hindu Marriage Act Special Marriage Act dissolution Section 13 mutual consent contested divorce maintenance"),
+    (re.compile(r"property.{0,20}(inherit|succession|share|will|partition)", re.I),
+     "Hindu Succession Act Transfer of Property Act will partition civil court inheritance rights"),
+    (re.compile(r"landlord|tenant|rent.{0,15}(dispute|increase|deposit|agreement)", re.I),
+     "Transfer of Property Act rent control Rent Act tenant rights lease agreement eviction"),
+    (re.compile(r"(police|officer).{0,20}(corrupt|bribe|harass|beat|threaten)", re.I),
+     "police misconduct complaint SP Internal Complaints DGP human rights commission NHRC"),
+    (re.compile(r"(illegal|wrongful|false).{0,20}arrest|arrest.{0,20}without", re.I),
+     "BNSS fundamental rights Article 22 habeas corpus writ High Court custody remand"),
+    (re.compile(r"(blackmail|extort|threaten).{0,30}(photo|video|nude|intimate|money)", re.I),
+     "IT Act Section 67 67A cyber blackmail non-consensual intimate image 1930 cybercrime"),
+    (re.compile(r"passport|visa.{0,20}(delay|refuse|cancel)", re.I),
+     "passport grievance MEA passport seva RTI passport office"),
+    (re.compile(r"senior citizen|elderly.{0,20}(rights|abuse|property|maintenance)", re.I),
+     "Senior Citizens Act 2007 maintenance tribunal property rights elder abuse"),
+    (re.compile(r"POCSO|minor.{0,20}(abuse|assault|harass|rape)", re.I),
+     "POCSO special court child welfare committee mandatory reporting JJ Act"),
+    (re.compile(r"writ|habeas corpus|mandamus|certiorari|Article 32|Article 226", re.I),
+     "fundamental rights Constitution Article 32 High Court Supreme Court writ jurisdiction"),
+]
+
+
+def _expand_legal_query(query: str) -> str:
+    """
+    Append legal terminology to vague natural-language legal queries so that
+    multilingual-e5-small maps them onto the right knowledge chunks.
+    Only called when domain='Legal'. Pure string operation — no LLM needed.
+    """
+    additions: list[str] = []
+    for pattern, expansion in _LEGAL_EXPANSIONS:
+        if pattern.search(query):
+            additions.append(expansion)
+    if not additions:
+        return query
+    return query + " " + " ".join(additions)
+
 
 def _normalize_query(text: str) -> str:
     """Clean OCR artifacts and lightly expand Hinglish terms for better embedding coverage."""
@@ -62,37 +133,6 @@ def _normalize_query(text: str) -> str:
             expanded.append(tok)
     return " ".join(expanded).strip()
 
-# Staleness thresholds vary by domain:
-# - Government Schemes change most often (budget cycles, scheme amendments)
-# - Safety helpline numbers can change but statutes are stable
-# - Legal statutes are stable but procedures can be updated
-# - Mental Health content is evergreen
-_STALE_THRESHOLDS = {
-    "Government Schemes": (2, 6),    # warn at 2 months, heavy at 6
-    "Safety":             (3, 9),    # warn at 3 months, heavy at 9
-    "Legal":              (6, 18),   # statutes change rarely; warn at 6, heavy at 18
-    "Mental Health":      (12, 24),  # evergreen; very light penalty
-}
-_STALE_DEFAULT = (3, 9)
-
-
-def _staleness_penalty(chunk: dict) -> float:
-    """Penalise old chunks so fresher ones rank higher when content is otherwise similar.
-    Threshold is domain-sensitive: scheme info expires faster than legal statutes."""
-    lv = chunk.get("lastVerifiedOn")
-    if not lv:
-        return 0.0
-    try:
-        months_old = (date.today() - date.fromisoformat(str(lv))).days / 30.44
-        warn_m, heavy_m = _STALE_THRESHOLDS.get(chunk.get("domain", ""), _STALE_DEFAULT)
-        if months_old > heavy_m:
-            return 0.15
-        if months_old > warn_m:
-            return 0.08
-        return 0.0
-    except Exception:
-        return 0.0
-
 _store = VectorStore()
 _ready = False
 _write_lock = asyncio.Lock()
@@ -111,9 +151,10 @@ async def init() -> None:
 
     log.info("building index", chunks=len(CHUNKS))
     t0 = time.time()
-    texts = [f"passage: {c['topic']}\n{c['text']}" for c in CHUNKS]
+    enriched = [enrich_chunk(c) for c in CHUNKS]
+    texts = [f"passage: {c['topic']}\n{c['text']}" for c in enriched]
     vectors = await asyncio.to_thread(embedder.embed_many, texts)
-    _store.build(CHUNKS, vectors)
+    _store.build(enriched, vectors)
     _store.save()
     log.info("index built", chunks=_store.size(), ms=int((time.time() - t0) * 1000))
     _ready = True
@@ -160,6 +201,7 @@ async def ingest(chunks: list[dict]) -> int:
         return 0
     if not _ready:
         await init()
+    chunks = [enrich_chunk(c) for c in chunks]
     texts = [f"passage: {c['topic']}\n{c['text']}" for c in chunks]
     vectors = await asyncio.to_thread(embedder.embed_many, texts)
     async with _write_lock:
@@ -199,16 +241,11 @@ async def retrieve(query: str, *, domain: Optional[str] = None, k: int = RETRIEV
     if not _ready:
         await init()
     query = _normalize_query(query)
+    if domain == "Legal":
+        query = _expand_legal_query(query)
     qv = await asyncio.to_thread(embedder.embed_one, f"query: {query}")
     fetch_k = _overfetch_k(k, domain)
     candidates = _store.search(qv, k=fetch_k, domain=domain)
-
-    for c in candidates:
-        penalty = _staleness_penalty(c)
-        if penalty:
-            c["score"] = max(0.0, c["score"] - penalty)
-            c["_stale_penalty"] = penalty
-    candidates.sort(key=lambda c: c["score"], reverse=True)
 
     if reranker.is_enabled() and len(candidates) > k:
         results = await reranker.rerank(query, candidates, k=k)
