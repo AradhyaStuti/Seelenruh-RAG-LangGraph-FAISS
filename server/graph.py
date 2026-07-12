@@ -109,6 +109,14 @@ def _build_context(state: ChatState) -> str:
             "Keep this in mind and proactively guide progress toward it."
         )
 
+    # If emergency flag is set but routed to Legal (not Panic), surface a safety note
+    # so the legal persona knows to address danger before diving into law.
+    if state.get("emergency") and state.get("routed_domain") == "Legal":
+        ctx_parts.append(
+            "SAFETY FLAG: The user's message contains signals of danger or distress. "
+            "Address immediate safety before discussing legal procedure."
+        )
+
     return " ".join(ctx_parts)
 
 

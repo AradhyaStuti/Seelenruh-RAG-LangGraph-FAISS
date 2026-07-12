@@ -42,6 +42,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import EmergencyContacts from "@/components/emergency-contacts";
+import { SourcesPanel } from "@/components/sources-panel";
 import { QuickReplies } from "@/components/quick-replies";
 import { MoodCheckIn } from "@/components/mood-checkin";
 import { ChatHistoryDrawer } from "@/components/chat-history";
@@ -1108,6 +1109,17 @@ export default function ChatAssistant({ onDomainChange }) {
                                 </div>
                               )}
                             </div>
+                            {/* Sources / citations panel */}
+                            {message.role === "assistant" &&
+                              !message.streaming &&
+                              !message.id?.startsWith("welcome-") &&
+                              message.sources?.length > 0 && (
+                              <SourcesPanel
+                                sources={message.sources}
+                                citedIndices={message.citedIndices || []}
+                                confidence={message.confidence || "None"}
+                              />
+                            )}
                             {/* Inline disclaimer for Legal / Government Schemes responses */}
                             {message.role === "assistant" &&
                               !message.id?.startsWith("welcome-") &&

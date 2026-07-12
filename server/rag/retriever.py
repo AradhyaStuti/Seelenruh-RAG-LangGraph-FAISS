@@ -179,6 +179,22 @@ def _overfetch_k(k: int, domain: Optional[str]) -> int:
     return base
 
 
+def _dedup(hits: list[dict]) -> list[dict]:
+    """Remove near-duplicate chunks that share the same topic string.
+    After reranking, higher-ranked chunks come first, so we keep the first
+    occurrence of each topic and discard later ones with the same key."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for h in hits:
+        key = h.get("topic", "").lower().strip()
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        out.append(h)
+    return out
+
+
 async def retrieve(query: str, *, domain: Optional[str] = None, k: int = RETRIEVAL_TOP_K) -> list[dict]:
     if not _ready:
         await init()
@@ -195,5 +211,8 @@ async def retrieve(query: str, *, domain: Optional[str] = None, k: int = RETRIEV
     candidates.sort(key=lambda c: c["score"], reverse=True)
 
     if reranker.is_enabled() and len(candidates) > k:
-        return await reranker.rerank(query, candidates, k=k)
-    return candidates[:k]
+        results = await reranker.rerank(query, candidates, k=k)
+    else:
+        results = candidates[:k]
+
+    return _dedup(results)

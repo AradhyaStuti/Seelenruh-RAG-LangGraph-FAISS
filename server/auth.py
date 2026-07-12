@@ -200,7 +200,7 @@ async def _resolve_user(credentials: HTTPAuthorizationCredentials, *, require_ve
             detail="Missing authentication.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    payload = decode_token(credentials.credentials)
+    payload = decode_token(credentials.credentials, expected_type="access")
     if await _is_revoked(payload.get("jti")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
