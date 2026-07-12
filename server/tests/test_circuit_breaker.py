@@ -1,7 +1,6 @@
 """Tests for ai.circuit_breaker — CLOSED/OPEN/HALF_OPEN transitions,
 call_timeout enforcement, and call_stream() protection."""
 import asyncio
-import time
 
 import pytest
 

@@ -7,7 +7,7 @@ import asyncio
 sys.path.insert(0, os.path.dirname(__file__))
 os.chdir(os.path.dirname(__file__))
 
-from rag import retriever
+from rag import retriever  # noqa: E402
 
 asyncio.run(retriever.init())
 print("RAG index pre-built successfully", flush=True)

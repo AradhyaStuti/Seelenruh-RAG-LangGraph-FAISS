@@ -26,9 +26,17 @@ class SourceChunk(BaseModel):
     domain: str
     score: float
     rerankScore: Optional[float] = None
-    source: Optional[str] = None
+    source: Optional[str] = None          # citation string (e.g. "PWDVA · NALSA")
+    sourceUrl: Optional[str] = None       # resolved official URL
     lastVerifiedOn: Optional[str] = None
     verifiedBy: Optional[str] = "human"
+    # Enriched fields from knowledge_meta
+    documentType: Optional[str] = None
+    sourceAuthority: Optional[str] = None
+    reviewStatus: Optional[str] = None
+    reviewNote: Optional[str] = None
+    reviewFrequency: Optional[str] = None
+    weightedScore: Optional[float] = None
 
 
 class RoutingTrace(BaseModel):

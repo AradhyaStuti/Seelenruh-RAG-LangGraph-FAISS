@@ -1047,7 +1047,6 @@ _RIGHTS_KW: dict[str, list[str]] = {
     "Cybercrime":        ["IT Act", "Section 66", "cyber fraud", "data protection", "DPDP Act", "online fraud", "identity theft"],
     "Property":          ["Hindu Succession", "property rights", "inheritance", "will", "gift deed", "partition", "encumbrance"],
     "POSH":              ["POSH", "sexual harassment workplace", "ICC", "internal complaints committee"],
-    "Maintenance":       ["maintenance", "alimony", "Section 125", "BNSS 144", "HMA 24", "alimony"],
 }
 
 _PROCEDURE_KW: dict[str, list[str]] = {

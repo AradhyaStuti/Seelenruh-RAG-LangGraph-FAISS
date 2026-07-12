@@ -143,19 +143,6 @@ def organize_chunks(retrieved: list[dict], analysis: dict) -> dict:
     Agent 2: Classify retrieved chunks by what they contain.
     Returns {"contacts": [...], "women": [...], "cyber": [...], "legal": [...], "disaster": [...], "general": [...]}.
     """
-    threat    = analysis.get("threat_category", "general")
-    sit_type  = analysis.get("situation_type", "safety_awareness")
-
-    # Select primary keyword set based on threat
-    if threat in ("domestic_violence", "sexual_assault", "stalking", "trafficking"):
-        primary_kws = _WOMEN_SAFETY_KW
-    elif threat in ("cyber_fraud", "upi_scam", "identity_theft", "blackmail"):
-        primary_kws = _CYBER_SAFETY_KW
-    elif sit_type == "disaster":
-        primary_kws = _DISASTER_KW
-    else:
-        primary_kws = _EMERGENCY_CONTACT_KW
-
     contacts: list[dict] = []
     women: list[dict] = []
     cyber: list[dict] = []

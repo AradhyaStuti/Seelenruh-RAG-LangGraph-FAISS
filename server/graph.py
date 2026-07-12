@@ -1,5 +1,11 @@
 # Graph flow:
 #   START → load_memory → classify → route → retrieve → maybe_search → generate → save_memory → END
+#
+# Domain dispatch (all invisible to user):
+#   "Mental Health"      → usha_graph     (Usha multi-agent)
+#   "Legal"              → legal_graph    (Umang multi-agent)
+#   "Government Schemes" → aarogya_graph  (Aarogya multi-agent)
+#   "Safety"             → raksha_graph   (Raksha multi-agent)
 import asyncio
 import re
 from typing import Optional, TypedDict
@@ -11,8 +17,13 @@ from ai import intent as intent_flow
 from ai import responder
 from ai import memory as memory_flow
 from ai.tools import web_search, needs_web_search
+import usha_graph
+import legal_graph
+import aarogya_graph
+import raksha_graph
 from logger import get_logger
 from rag import retriever
+from rag import knowledge_meta
 import db
 
 log = get_logger("graph")
@@ -243,20 +254,52 @@ def _merge_web_results(state: ChatState) -> list[dict]:
     return retrieved
 
 
+_DOMAIN_GRAPHS = {
+    "Mental Health":      "usha",
+    "Legal":              "legal",
+    "Government Schemes": "aarogya",
+    "Safety":             "raksha",
+}
+
 async def _generate(state: ChatState) -> dict:
     retrieved = _merge_web_results(state)
-    context = _build_context(state)
+    context   = _build_context(state)
+    domain    = state.get("routed_domain", "Mental Health")
+    rag_hits  = state.get("retrieved", [])
+    conf      = _confidence_from(rag_hits)
 
-    out = await responder.respond(
+    _common = dict(
         query=state["query"],
-        intent=state["routed_domain"],
-        emotion=state.get("emotion", "neutral"),
-        lang=state.get("lang", "auto"),
         history=state.get("history", []),
         retrieved=retrieved,
-        context=context,
+        emotion=state.get("emotion", "neutral"),
+        lang=state.get("lang", "auto"),
+        outer_context=context,
+        confidence=conf,
         fast_mode=state.get("fast_mode", False),
     )
+
+    if domain == "Mental Health":
+        out = await usha_graph.run(**_common)
+    elif domain == "Legal":
+        out = await legal_graph.run(**_common)
+    elif domain == "Government Schemes":
+        out = await aarogya_graph.run(**_common)
+    elif domain == "Safety":
+        out = await raksha_graph.run(**_common)
+    else:
+        # Fallback — should not normally happen
+        out = await responder.respond(
+            query=state["query"],
+            intent=domain,
+            emotion=state.get("emotion", "neutral"),
+            lang=state.get("lang", "auto"),
+            history=state.get("history", []),
+            retrieved=retrieved,
+            context=context,
+            fast_mode=state.get("fast_mode", False),
+        )
+
     return {"response": out["response"], "via": out["via"]}
 
 
@@ -306,39 +349,14 @@ async def _save_memory(state: ChatState) -> dict:
 
 def _build_sources(hits: list[dict]) -> list[dict]:
     return [
-        {
-            "id": h["id"],
-            "topic": h["topic"],
-            "domain": h["domain"],
-            "score": float(h.get("score", 0.0)),
-            "rerankScore": float(h["rerank_score"]) if "rerank_score" in h else None,
-            "source": h.get("source"),
-            "lastVerifiedOn": h.get("lastVerifiedOn"),
-            "verifiedBy": h.get("verifiedBy", "human"),
-        }
+        knowledge_meta.build_source_meta(h)
         for h in hits
         if not str(h.get("id", "")).startswith("web_")
     ]
 
 
 def _confidence_from(hits: list[dict]) -> str:
-    rag_hits = [h for h in hits if not str(h.get("id", "")).startswith("web_")]
-    if not rag_hits:
-        return "None"
-    top = rag_hits[0]
-    if "rerank_score" in top:
-        s = float(top["rerank_score"])
-        if s >= 5.0:
-            return "High"
-        if s >= 2.0:
-            return "Medium"
-        return "Low"
-    s = float(top.get("score", 0.0))
-    if s >= 0.88:
-        return "High"
-    if s >= 0.78:
-        return "Medium"
-    return "Low"
+    return knowledge_meta.compute_confidence(hits)
 
 
 _builder = StateGraph(ChatState)
@@ -394,16 +412,31 @@ async def stream_run(
 
     collected: list[str] = []
     via_bag = {"via": "stream"}
-    async for token in responder.stream_respond(
-        query=query,
-        intent=state["routed_domain"],
-        emotion=state.get("emotion", "neutral"),
-        lang=lang,
-        history=history,
-        retrieved=retrieved,
-        context=context,
-        _via_bag=via_bag,
-    ):
+
+    domain   = state.get("routed_domain", "Mental Health")
+    conf     = _confidence_from(state.get("retrieved", []))
+    _skw = dict(
+        query=query, history=history, retrieved=retrieved,
+        emotion=state.get("emotion", "neutral"), lang=lang,
+        outer_context=context, confidence=conf, _via_bag=via_bag,
+    )
+
+    if domain == "Mental Health":
+        stream_gen = usha_graph.stream_run(**_skw)
+    elif domain == "Legal":
+        stream_gen = legal_graph.stream_run(**_skw)
+    elif domain == "Government Schemes":
+        stream_gen = aarogya_graph.stream_run(**_skw)
+    elif domain == "Safety":
+        stream_gen = raksha_graph.stream_run(**_skw)
+    else:
+        # Fallback — should not normally happen
+        stream_gen = responder.stream_respond(
+            query=query, intent=domain, emotion=state.get("emotion", "neutral"),
+            lang=lang, history=history, retrieved=retrieved, context=context, _via_bag=via_bag,
+        )
+
+    async for token in stream_gen:
         collected.append(token)
         yield {"token": token}
 

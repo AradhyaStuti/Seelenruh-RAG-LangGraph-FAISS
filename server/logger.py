@@ -15,7 +15,6 @@ Sentry (optional):
     is present, so the app starts normally without it installed.
 """
 import logging
-import os
 import sys
 
 from config import SEELENRUH_ENV, LOG_LEVEL, SENTRY_DSN

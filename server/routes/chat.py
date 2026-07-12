@@ -16,6 +16,27 @@ from logger import get_logger
 
 log = get_logger("chat")
 
+import re as _re  # noqa: E402
+
+_INJECTION_PATTERNS = [
+    _re.compile(r"ignore\s+(previous|above|all|your)\s+instructions", _re.I),
+    _re.compile(r"you\s+are\s+now\s+(a\s+)?(?!umang|usha|aarogya|raksha)", _re.I),
+    _re.compile(r"forget\s+(you\s+are|your\s+instructions|all\s+previous)", _re.I),
+    _re.compile(r"act\s+as\s+(a\s+)?(different|new|another|unrestricted|evil)", _re.I),
+    _re.compile(r"\bsystem\s+prompt\b", _re.I),
+    _re.compile(r"\bjailbreak\b", _re.I),
+    _re.compile(r"\bDAN\b"),  # "Do Anything Now" jailbreak
+    _re.compile(r"developer\s+mode", _re.I),
+    _re.compile(r"disable\s+(safety|filter|guard|restriction)", _re.I),
+    _re.compile(r"pretend\s+(you\s+are|to\s+be)\s+(not\s+an?\s+ai|human|unrestricted)", _re.I),
+]
+
+
+def _is_injection(text: str) -> bool:
+    """Return True if the query looks like a prompt injection attempt."""
+    return any(p.search(text) for p in _INJECTION_PATTERNS)
+
+
 # Groq Whisper accepts up to ~25 MB; we cap at 10 MB base64 (≈ 7.5 MB raw)
 _MAX_AUDIO_B64_CHARS = 10 * 1024 * 1024
 
@@ -23,6 +44,8 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 
 async def _handle(req: ChatRequest, user: dict, fast_mode: bool = False) -> ChatResponse:
+    if _is_injection(req.query):
+        raise HTTPException(status_code=400, detail="Your message contains content that cannot be processed.")
     history = [m.model_dump() for m in req.history]
     session_id = (req.sessionId and req.sessionId.strip()) or user["id"]
 
@@ -120,6 +143,9 @@ async def chat_stream_endpoint(
         full_response = ""
         emotion: Optional[str] = None
         is_emergency = False
+        if _is_injection(req.query):
+            yield f"data: {json.dumps({'error': 'Your message contains content that cannot be processed.'})}\n\n"
+            return
         try:
             async for event in graph.stream_run(
                 query=req.query,

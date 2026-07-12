@@ -1,6 +1,5 @@
 """Web search tools — DuckDuckGo, Wikipedia, Brave Search (optional)."""
 import asyncio
-from typing import Optional
 
 import httpx
 

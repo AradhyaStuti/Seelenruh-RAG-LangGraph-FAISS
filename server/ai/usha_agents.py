@@ -12,7 +12,6 @@ LLM calls: 2 total (8B analyzer + 70B composer) vs. 1 previously.
 Added latency: ~150 ms for the 8B call.
 """
 import json
-from typing import Optional
 
 from ai.context import trim_history
 from ai.provider import chat

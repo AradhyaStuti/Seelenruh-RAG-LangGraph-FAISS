@@ -17,7 +17,6 @@ NEW APPROACH:
 
 Existing chunks are enriched at runtime — no manual knowledge.py edits needed.
 """
-import re
 from datetime import date
 from enum import Enum
 from typing import Optional
@@ -521,7 +520,7 @@ def get_review_note(doc_type: DocumentType, status: ReviewStatus, last_verified:
         (DocumentType.CONSTITUTION, ReviewStatus.VERIFIED):
             f"Constitutional provision — does not expire.{lv_str}",
         (DocumentType.HELPLINE, ReviewStatus.NEEDS_REVIEW):
-            f"Helpline numbers are verified monthly. This number is due for re-verification. Please confirm before calling.",
+            "Helpline numbers are verified monthly. This number is due for re-verification. Please confirm before calling.",
         (DocumentType.HELPLINE, ReviewStatus.VERIFIED):
             f"Recently verified helpline number.{lv_str}",
         (DocumentType.SCHEME, ReviewStatus.NEEDS_REVIEW):

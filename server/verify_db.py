@@ -36,7 +36,7 @@ async def main() -> None:
     if not ok:
         fatal("Atlas connect failed. Common causes: wrong password, your IP not allowed in Atlas Network Access, cluster paused. Check the error printed above.")
 
-    print(f"\n✅ Connected.\n")
+    print("\n✅ Connected.\n")
 
     # Check db + collections
     db_handle = db.users().database
@@ -59,10 +59,10 @@ async def main() -> None:
     fetched = await db.users().find_one({"email": test_email})
     print(f"  fetched name={fetched['name']}")
     assert bcrypt.checkpw(b"hunter22", fetched["password"].encode()), "bcrypt verify failed"
-    print(f"  bcrypt verify: OK")
+    print("  bcrypt verify: OK")
 
     await db.users().delete_one({"email": test_email})
-    print(f"  cleaned up\n")
+    print("  cleaned up\n")
 
     user_count = await db.users().count_documents({})
     msg_count = await db.messages().count_documents({})

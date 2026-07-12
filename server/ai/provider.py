@@ -14,7 +14,7 @@ import json
 import time
 
 from ai import groq_client, ollama_client, anthropic_client
-from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker, CircuitOpenError
+from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
 from logger import get_logger
 
 log = get_logger("provider")

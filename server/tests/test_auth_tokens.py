@@ -1,13 +1,12 @@
 """Tests for auth.py — token creation, decoding, type enforcement,
 expiry, and the revocation blacklist."""
-import asyncio
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
 
 import jwt
 import pytest
 
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from auth import (
