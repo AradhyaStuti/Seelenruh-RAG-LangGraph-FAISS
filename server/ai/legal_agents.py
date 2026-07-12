@@ -36,7 +36,7 @@ You are a senior Indian legal case analyst for Umang, a legal information assist
 Analyse the user's query deeply and output ONLY a valid JSON object — no markdown, no explanation.
 
 {
-  "category": "DomesticViolence|Divorce|Maintenance|FIR|Consumer|RTI|Tenant|Employment|Property|Cybercrime|POSH|ChequeBounce|Bail|POCSO|Constitutional|Criminal|General",
+  "category": "DomesticViolence|Divorce|Maintenance|FIR|Consumer|RTI|Tenant|Employment|Property|Cybercrime|POSH|ChequeBounce|Bail|POCSO|Constitutional|Criminal|Contract|Inheritance|MedicalNegligence|General",
   "urgency": "immediate|recent|informational",
   "multi_domain": false,
   "secondary_categories": [],
@@ -56,28 +56,43 @@ Analyse the user's query deeply and output ONLY a valid JSON object — no markd
 
 Rules:
 - category: single MOST SPECIFIC match for the primary legal issue
-- urgency: "immediate" = danger/crisis right now; "recent" = happened in last few days/weeks;
-           "informational" = asking about law / not in active crisis
-- multi_domain: true if the situation spans multiple legal areas (e.g. domestic violence + child custody + maintenance)
-- secondary_categories: list of up to 2 additional domains if multi_domain=true (e.g. ["Maintenance", "Divorce"])
-- known_facts: list of specific facts explicitly mentioned by user (max 5 short strings)
-  Examples: "cheque amount ₹50,000", "bounced 2 weeks ago", "in Maharashtra", "private company employer", "married under HMA"
-- missing_facts: list of facts MISSING that would materially change the legal guidance (max 3)
-  Examples for Tenant: ["state/city where property is located", "written rent agreement exists or not"]
-  Examples for Divorce: ["personal law / religion", "whether contested or mutual consent"]
-  Examples for Employment: ["government or private employer", "designation - workman or managerial"]
-  Examples for ChequeBounce: ["days since bank return memo received", "legal notice sent yet"]
-  Leave empty [] if query is purely informational or sufficient facts are present.
-- limitation_concern: true if there is a time-critical legal deadline the user may be approaching or have missed
-  (examples: ChequeBounce notice window, consumer court 2 years, POSH 3 months, default bail 60/90 days)
-- needs_document: true ONLY if user explicitly asks to write/draft/generate a document
+  Use "Contract" for breach of contract, service agreements, freelancer disputes, builder defaults
+  Use "Inheritance" for will disputes, succession, ancestral property, intestate succession
+  Use "MedicalNegligence" for hospital errors, wrong surgery, delayed diagnosis, doctor misconduct
+  Use "Criminal" for general criminal matters (assault, theft, cheating) not covered by more specific categories
+  Use "General" ONLY when no specific category fits
+- urgency (be precise):
+  "immediate" = danger or crisis happening RIGHT NOW (ongoing violence, active arrest, medical emergency)
+  "recent" = incident occurred within last 1–7 days AND evidence/deadlines exist (fresh cheque bounce, recent termination, just filed FIR)
+  "informational" = asking about law in general, or incident is old (>1 week) with no active deadline
+- multi_domain: true only if situation genuinely spans 2+ independent legal areas
+  Example TRUE: domestic violence + child custody + maintenance (3 areas)
+  Example FALSE: employment termination + unpaid salary (same area — Employment)
+- secondary_categories: up to 2 additional categories IF multi_domain=true; else []
+- known_facts: specific facts the user explicitly stated (max 5 short strings)
+  Examples: "cheque amount ₹50,000", "bounced 2 weeks ago", "in Maharashtra", "private company employer", "married under HMA", "no written contract"
+- missing_facts: facts NOT provided that would materially change the guidance (max 3)
+  For Tenant: ["state/city of property", "written rent agreement or oral only"]
+  For Divorce: ["personal law / religion", "contested or mutual consent"]
+  For Employment: ["government or private employer", "workman or managerial role"]
+  For ChequeBounce: ["days since return memo received", "legal notice already sent?"]
+  For Contract: ["written contract or verbal", "amount involved", "nature of breach"]
+  For Inheritance: ["deceased's religion / applicable personal law", "will exists or intestate"]
+  Leave [] if query is purely informational OR sufficient facts already present.
+- limitation_concern: true if a time-critical legal deadline may be APPROACHING or already MISSED
+  Approaching: "cheque bounced yesterday" → 30-day notice window starts
+  Missed: "my case was dismissed 70 days ago but no chargesheet" → default bail right may have been missed
+  Key windows: ChequeBounce notice 30 days | Consumer court 2 years | POSH complaint 3 months |
+               Default bail 60/90 days from FIR | RTI first appeal 30 days | POCSO no limit
+- needs_document: true ONLY if user explicitly says "write", "draft", "generate", "make a letter/notice/affidavit"
 - doc_type (only when needs_document=true): RTI | ConsumerComplaint | PoliceComplaint | LegalNotice | Affidavit | null
-- needs_evidence_guide: true if user appears to be gathering evidence or preparing to file — they need specific guidance
-- needs_cost_estimate: true if user asks about fees, costs, or whether they can afford legal action
-- state_hint: exact Indian state name if clearly mentioned, else null
-- personal_law: for divorce/maintenance/inheritance — Hindu | Muslim | Christian | Parsi | Special | null (null if unclear)
-- follow_up: ONE specific question whose answer would most change the legal guidance; null if sufficient info present
-  ONLY set follow_up if missing_facts is non-empty. Make it a natural conversation question, not a form field.
+- needs_evidence_guide: true if user is gathering evidence, preparing to file, or asking "what proof do I need"
+- needs_cost_estimate: true if user asks about fees, court costs, lawyer charges, or "can I afford"
+- state_hint: exact Indian state name if clearly mentioned (e.g. "Maharashtra", "Delhi", "Tamil Nadu"), else null
+- personal_law: for Divorce / Maintenance / Inheritance — Hindu | Muslim | Christian | Parsi | Special | null
+- follow_up: ONE natural conversation question whose answer would most change the guidance
+  CRITICAL: set follow_up to null if missing_facts is empty []
+  Make it conversational ("Which state are you in?") NOT form-like ("State: ___")
 
 Output ONLY the JSON object. No markdown. No commentary."""
 
@@ -128,6 +143,12 @@ async def analyze_case(query: str, history: list[dict], lang: str) -> dict:
         for field in ("secondary_categories", "known_facts", "missing_facts"):
             if not isinstance(merged.get(field), list):
                 merged[field] = []
+        # Enforce consistency: follow_up must be null when no missing_facts
+        if not merged.get("missing_facts"):
+            merged["follow_up"] = None
+        # Enforce: secondary_categories only when multi_domain=True
+        if not merged.get("multi_domain"):
+            merged["secondary_categories"] = []
         return merged
     except Exception as err:
         log.warning("case_analyzer failed — using defaults", error=str(err))
@@ -243,43 +264,58 @@ _LEGAL_KNOWLEDGE: dict[str, dict] = {
             "BNSS Section 144 (formerly CrPC 125) — interim maintenance for wife, children, parents; Magistrate court; fastest route",
             "HMA Section 24 — interim maintenance during divorce proceedings (both spouses can apply)",
             "HMA Section 25 — permanent alimony after divorce decree",
-            "Muslim Women (Protection of Rights on Divorce) Act, 1986 — for Muslim divorces",
-            "PWDVA Section 20 — monetary relief including maintenance in DV cases",
-            "Maintenance and Welfare of Parents and Senior Citizens Act, 2007 — parents/senior citizens can claim from children",
+            "Muslim Women (Protection of Rights on Divorce) Act, 1986 — for Muslim divorces; Danial Latifi (2001) SC mandates reasonable provision for entire life",
+            "PWDVA Section 20 — monetary relief including maintenance in DV cases; can overlap with BNSS 144",
+            "Maintenance and Welfare of Parents and Senior Citizens Act, 2007 — Section 4: parents/grandparents can claim maintenance from children/grandchildren (Max ₹10,000/month before 2019 amendment; states may raise cap)",
+            "Senior Citizens Act 2007, Section 23 — CRITICAL: any property transfer (gift, will, sale) by a senior citizen to children/relatives is VOIDABLE if the transferee fails to provide basic amenities and physical needs; Tribunal can set aside the transfer",
+            "Senior Citizens Act 2007, Section 7 — Maintenance Tribunal: District Magistrate/SDM is the adjudicating authority; fast-track (disposal within 90 days)",
+            "Special Marriage Act Section 36/37 — maintenance for inter-faith / civil marriages",
         ],
         "typical_remedies": [
-            "Interim maintenance order pending hearing (typically within 60 days)",
-            "Permanent maintenance monthly order",
-            "Recovery of arrears (with potential imprisonment for wilful default)",
-            "Attachment of salary or property for enforcement",
+            "Interim maintenance order pending hearing (typically within 60 days under BNSS 144)",
+            "Permanent maintenance / alimony monthly order",
+            "Recovery of arrears (with potential imprisonment for wilful default — BNSS 144(3))",
+            "Attachment of salary, bank account, or property for enforcement",
+            "For senior citizens: Tribunal order for monthly maintenance up to ₹10,000 (or state cap)",
+            "Property transfer revocation under Senior Citizens Act Section 23 — can recover gifted/sold property if children neglect them",
+            "Eviction of neglectful children from senior citizen's own residence (Section 23(1))",
         ],
         "evidence_checklist": [
-            "Marriage certificate",
-            "Income evidence for both parties: salary slips, ITR, bank statements, business records",
+            "Marriage certificate (for spousal maintenance)",
+            "Income evidence for both parties: salary slips, ITR, Form 16, bank statements, business records",
             "Own expense documents: rent, utility bills, children's school fees, medical bills",
-            "Children's birth certificates, school fee receipts",
-            "Proof the other party has income / assets (if they claim no income)",
+            "Children's birth certificates, school fee receipts (for child support)",
+            "Proof the other party has income/assets (if they claim no income) — request via court discovery",
+            "For Senior Citizens Act: property transfer deed/gift deed, proof of neglect (witness statements, medical bills showing non-payment, police complaint if abandoned), age proof of senior citizen",
+            "Medical expenses of senior citizen or ailing applicant",
         ],
         "procedure_steps": [
-            "File under BNSS Section 144 before Family Magistrate — fastest route, no divorce needed",
-            "In divorce proceedings: simultaneously file HMA Section 24 application in Family Court",
-            "After order: if payments are missed, file execution petition immediately",
+            "Spouse/child maintenance: File under BNSS Section 144 before Family Magistrate — fastest route, no divorce needed",
+            "In ongoing divorce proceedings: simultaneously file HMA Section 24 application in Family Court",
+            "Senior citizens claiming maintenance from children: File before Maintenance Tribunal (SDM/DM office) under Senior Citizens Act Section 4 — free, no lawyer required",
+            "Senior citizen property reversal: File application before Maintenance Tribunal under Section 23 — Tribunal can set aside the gift/transfer deed within 90 days",
+            "After maintenance order: if payments are missed, file execution petition immediately",
             "Court can attach salary, bank account, or property to enforce payment",
         ],
-        "limitation_period": "BNSS 144: no strict limitation. Courts may limit retrospective arrears — apply as soon as separation occurs.",
+        "limitation_period": "BNSS 144: no strict limitation (but courts may limit retrospective arrears — apply promptly). Senior Citizens Act: no specific limitation stated; file as soon as neglect begins. HMA 25: apply within proceedings.",
         "authorities": [
-            "Family Magistrate Court (for BNSS 144)", "Family Court (for HMA 24/25)",
+            "Family Magistrate Court (for BNSS 144)",
+            "Family Court (for HMA 24/25, SMA 36/37)",
+            "Maintenance Tribunal — SDM / DM office (for Senior Citizens Act Sections 4 & 23)",
             "District Court where no Family Court exists",
+            "Appellate Tribunal: Sessions Court (Senior Citizens Act appeals)",
         ],
-        "typical_timeline": "Interim order: 1–3 months. Final order: 6 months–2 years.",
-        "typical_costs": "Filing: ₹200–₹500. Lawyer: ₹10,000–₹50,000. NALSA legal aid for eligible persons.",
+        "typical_timeline": "Interim order under BNSS 144: 1–3 months. Senior Citizens Act Tribunal: 90 days (mandated). Final maintenance order: 6 months–2 years.",
+        "typical_costs": "Filing: ₹200–₹500. Senior Citizens Act Tribunal: FREE (no court fee). Lawyer: ₹10,000–₹50,000. NALSA legal aid for eligible persons.",
         "common_mistakes": [
-            "Waiting too long — courts may limit retrospective arrears",
+            "Waiting too long — courts may limit retrospective arrears to the date of application",
+            "Senior citizens not knowing Section 23 exists — they CAN get back transferred property",
             "Not disclosing all of other party's income sources — request bank statements through court",
-            "Not enforcing when payments lapse — file execution petition promptly",
-            "Settling too low under financial pressure — revision requires significant change in circumstances",
+            "Not enforcing when payments lapse — file execution petition promptly, don't wait",
+            "Settling too low under financial pressure — revision petition requires significant change in circumstances",
+            "Confusing BNSS 144 (Magistrate, faster) with HMA 24 (Family Court, during divorce only)",
         ],
-        "free_legal_aid": "NALSA (nalsa.gov.in | 15100). State DLSA in every district. Women's helplines provide referrals.",
+        "free_legal_aid": "NALSA (nalsa.gov.in | 15100). State DLSA in every district. Senior Citizens Act Tribunal is FREE — no lawyer or court fee required. Women's helplines provide referrals. Dignity Foundation and HelpAge India assist senior citizens.",
     },
 
     "FIR": {
@@ -864,6 +900,175 @@ _LEGAL_KNOWLEDGE: dict[str, dict] = {
         "free_legal_aid": "Mandatory free legal aid for POCSO victims. NALSA. DLSA in every district.",
     },
 
+    "Contract": {
+        "applicable_laws": [
+            "Indian Contract Act, 1872 — foundational law; all agreements for consideration between competent parties",
+            "Sec 10 — valid contract requires free consent, lawful object, consideration, competent parties",
+            "Sec 73 — compensation for breach: actual loss directly resulting from breach (not remote)",
+            "Sec 74 — liquidated damages / penalty clause: court awards reasonable compensation",
+            "Specific Relief Act, 1963 — Sec 10: specific performance of contract (where money is inadequate)",
+            "Specific Relief Act Sec 38 — perpetual injunction to prevent breach",
+            "Information Technology Act, 2000 Sec 10A — electronic contracts are valid and enforceable",
+            "Consumer Protection Act, 2019 — for consumer service contracts (builder, online service, etc.)",
+            "RERA 2016 — builder-buyer agreements for real estate projects",
+        ],
+        "typical_remedies": [
+            "Damages for breach — actual financial loss caused by breach (Sec 73)",
+            "Specific performance — court orders the other party to do what was promised",
+            "Injunction — court prevents the other party from doing something",
+            "Rescission — contract cancelled and parties restored to original position",
+            "Quantum meruit — payment for work already done even if contract fails",
+            "Liquidated damages / penalty as agreed in contract (Sec 74)",
+        ],
+        "evidence_checklist": [
+            "Original signed contract / agreement (both parties must have signed)",
+            "All WhatsApp / email communications about the contract and performance",
+            "Payment receipts, bank transfer records, invoices",
+            "Evidence of what was delivered / not delivered (photos, delivery notes)",
+            "Any variation or amendment to the contract (in writing)",
+            "Communication showing breach (demand emails, rejection letters)",
+            "Evidence of your actual loss caused by the breach (bills, bank statements)",
+        ],
+        "procedure_steps": [
+            "Step 1: Document everything — gather all evidence of contract and breach NOW",
+            "Step 2: Send formal legal notice (Registered Post AD) with 15–30 day deadline to remedy breach",
+            "Step 3: If unresolved: file civil suit in Civil Court or Consumer Forum (for consumer contracts)",
+            "For amounts ≤ ₹1 crore: District Civil Court; > ₹1 crore: High Court original jurisdiction",
+            "For builder/real estate: file at State RERA Authority (faster and cheaper than civil court)",
+            "For consumer service contracts (e-commerce, app subscriptions): Consumer Court at edaakhil.nic.in",
+            "For employment contracts: Labour Court if it involves employment terms",
+        ],
+        "limitation_period": "3 years from date of breach (Limitation Act 1963, Article 55). RERA: 5 years. Consumer: 2 years. Do not wait — limitation runs from the date breach became known.",
+        "authorities": [
+            "Civil Court (District Court) — for general contract disputes",
+            "High Court (Original Jurisdiction) — for large commercial disputes",
+            "RERA Authority (state-level) — for real estate / builder disputes",
+            "Consumer District Commission — for consumer service contracts (edaakhil.nic.in)",
+            "Arbitration (if contract has arbitration clause) — faster and private",
+        ],
+        "typical_timeline": "Civil Court: 3–7 years. RERA: 3–6 months. Consumer Court: 3–18 months. Arbitration: 6–18 months.",
+        "typical_costs": "Civil Court filing: 1–2% of claim value. Consumer Court: ₹200–₹5000. RERA: ₹1000–₹5000. Legal aid from NALSA if eligible.",
+        "common_mistakes": [
+            "Not sending a formal legal notice before filing — courts expect prior notice",
+            "Missing the 3-year limitation period for civil suits",
+            "Relying on verbal contracts without any written evidence — very difficult to prove",
+            "Accepting partial performance without expressly reserving rights against balance",
+            "Signing a settlement/receipt without understanding it waives further claims",
+        ],
+        "free_legal_aid": "NALSA for economically weaker sections. Lok Adalat for pre-litigation settlements (fast and free). Mediation Centre attached to most courts.",
+    },
+
+    "Inheritance": {
+        "applicable_laws": [
+            "Hindu Succession Act, 1956 (amended 2005) — for Hindus, Buddhists, Jains, Sikhs",
+            "HSA Section 6 (post-2005 amendment) — daughters have EQUAL rights in ancestral/coparcenary property",
+            "Supreme Court: Vineeta Sharma v. Rakesh Sharma (2020) — daughters' equal rights apply even if father died before 2005",
+            "Indian Succession Act, 1925 — for Christians, Parsis, Jews, and persons without religion",
+            "Muslim Personal Law (Shariat) Application Act, 1937 — for Muslims (Hanafi, Shia rules differ)",
+            "Special Marriage Act, 1954 — civil marriage succession follows Indian Succession Act",
+            "Transfer of Property Act, 1882 — gift deeds, transfer during lifetime",
+            "Registration Act, 1908 — Will must be registered for easy probate (unregistered Wills are valid but harder to act on)",
+        ],
+        "typical_remedies": [
+            "Partition suit — court-ordered division of inherited property among legal heirs",
+            "Probate — court validates the Will and grants executor authority",
+            "Letter of Administration — where there is no Will, court grants this to heir",
+            "Succession Certificate — for movable assets (bank accounts, FDs, shares, insurance)",
+            "Injunction — prevent illegal sale or transfer of estate property pending dispute",
+            "Declaration of heirship / title",
+        ],
+        "evidence_checklist": [
+            "Death certificate of the deceased",
+            "Will (if any) — both original and registration certificate",
+            "Proof of relationship: birth certificate, marriage certificate, family tree affidavit",
+            "Property documents: sale deed, title documents, mutation records, encumbrance certificate",
+            "Bank account details and FD certificates of deceased",
+            "Revenue records (Khata, mutation) in deceased's name",
+            "Any earlier partition deed or family settlement",
+            "Legal Heir Certificate from local tehsildar / MRO (required for most claims)",
+        ],
+        "procedure_steps": [
+            "Step 1: Obtain Death Certificate and Legal Heir Certificate from local authority",
+            "Step 2: If Will exists — apply for Probate in High Court (mandatory in Mumbai, Chennai, Kolkata; advisable elsewhere)",
+            "Step 3: If no Will — apply for Letter of Administration (High Court) or Succession Certificate (District Court for movables)",
+            "Step 4: Update mutation / Khata in revenue records to transfer property in heirs' names",
+            "Step 5: For disputed partition — file partition suit in Civil Court (District Court)",
+            "Step 6: For bank accounts / shares — present Succession Certificate + death certificate to institution",
+        ],
+        "limitation_period": "Partition suit: 12 years from when partition was first refused. Probate: no strict limit but courts dislike delay. Succession Certificate: no strict limit. Act promptly — long delays weaken claims.",
+        "authorities": [
+            "High Court (Probate and Letters of Administration)",
+            "District Civil Court (Partition suits, Succession Certificates)",
+            "Revenue Court / Tehsildar (mutation of property records)",
+            "Sub-Registrar (Will registration)",
+        ],
+        "typical_timeline": "Legal Heir Certificate: 1–4 weeks. Succession Certificate: 3–6 months. Probate: 6 months–2 years. Partition suit: 3–7 years.",
+        "typical_costs": "Legal Heir Certificate: ₹100–₹500. Succession Certificate: 2% of assets (court fee). Probate: 2–4% of estate value. Partition: 1–3% of property value. NALSA for eligible.",
+        "common_mistakes": [
+            "Believing daughters have no rights in ancestral property — they do, after the 2005 HSA amendment",
+            "Not updating mutation / Khata after death — creates complications in later sale",
+            "Accepting verbal family settlement without written partition deed (registered)",
+            "Not getting Probate when required — title becomes clouded",
+            "Missing the 12-year limitation for partition after a refusal",
+        ],
+        "free_legal_aid": "NALSA for eligible heirs. Revenue court matters sometimes handled without lawyer. Lok Adalat for family settlements.",
+    },
+
+    "MedicalNegligence": {
+        "applicable_laws": [
+            "Consumer Protection Act, 2019 — medical services fall under 'services'; doctor/hospital is a 'service provider'",
+            "Indian Medical Council Act, 1956 — professional misconduct complaints to State Medical Council",
+            "Clinical Establishments (Registration and Regulation) Act, 2010 — hospital regulation",
+            "BNS Section 106 — causing death by negligent act (criminal negligence)",
+            "BNS Section 125A — endangering life or personal safety of others",
+            "Supreme Court: Jacob Mathew v. State of Punjab (2005) — 3-element test for medical negligence: duty, breach, causation",
+            "Supreme Court: V. Krishnakumar v. State of Tamil Nadu (2015) — hospital negligence standard",
+        ],
+        "typical_remedies": [
+            "Compensation through Consumer Court (District/State/National Commission)",
+            "Criminal complaint for gross negligence under BNS Section 106",
+            "Professional misconduct complaint to State Medical Council (can suspend/cancel licence)",
+            "Complaint to National Medical Commission (NMC) — appeals body",
+            "Civil suit for damages in Civil Court",
+        ],
+        "evidence_checklist": [
+            "ALL original medical records, test reports, prescriptions, discharge summary",
+            "Consent forms signed by patient / family (check what was consented to)",
+            "Billing records / payment receipts",
+            "Photographs of injuries or condition before/after",
+            "Second medical opinion in writing from an independent expert",
+            "Death certificate + post-mortem report (if death occurred)",
+            "All communications with hospital (written / WhatsApp / email)",
+            "Hospital registration certificate (to verify it's a registered establishment)",
+        ],
+        "procedure_steps": [
+            "Step 1: Collect ALL medical records from hospital immediately — hospital must provide (file RTI if refused)",
+            "Step 2: Get independent second opinion from a specialist to establish standard of care breach",
+            "Step 3: Send legal notice to hospital / doctor with demand and 30-day deadline",
+            "Step 4: File Consumer complaint at District Commission (up to ₹50 lakh) — edaakhil.nic.in",
+            "Step 5: File misconduct complaint with State Medical Council (no fee, separate process)",
+            "Step 6: For criminal negligence (death): file FIR under BNS Section 106 at police station",
+        ],
+        "limitation_period": "Consumer Court: 2 years from date of negligence. Criminal: no strict limit for serious offences. Medical Council complaint: as soon as possible — no statutory limit but councils prefer prompt complaints.",
+        "authorities": [
+            "District Consumer Disputes Redressal Commission (edaakhil.nic.in)",
+            "State Medical Council of the concerned state",
+            "National Medical Commission (NMC): nmc.org.in",
+            "Police station (for criminal negligence / death)",
+            "National Human Rights Commission (NHRC) for government hospital failures",
+        ],
+        "typical_timeline": "Consumer Court: 6 months–2 years. Medical Council: 3–12 months. Criminal: 1–3 years.",
+        "typical_costs": "Consumer Court fee: ₹200–₹5000 (claim-based). Medical Council: free. NALSA for eligible patients.",
+        "common_mistakes": [
+            "Not collecting all medical records immediately — hospitals sometimes 'lose' records later",
+            "Missing the 2-year consumer court limitation period",
+            "Filing criminal complaint without securing a second medical opinion first",
+            "Assuming the hospital's internal complaint mechanism is adequate — always escalate externally",
+            "Not getting written second opinion before filing — courts require expert evidence",
+        ],
+        "free_legal_aid": "NALSA for eligible patients. Consumer Court does not require a lawyer. National Human Rights Commission accepts pro se complaints.",
+    },
+
     "General": {
         "applicable_laws": [
             "Indian Constitution — fundamental rights under Part III (Articles 14, 19, 21, 22, 32)",
@@ -1034,7 +1239,7 @@ def build_legal_reasoning_context(
 _RIGHTS_KW: dict[str, list[str]] = {
     "DomesticViolence":  ["domestic violence", "PWDVA", "protection order", "residence order", "498A", "BNS 85", "BNS 86", "maintenance", "shelter"],
     "Divorce":           ["divorce", "judicial separation", "HMA", "talaq", "khula", "restitution of conjugal rights", "marriage dissolution"],
-    "Maintenance":       ["maintenance", "alimony", "CrPC 125", "BNSS 144", "HMA 24", "Section 125", "monthly payment"],
+    "Maintenance":       ["maintenance", "alimony", "CrPC 125", "BNSS 144", "HMA 24", "Section 125", "monthly payment", "senior citizen", "parents welfare", "Senior Citizens Act", "Section 23", "property revocation", "Maintenance Tribunal"],
     "FIR":               ["FIR", "first information report", "cognizable", "non-cognizable", "BNSS 173", "zero FIR", "police complaint"],
     "Consumer":          ["Consumer Protection", "COPRA", "deficiency", "unfair trade practice", "warranty", "consumer right", "refund"],
     "RTI":               ["Right to Information", "RTI Act", "public authority", "exemption", "Section 8", "CPIO", "information access"],
@@ -1047,6 +1252,9 @@ _RIGHTS_KW: dict[str, list[str]] = {
     "Cybercrime":        ["IT Act", "Section 66", "cyber fraud", "data protection", "DPDP Act", "online fraud", "identity theft"],
     "Property":          ["Hindu Succession", "property rights", "inheritance", "will", "gift deed", "partition", "encumbrance"],
     "POSH":              ["POSH", "sexual harassment workplace", "ICC", "internal complaints committee"],
+    "Contract":         ["contract", "agreement", "breach", "specific performance", "damages", "Indian Contract Act", "consideration", "void", "voidable", "rescind"],
+    "Inheritance":      ["inheritance", "succession", "Hindu Succession Act", "intestate", "will", "probate", "legal heir", "coparcener", "ancestral property"],
+    "MedicalNegligence": ["medical negligence", "doctor negligence", "hospital negligence", "Consumer Protection medical", "IMC Act", "Jacob Mathew", "standard of care", "iatrogenic"],
 }
 
 _PROCEDURE_KW: dict[str, list[str]] = {
@@ -1063,6 +1271,10 @@ _PROCEDURE_KW: dict[str, list[str]] = {
     "Property":          ["partition suit", "injunction", "civil court", "RERA", "encumbrance certificate", "mutation"],
     "POSH":              ["ICC complaint", "LCC", "shebox", "90 days inquiry", "labour commissioner"],
     "Cybercrime":        ["cybercrime.gov.in", "1930", "FIR cybercrime", "complaint portal", "CERT-In"],
+    "Contract":         ["send legal notice", "civil suit", "commercial court", "specific performance suit", "civil court plaint", "arbitration", "Lok Adalat settlement"],
+    "Inheritance":      ["succession certificate", "probate court", "letters of administration", "partition suit", "family settlement deed", "mutation of revenue records"],
+    "MedicalNegligence": ["consumer forum medical", "District Commission", "state medical council", "IMC complaint", "hospital notice", "evidence preservation medical"],
+    "Maintenance":      ["family court", "family magistrate", "execution petition", "Maintenance Tribunal", "SDM office", "Section 23 application", "NALSA", "legal aid"],
 }
 
 
@@ -1322,6 +1534,42 @@ Jurisdiction by claim value:
 • > ₹2 Cr       → National Commission (NCDRC, ncdrc.nic.in)
 
 File online: edaakhil.nic.in  |  Helpline: 1800-11-4000 / 1915""",
+
+    "Affidavit": """\
+AFFIDAVIT
+
+I, [YOUR FULL NAME], son/daughter/wife of [FATHER'S / HUSBAND'S NAME], aged [AGE] years, resident of [COMPLETE ADDRESS], do hereby solemnly affirm and declare as under:
+
+1. That I am the deponent and am fully competent to swear this affidavit.
+2. That [STATE THE SPECIFIC FACT OR DECLARATION — e.g., "I am the sole legal heir of the deceased [NAME]"].
+3. That [SECOND FACT IF NEEDED — add or remove numbered paragraphs as required].
+4. That the above facts stated are true and correct to the best of my knowledge and belief, and nothing material has been concealed therefrom.
+
+VERIFICATION
+
+Verified at [CITY] on [DATE] that the contents of paras 1 to [LAST PARA NUMBER] of this affidavit are true and correct to my knowledge and no part of it is false and nothing material has been concealed therein.
+
+DEPONENT
+
+[YOUR FULL NAME]
+[DATE]
+
+─────────────────────────────────────
+Sworn before me on [DATE]
+at [PLACE]
+
+NOTARY PUBLIC / OATH COMMISSIONER / MAGISTRATE
+[NAME]
+[SEAL & REGISTRATION NUMBER]
+
+─────────────────────────────────────
+How to execute:
+• Type or write legibly; do NOT leave blanks.
+• Sign every page; full signature on the last page.
+• Appear before a Notary Public (Notary Fees: ₹20–₹200).
+• Alternatively, swear before a First Class Judicial Magistrate or Executive Magistrate.
+• Stamp duty: required in some states — check local rules (commonly ₹10–₹100 stamp paper).
+• False affidavit is an offence under BNS Section 229 (perjury) — punishable with up to 7 years imprisonment.""",
 }
 
 
@@ -1471,6 +1719,26 @@ LANGUAGE: {lang_instr}
 Retrieved knowledge (cite inline with [1] [2] etc. — place bracket after the sentence it supports):
 {knowledge_block}
 {template_block}
+LEGAL-SPECIFIC RULES — follow these precisely:
+
+1. CONTRADICTING SOURCES: If two retrieved sources give different answers (e.g., different limitation periods or different section numbers), explicitly flag the conflict — "Sources differ on this point. One says X; another says Y. A lawyer can clarify for your specific facts." Never silently pick one.
+
+2. STATE-SPECIFIC CAVEATS: Rent control laws, personal law applicability, consumer forum fees, and land record procedures vary significantly by state. If jurisdiction is known, add state-specific notes. If not known and it matters, say so and ask.
+
+3. NEW CRIMINAL CODES: Always use BNS / BNSS / BSA (2023) as the primary reference. Mention the old IPC/CrPC equivalent in parentheses ONLY if it helps the user (e.g., "BNS Section 85 (formerly IPC 498A)").
+
+4. FREE LEGAL AID: When a matter involves criminal charges, family law, labour disputes, or the user appears to have limited resources — always mention NALSA (15100 / nalsa.gov.in) and the nearest District Legal Services Authority (DLSA). Free legal aid is a constitutional right under Article 39A.
+
+5. PERSONAL LAW COMPLEXITY: For divorce, inheritance, and maintenance — the applicable law depends on religion (Hindu/Muslim/Christian/Parsi/Special Marriage Act). Never assume Hindu law. State which law you are applying and why, based on facts provided.
+
+6. AVOID FLATTENING COMPLEXITY: Do NOT oversimplify multi-step processes. If the answer genuinely requires multiple filings in different forums (e.g., consumer forum + police + civil court), say so clearly. A complete answer that is longer is better than a simple answer that omits critical steps.
+
+7. MEDICAL NEGLIGENCE CAUTION: Consumer forums handle medical negligence but the standard is "gross negligence" (Jacob Mathew 2005 SC). Do not overstate the ease of winning. Always recommend evidence preservation (records, prescriptions, referral letters) as the first step.
+
+8. LIMITATION PERIODS: Mention the limitation period for the claim type. If concern was flagged, lead with it — missed deadlines extinguish legal rights.
+
+9. HALLUCINATION GUARD: Do not cite any case name, section number, or judgment you are not certain of. If a number seems uncertain, say "approximately" or omit it and tell the user to verify.
+
 UNCERTAINTY RULE — if unsure of a fact, say so explicitly. Never guess section numbers or Act names. If unsure: "I'd recommend verifying this at legislative.gov.in or with a lawyer."
 
 CITATION FORMAT — [1] [2] inline after the sentence; do not cite sources you did not use.

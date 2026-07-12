@@ -45,7 +45,7 @@ _DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]+")
 # so vague natural-language queries map to the right knowledge chunks.
 # Each tuple: (compiled regex pattern, extra terms to append)
 _LEGAL_EXPANSIONS: list[tuple] = [
-    (re.compile(r"husband|wife|spouse|partner.{0,30}(beat|hit|hurt|abuse|slap|kick|threaten|violence|assault|torture)", re.I),
+    (re.compile(r"husband|wife|spouse|(?<!business )partner.{0,30}(beat|hit|hurt|abuse|slap|kick|threaten|violence|assault|torture)", re.I),
      "domestic violence PWDVA protection order Section 18 DV Act BNS 85 498A shelter home"),
     (re.compile(r"(beat|hit|hurt|abuse|slap|violence|assault).{0,30}(husband|wife|spouse|partner|family|in-law)", re.I),
      "domestic violence PWDVA BNS 85 498A cruelty protection order"),
@@ -59,8 +59,8 @@ _LEGAL_EXPANSIONS: list[tuple] = [
      "Transfer of Property Act rent control eviction notice tenant rights 15 days"),
     (re.compile(r"(fired|terminated|dismissed|sacked).{0,30}(job|work|employ|company)", re.I),
      "Industrial Disputes Act retrenchment wrongful termination labour court gratuity notice pay"),
-    (re.compile(r"sexual harass|workplace harass|POSH", re.I),
-     "POSH Act Internal Complaints Committee ICC workplace harassment employer obligation"),
+    (re.compile(r"sexual harass|workplace harass|POSH|internal complaints committee|\bICC\b.{0,20}(complaint|harass|work)", re.I),
+     "POSH Act Internal Complaints Committee ICC workplace harassment employer obligation SHe-Box LCC"),
     (re.compile(r"\brti\b|right to information", re.I),
      "RTI Act Section 6 CPIO Public Information Officer 30 days first appeal second appeal CIC"),
     (re.compile(r"consumer.{0,20}(complain|fraud|defect|cheat|scam)", re.I),
@@ -95,6 +95,14 @@ _LEGAL_EXPANSIONS: list[tuple] = [
      "POCSO special court child welfare committee mandatory reporting JJ Act"),
     (re.compile(r"writ|habeas corpus|mandamus|certiorari|Article 32|Article 226", re.I),
      "fundamental rights Constitution Article 32 High Court Supreme Court writ jurisdiction"),
+    (re.compile(r"(contract|agreement|MOU).{0,30}(breach|violat|not paid|default|cancel|refuse).{0,20}|(freelanc|gig worker).{0,30}(payment|not paid|dispute)", re.I),
+     "Indian Contract Act 1872 breach of contract Section 73 damages Specific Relief Act specific performance legal notice civil suit arbitration"),
+    (re.compile(r"(inherit|succession|ancestral property|coparcen|after (death|demise)).{0,40}(property|asset|share|claim|will)|(will.{0,20}(contest|invalid|challeng|dispute)|probate|letters of administration)", re.I),
+     "Hindu Succession Act 2005 intestate succession Section 8 legal heir succession certificate probate court ancestral property coparcener Vineeta Sharma 2020"),
+    (re.compile(r"(doctor|hospital|surgeon|nurse).{0,30}(mistake|negligen|wrong|error|malpractice|died|death|injury|misdiagnos)|(medical negligen|wrong surgery|wrong medicine)", re.I),
+     "medical negligence Consumer Protection Act 2019 IMC Act Jacob Mathew 2005 gross negligence standard of care District Consumer Commission state medical council"),
+    (re.compile(r"senior citizen.{0,30}(property|house|flat|gift|transfer|son|daughter)|section 23.{0,20}senior|parents.{0,30}(throw|evict|abandon|neglect|not caring)", re.I),
+     "Senior Citizens Act 2007 Section 23 property revocation Maintenance Tribunal SDM voidable transfer elder abuse"),
 ]
 
 
@@ -216,8 +224,10 @@ def _overfetch_k(k: int, domain: Optional[str]) -> int:
     if not reranker.is_enabled():
         return k
     base = max(k, RETRIEVAL_OVERFETCH)
-    if domain in ("Legal", "Government Schemes"):
-        return max(base, 20)  # larger candidate pool for high-stakes domains
+    if domain == "Legal":
+        return max(base, 25)  # larger candidate pool — legal chunks are dense and wording matters
+    if domain == "Government Schemes":
+        return max(base, 20)
     return base
 
 

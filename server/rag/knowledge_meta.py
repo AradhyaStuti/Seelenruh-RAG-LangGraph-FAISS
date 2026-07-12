@@ -632,6 +632,10 @@ def compute_confidence(hits: list[dict]) -> str:
     Multi-factor confidence calculation replacing the old pure retrieval-score approach.
 
     Returns "High" | "Medium" | "Low" | "None".
+
+    Legal domain uses tighter thresholds (High ≥ 0.80, Medium ≥ 0.60) because legal
+    advice with Low confidence is actively risky — better to tell the user explicitly
+    that the information is uncertain than to present it as confidently as scheme info.
     """
     rag_hits = [h for h in hits if not str(h.get("id", "")).startswith("web_")]
     if not rag_hits:
@@ -645,6 +649,16 @@ def compute_confidence(hits: list[dict]) -> str:
     top_hits = rag_hits[:3]
     scores = [compute_weighted_score(h) + agreement_bonus for h in top_hits]
     avg_score = sum(scores) / len(scores)
+
+    # Domain-aware thresholds: legal hits carry domain="Legal" from the knowledge base
+    is_legal = any(str(h.get("domain", "")).lower() == "legal" for h in rag_hits)
+    if is_legal:
+        # Higher bar for Legal: wrong confidence here can misdirect someone's legal rights
+        if avg_score >= 0.80:
+            return "High"
+        if avg_score >= 0.60:
+            return "Medium"
+        return "Low"
 
     if avg_score >= 0.72:
         return "High"
