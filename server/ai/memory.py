@@ -27,13 +27,13 @@ async def build_rolling_summary(messages: list[dict], persona: str) -> Optional[
         return None
     recent = messages[-20:]
     history_text = "\n".join(
-        f"{m['role'].upper()}: {m['content'][:250]}" for m in recent
+        f"{m['role'].upper()}: {m['content'][:400]}" for m in recent
     )
     try:
         result = await chat(
             model=GROQ_MODEL_FAST,
             temperature=0.1,
-            max_tokens=180,
+            max_tokens=220,
             messages=[
                 {
                     "role": "system",
@@ -55,14 +55,27 @@ async def build_rolling_summary(messages: list[dict], persona: str) -> Optional[
         return None
 
 
-async def detect_goal(query: str, domain: str, history: list[dict]) -> Optional[str]:
+async def detect_goal(
+    query: str, domain: str, history: list[dict], existing_goal: Optional[str] = None
+) -> Optional[str]:
     """Detect if the user is working toward a specific actionable goal.
 
     Returns a short goal phrase (≤ 10 words) or None.
     Runs as part of the classify step — fast model, low temperature.
+    If existing_goal is provided, only returns a result when a NEW or UPDATED goal
+    is detected — prevents writing the same goal to DB on every turn.
     """
     recent = history[-6:] if history else []
     history_text = "\n".join(f"{m['role']}: {m['content'][:150]}" for m in recent)
+
+    existing_note = (
+        f"\nCurrently tracked goal: '{existing_goal}'. "
+        "Only return a goal if you detect something NEW or CHANGED. "
+        "If the user is still working toward the same goal, reply NONE."
+        if existing_goal
+        else ""
+    )
+
     try:
         result = await chat(
             model=GROQ_MODEL_FAST,
@@ -77,7 +90,7 @@ async def detect_goal(query: str, domain: str, history: list[dict]) -> Optional[
                         "'draft a consumer complaint', 'find a therapist in Bangalore', "
                         "'understand divorce procedure', 'report cybercrime'. "
                         "If you detect a clear goal, reply with ONLY the goal as a short phrase (max 10 words). "
-                        "If there is no clear actionable goal yet, reply with exactly: NONE"
+                        f"If there is no clear actionable goal, reply with exactly: NONE{existing_note}"
                     ),
                 },
                 {

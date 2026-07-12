@@ -62,20 +62,32 @@ def _normalize_query(text: str) -> str:
             expanded.append(tok)
     return " ".join(expanded).strip()
 
-_STALE_MONTHS_WARN = 3    # penalty starts here (lowered — laws/schemes change fast)
-_STALE_MONTHS_HEAVY = 9   # heavier penalty after 9 months
+# Staleness thresholds vary by domain:
+# - Government Schemes change most often (budget cycles, scheme amendments)
+# - Safety helpline numbers can change but statutes are stable
+# - Legal statutes are stable but procedures can be updated
+# - Mental Health content is evergreen
+_STALE_THRESHOLDS = {
+    "Government Schemes": (2, 6),    # warn at 2 months, heavy at 6
+    "Safety":             (3, 9),    # warn at 3 months, heavy at 9
+    "Legal":              (6, 18),   # statutes change rarely; warn at 6, heavy at 18
+    "Mental Health":      (12, 24),  # evergreen; very light penalty
+}
+_STALE_DEFAULT = (3, 9)
 
 
 def _staleness_penalty(chunk: dict) -> float:
-    """Penalise old chunks so fresher ones rank higher when content is otherwise similar."""
+    """Penalise old chunks so fresher ones rank higher when content is otherwise similar.
+    Threshold is domain-sensitive: scheme info expires faster than legal statutes."""
     lv = chunk.get("lastVerifiedOn")
     if not lv:
         return 0.0
     try:
         months_old = (date.today() - date.fromisoformat(str(lv))).days / 30.44
-        if months_old > _STALE_MONTHS_HEAVY:
+        warn_m, heavy_m = _STALE_THRESHOLDS.get(chunk.get("domain", ""), _STALE_DEFAULT)
+        if months_old > heavy_m:
             return 0.15
-        if months_old > _STALE_MONTHS_WARN:
+        if months_old > warn_m:
             return 0.08
         return 0.0
     except Exception:

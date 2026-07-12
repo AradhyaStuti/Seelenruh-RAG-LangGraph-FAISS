@@ -28,7 +28,7 @@ What started as a simple RAG chatbot turned into something more interesting once
 - **Aarogya** — government schemes. PM-JAY, PM-KISAN, MGNREGA, scholarships, ration cards, and state-level schemes for Delhi, Gujarat, Rajasthan, Bihar, Punjab, Kerala, Himachal Pradesh, Goa.
 - **Raksha** — safety and emergencies. Domestic violence, cybercrime, stalking, panic response. Returns structured step-by-step cards with helpline numbers, not paragraphs.
 
-Each assistant uses RAG so answers are grounded in actual documents, not just whatever the LLM guesses. Responses cite sources inline and flag anything older than 3 months.
+Each assistant uses RAG so answers are grounded in actual documents, not just whatever the LLM guesses. Responses cite sources inline, and staleness penalties are domain-aware — government scheme chunks expire aggressively (budget cycles change fast), while legal statutes are treated as stable.
 
 ---
 
@@ -48,10 +48,10 @@ Three things make this genuinely agentic rather than just a chatbot with a knowl
 The agent decides on its own whether to run a web search. It triggers when the query has real-time signals (`latest`, `current`, `2025`, helpline numbers, `abhi`, `naya`…), when RAG returns too few or low-confidence results, or always for Legal and Government Schemes domains (those go stale fast). DuckDuckGo, Wikipedia, and optionally Brave Search run concurrently with retry backoff so a flaky network doesn't silently drop results.
 
 **2. Self-evolving memory**
-After every response, a background task compresses the conversation into a 2–3 sentence summary and extends an emotion arc (`neutral → anxious → calm → …`). Both go into MongoDB. Next turn, `load_memory` fetches them and injects them into the system prompt. The user never has to repeat context — the agent just remembers.
+After every response, a background task compresses the conversation into a 2–3 sentence summary and extends an emotion arc (`neutral → anxious → calm → …`). Both go into MongoDB. Next turn, `load_memory` fetches them and injects them into the system prompt as a `CONVERSATION CONTEXT` block — correctly in the system prompt, not mixed into the user message. The user never has to repeat context — the agent just remembers.
 
 **3. Goal tracking**
-Every turn, `detect_goal` runs in parallel with intent and emotion detection. If it finds something actionable — `"file an RTI"`, `"apply for PM-JAY"`, `"find a therapist"` — it stores that goal and surfaces it on every subsequent turn. A live goal badge appears in the UI so the user can see what the agent is tracking.
+Every turn, `detect_goal` runs in parallel with intent and emotion detection. If it finds something actionable — `"file an RTI"`, `"apply for PM-JAY"`, `"find a therapist"` — it stores that goal and surfaces it on every subsequent turn. Once a goal is stored, the detector only fires again if it sees a *new or changed* goal — no redundant DB writes. A live goal badge appears in the UI so the user can see what the agent is tracking.
 
 One thing that took a while: getting the intent classifier to correctly handle Hinglish. A lot of edge cases — someone writing `"RTI kaise file karein"` would get misrouted because the classifier saw Hindi words and defaulted to Mental Health. Adding explicit Hinglish examples and keyword guidance to the prompt fixed most of it.
 
@@ -59,7 +59,7 @@ One thing that took a while: getting the intent classifier to correctly handle H
 
 ## Other features
 
-- **RAG pipeline**: `multilingual-e5-small` embeddings → FAISS vector search (overfetch 15) → cross-encoder reranker (`ms-marco-MiniLM-L-6-v2`). Confidence shown per-response (High / Medium / Low / None). OCR artifact cleanup before embedding lookup.
+- **RAG pipeline**: `multilingual-e5-small` embeddings → FAISS vector search (overfetch 15) → cross-encoder reranker (`ms-marco-MiniLM-L-6-v2`). Confidence shown per-response (High / Medium / Low / None). OCR artifact cleanup before embedding lookup. Domain-aware staleness penalties (schemes: 2/6 month thresholds; statutes: 6/18 months).
 - **Scheme eligibility checker**: rule-based, not LLM. I tried LLMs for eligibility and they were too vague. The deterministic checker takes state, age, income, and category and returns exactly which schemes match.
 - **Legal document templates**: RTI, consumer complaint, rent notice — filled from form inputs, not AI-generated. Keeps them legally consistent.
 - **Automatic intent routing**: ask a legal question in the mental health tab and the agent detects it and reroutes. The UI shows the reasoning.

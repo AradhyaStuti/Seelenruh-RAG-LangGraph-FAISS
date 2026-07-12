@@ -346,21 +346,11 @@ Step 3: File a complaint at cybercrime.gov.in with transaction details, screensh
 }
 
 
-VOICE_ADDON = """
-
-VOICE MODE — this response will be read aloud in a real-time conversation.
-- Keep it to 1 or 2 sentences maximum. Never more.
-- Speak naturally, like a person — not a form, not a list.
-- No bullet points, no numbered steps, no markdown, no headers.
-- Warm, calm, direct. End naturally — not with "Let me know if you need anything." """
-
-
 def _build_messages(*, query: str, intent: str, emotion: str, lang: str,
                     history: list[dict], retrieved: list[dict], context: str = "",
                     fast_mode: bool = False) -> list[dict]:
     history = trim_history(history)
-    base_persona = PERSONA.get(intent, PERSONA["Mental Health"])
-    persona = base_persona + VOICE_ADDON if fast_mode else base_persona
+    persona = PERSONA.get(intent, PERSONA["Mental Health"])
     lang_instr = LANG_INSTRUCTIONS.get(lang, LANG_INSTRUCTIONS["auto"])
 
     if retrieved:
@@ -373,10 +363,12 @@ def _build_messages(*, query: str, intent: str, emotion: str, lang: str,
 
     fallback = FALLBACK_LINKS.get(intent, "")
 
+    context_section = f"\nCONVERSATION CONTEXT: {context}\n" if context else ""
+
     system_prompt = f"""{persona}
 
 LANGUAGE: {lang_instr}
-
+{context_section}
 Retrieved knowledge (your primary source — quote / cite from these; do not invent facts beyond them):
 {retrieved_block}
 
@@ -396,8 +388,7 @@ Authoritative links you may reference:
 
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
     messages.extend({"role": m["role"], "content": m["content"]} for m in history)
-    user_content = (f"[meta] {context}\n" if context else "") + query
-    messages.append({"role": "user", "content": user_content})
+    messages.append({"role": "user", "content": query})
     return messages
 
 
@@ -410,7 +401,7 @@ async def respond(*, query: str, intent: str, emotion: str, lang: str = "auto",
         fast_mode=fast_mode,
     )
     model = GROQ_MODEL_FAST if fast_mode else GROQ_MODEL_SMART
-    max_tokens = 600 if fast_mode else 700  # voice mode: 600 prevents cut-off mid-sentence; text: 700
+    max_tokens = 500 if fast_mode else 900
     result = await chat(model=model, temperature=0.3, max_tokens=max_tokens, messages=messages)
     return {"response": result["content"], "via": result["via"]}
 
@@ -434,7 +425,7 @@ async def stream_respond(
         query=query, intent=intent, emotion=emotion, lang=lang,
         history=history, retrieved=retrieved, context=context,
     )
-    _opts = dict(messages=messages, model=GROQ_MODEL_SMART, temperature=0.3, max_tokens=700)
+    _opts = dict(messages=messages, model=GROQ_MODEL_SMART, temperature=0.3, max_tokens=900)
 
     try:
         first = True
@@ -454,7 +445,7 @@ async def stream_respond(
             first = True
             async for token in ollama_breaker.call_stream(
                 ollama_client.stream_chat,
-                messages=messages, temperature=0.3, max_tokens=700,
+                messages=messages, temperature=0.3, max_tokens=900,
             ):
                 if first and _via_bag is not None:
                     _via_bag["via"] = "ollama"
@@ -469,7 +460,7 @@ async def stream_respond(
             first = True
             async for token in anthropic_breaker.call_stream(
                 anthropic_client.stream_chat,
-                messages=messages, temperature=0.3, max_tokens=700,
+                messages=messages, temperature=0.3, max_tokens=900,
             ):
                 if first and _via_bag is not None:
                     _via_bag["via"] = "anthropic"
@@ -480,7 +471,7 @@ async def stream_respond(
             log.warning("anthropic stream failed", error=str(err), next="non-streaming fallback")
 
     # last resort: return a single non-streamed chunk
-    result = await chat(model=GROQ_MODEL_SMART, temperature=0.3, max_tokens=700, messages=messages)
+    result = await chat(model=GROQ_MODEL_SMART, temperature=0.3, max_tokens=900, messages=messages)
     if _via_bag is not None:
         _via_bag["via"] = result.get("via", "fallback")
     yield result["content"]

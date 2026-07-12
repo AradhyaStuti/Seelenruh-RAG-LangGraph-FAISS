@@ -147,8 +147,8 @@ async def chat_stream_endpoint(
                 user_id=user["id"], session_id=session_id, domain=req.domain, role="assistant",
                 content=full_response, is_emergency=is_emergency,
             )
-        except Exception:
-            pass
+        except Exception as err:
+            log.error("stream save_message failed", error=str(err), session_id=session_id)
 
     return StreamingResponse(
         event_stream(),

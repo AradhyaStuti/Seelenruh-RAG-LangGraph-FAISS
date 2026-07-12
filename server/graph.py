@@ -19,6 +19,15 @@ log = get_logger("graph")
 
 _CITATION_RE = re.compile(r"\[(\d+)\]")
 
+_TONE_HINTS = {
+    "sad":      "The user seems sad or low. Be especially gentle, warm, and present. Don't rush to solutions.",
+    "angry":    "The user seems frustrated or angry. Acknowledge their feeling first before any information.",
+    "scared":   "The user seems scared or anxious. Be calm, grounding, and reassuring before anything else.",
+    "confused": "The user seems confused. Be clear, structured, and patient — no jargon.",
+    "happy":    "The user seems positive. Match their energy while staying helpful.",
+    "neutral":  "",
+}
+
 
 def _cited_indices(response: str, n_sources: int) -> list[int]:
     seen: list[int] = []
@@ -44,7 +53,7 @@ class ChatState(TypedDict, total=False):
     memory_summary: Optional[str]
     emotion_arc: list[str]
     active_goal: Optional[str]
-    user_memory: Optional[str]   # cross-session aggregated user memory
+    user_memory: Optional[str]
     # Classification
     intent: str
     reasoning: str
@@ -63,29 +72,73 @@ class ChatState(TypedDict, total=False):
     via: str
 
 
+def _build_context(state: ChatState) -> str:
+    """Build the conversation context string shared by both streaming and non-streaming paths."""
+    emotion = state.get("emotion", "neutral")
+    tone_hint = _TONE_HINTS.get(emotion, "")
+
+    ctx_parts = [
+        f"Domain: {state.get('routed_domain', state.get('domain', 'Mental Health'))}.",
+        f"User emotion: {emotion}.",
+    ]
+    if state.get("reasoning"):
+        ctx_parts.append(f"Intent reasoning: {state['reasoning']}.")
+    if tone_hint:
+        ctx_parts.append(f"Tone guidance: {tone_hint}")
+
+    user_memory = state.get("user_memory")
+    if user_memory:
+        ctx_parts.append(
+            f"What is known about this user across past sessions: {user_memory[:900]}"
+        )
+
+    memory_summary = state.get("memory_summary")
+    if memory_summary:
+        ctx_parts.append(
+            f"Memory from earlier in this conversation: {memory_summary}"
+        )
+
+    emotion_arc = state.get("emotion_arc", [])
+    if emotion_arc:
+        ctx_parts.append(f"Emotional arc (recent): {' → '.join(emotion_arc[-5:])}")
+
+    active_goal = state.get("active_goal") or state.get("detected_goal")
+    if active_goal:
+        ctx_parts.append(
+            f"User's current goal: '{active_goal}'. "
+            "Keep this in mind and proactively guide progress toward it."
+        )
+
+    return " ".join(ctx_parts)
+
+
 async def _load_memory(state: ChatState) -> dict:
     user_id = state.get("user_id")
     session_id = state.get("session_id")
-    if not user_id or not session_id or state.get("fast_mode"):
+    if not user_id or not session_id:
         return {"memory_summary": None, "emotion_arc": [], "active_goal": None, "user_memory": None}
 
-    mem_task = db.fetch_session_memory(user_id=user_id, session_id=session_id)
-    goal_task = db.fetch_goal(
-        user_id=user_id, session_id=session_id, domain=state.get("domain", "Mental Health")
-    )
-    user_mem_task = db.fetch_user_memory(user_id=user_id)
-    mem, goal, user_mem = await asyncio.gather(mem_task, goal_task, user_mem_task)
+    try:
+        mem_task = db.fetch_session_memory(user_id=user_id, session_id=session_id)
+        goal_task = db.fetch_goal(
+            user_id=user_id, session_id=session_id, domain=state.get("domain", "Mental Health")
+        )
+        user_mem_task = db.fetch_user_memory(user_id=user_id)
+        mem, goal, user_mem = await asyncio.gather(mem_task, goal_task, user_mem_task, return_exceptions=True)
+    except Exception as err:
+        log.warning("load_memory gather failed", error=str(err))
+        return {"memory_summary": None, "emotion_arc": [], "active_goal": None, "user_memory": None}
 
     return {
-        "memory_summary": mem["summary"] if mem else None,
-        "emotion_arc": mem["emotionArc"] if mem else [],
-        "active_goal": goal,
-        "user_memory": user_mem,
+        "memory_summary": mem["summary"] if isinstance(mem, dict) and mem else None,
+        "emotion_arc": mem["emotionArc"] if isinstance(mem, dict) and mem else [],
+        "active_goal": goal if isinstance(goal, str) else None,
+        "user_memory": user_mem if isinstance(user_mem, str) else None,
     }
 
 
 async def _classify(state: ChatState) -> dict:
-    # fast_mode (voice): only run intent — skip emotion + goal to save ~2s
+    # fast_mode: only run intent — skip emotion + goal to save ~2s
     if state.get("fast_mode"):
         i = await intent_flow.detect(state["query"])
         return {
@@ -96,33 +149,28 @@ async def _classify(state: ChatState) -> dict:
             "detected_goal": None,
         }
 
-    history_len = len(state.get("history", []))
-
     intent_task = intent_flow.detect(state["query"])
-    # Run emotion always (turn 1+) — even first message can signal emotional state
-    # Run goal from turn 1 — user may state a goal in their very first message
     emotion_task = emotion_flow.detect(state["query"])
     goal_task = memory_flow.detect_goal(
         query=state["query"],
         domain=state.get("domain", "Mental Health"),
         history=state.get("history", []),
+        existing_goal=state.get("active_goal"),
     )
 
-    results = await asyncio.gather(intent_task, emotion_task, goal_task)
-
-    i, e, goal = results
+    i, e, goal = await asyncio.gather(intent_task, emotion_task, goal_task)
 
     return {
         "intent": i["intent"],
         "reasoning": i["reasoning"],
         "emergency": i["intent"] == "Panic" or i["emergency"],
-        "emotion": e["emotion"] if e else "neutral",
-        "detected_goal": goal,
+        "emotion": e["emotion"] if isinstance(e, dict) and e else "neutral",
+        "detected_goal": goal if isinstance(goal, str) else None,
     }
 
 
 async def _route(state: ChatState) -> dict:
-    return {"routed_domain": "Safety" if state["intent"] == "Panic" else state["domain"]}
+    return {"routed_domain": "Safety" if state.get("intent") == "Panic" else state.get("domain", "Mental Health")}
 
 
 async def _retrieve(state: ChatState) -> dict:
@@ -138,14 +186,18 @@ async def _retrieve(state: ChatState) -> dict:
 
 
 async def _maybe_search(state: ChatState) -> dict:
-    # skip web search in voice mode — too slow for real-time conversation
     if state.get("fast_mode"):
         return {"web_results": []}
 
     hits = state.get("retrieved", [])
     top_score = float(hits[0].get("rerank_score", hits[0].get("score", 0.0))) if hits else 0.0
 
-    if not needs_web_search(state["query"], n_hits=len(hits), top_score=top_score, domain=state.get("domain", "")):
+    if not needs_web_search(
+        state["query"],
+        n_hits=len(hits),
+        top_score=top_score,
+        domain=state.get("domain", ""),
+    ):
         return {"web_results": []}
 
     log.info("web search triggered", query=state["query"][:60])
@@ -154,6 +206,7 @@ async def _maybe_search(state: ChatState) -> dict:
     except Exception as err:
         log.error("web search failed", error=str(err))
         return {"web_results": []}
+
     if results:
         log.info("web search completed", results=len(results))
     return {"web_results": results}
@@ -167,56 +220,24 @@ _PERSONA_NAMES = {
 }
 
 
-async def _generate(state: ChatState) -> dict:
-    memory_summary = state.get("memory_summary")
-    active_goal = state.get("active_goal") or state.get("detected_goal")
-    web_results = state.get("web_results", [])
-    emotion_arc = state.get("emotion_arc", [])
-
-    emotion = state.get("emotion", "neutral")
-    # Emotion-driven tone hint — gives persona explicit guidance without overriding character
-    _TONE_HINT = {
-        "sad":     "The user seems sad or low. Be especially gentle, warm, and present. Don't rush to solutions.",
-        "angry":   "The user seems frustrated or angry. Acknowledge their feeling first before any information.",
-        "scared":  "The user seems scared or anxious. Be calm, grounding, and reassuring first.",
-        "confused": "The user seems confused. Be clear, structured, and patient — avoid jargon.",
-        "happy":   "The user seems positive. Match their energy while staying helpful.",
-        "neutral": "",
-    }
-    tone_hint = _TONE_HINT.get(emotion, "")
-
-    ctx_parts = [
-        f"Domain: {state['routed_domain']}.",
-        f"User emotion: {emotion}.",
-        f"Intent: {state.get('reasoning')}.",
-    ]
-    if tone_hint:
-        ctx_parts.append(f"Tone guidance: {tone_hint}")
-    user_memory = state.get("user_memory")
-    if user_memory:
-        ctx_parts.append(f"What is known about this user across past conversations: {user_memory[:900]}")
-    if memory_summary:
-        ctx_parts.append(f"Memory from earlier in this conversation: {memory_summary}")
-    if emotion_arc:
-        arc_str = " → ".join(emotion_arc[-5:])
-        ctx_parts.append(f"Emotional arc (recent): {arc_str}")
-    if active_goal:
-        ctx_parts.append(
-            f"The user's current goal: '{active_goal}'. "
-            "Keep this goal in mind and proactively guide progress toward it."
-        )
-
-    # merge web results so the responder can cite them alongside RAG chunks
+def _merge_web_results(state: ChatState) -> list[dict]:
+    """Merge RAG hits and web results into a single retrieved list for the responder."""
     retrieved = list(state.get("retrieved", []))
-    for i, wr in enumerate(web_results):
+    for i, wr in enumerate(state.get("web_results", [])):
         retrieved.append({
             "id": f"web_{i}",
             "topic": wr.get("title") or "Web search result",
-            "domain": state["routed_domain"],
+            "domain": state.get("routed_domain", "Mental Health"),
             "score": 0.7,
             "text": wr["text"],
             "source": wr.get("url", ""),
         })
+    return retrieved
+
+
+async def _generate(state: ChatState) -> dict:
+    retrieved = _merge_web_results(state)
+    context = _build_context(state)
 
     out = await responder.respond(
         query=state["query"],
@@ -225,14 +246,13 @@ async def _generate(state: ChatState) -> dict:
         lang=state.get("lang", "auto"),
         history=state.get("history", []),
         retrieved=retrieved,
-        context=" ".join(ctx_parts),
+        context=context,
         fast_mode=state.get("fast_mode", False),
     )
     return {"response": out["response"], "via": out["via"]}
 
 
 async def _save_memory(state: ChatState) -> dict:
-    # fires in background so it never blocks the response
     user_id = state.get("user_id")
     session_id = state.get("session_id")
     if not user_id or not session_id:
@@ -246,12 +266,11 @@ async def _save_memory(state: ChatState) -> dict:
                 {"role": "assistant", "content": state.get("response", "")},
             ]
             persona = _PERSONA_NAMES.get(state.get("routed_domain", "Mental Health"), "assistant")
-
             summary = await memory_flow.build_rolling_summary(all_messages, persona)
 
             old_arc = state.get("emotion_arc", [])
             emotion = state.get("emotion", "neutral")
-            new_arc = [*old_arc[-9:], emotion]  # keep last 10 entries
+            new_arc = [*old_arc[-9:], emotion]
 
             if summary:
                 await db.save_session_memory(
@@ -270,8 +289,8 @@ async def _save_memory(state: ChatState) -> dict:
                     domain=state.get("routed_domain", "Mental Health"),
                     goal=goal,
                 )
-        except Exception as e:
-            log.error("background memory update failed", error=str(e))
+        except Exception as err:
+            log.error("background memory update failed", error=str(err))
 
     asyncio.create_task(_background())
     return {}
@@ -290,7 +309,7 @@ def _build_sources(hits: list[dict]) -> list[dict]:
             "verifiedBy": h.get("verifiedBy", "human"),
         }
         for h in hits
-        if not str(h.get("id", "")).startswith("web_")  # web hits are cited inline, not shown in source panel
+        if not str(h.get("id", "")).startswith("web_")
     ]
 
 
@@ -362,39 +381,8 @@ async def stream_run(
     state.update(await _retrieve(state))
     state.update(await _maybe_search(state))
 
-    memory_summary = state.get("memory_summary")
-    user_memory = state.get("user_memory")
-    active_goal = state.get("active_goal") or state.get("detected_goal")
-    emotion_arc = state.get("emotion_arc", [])
-    web_results = state.get("web_results", [])
-
-    ctx_parts = [
-        f"Domain: {state['routed_domain']}.",
-        f"Emotion: {state.get('emotion')}.",
-        f"Intent: {state.get('reasoning')}.",
-    ]
-    if user_memory:
-        ctx_parts.append(f"What is known about this user across past conversations: {user_memory[:900]}")
-    if memory_summary:
-        ctx_parts.append(f"Memory from earlier in this conversation: {memory_summary}")
-    if emotion_arc:
-        ctx_parts.append(f"Emotional arc: {' → '.join(emotion_arc[-5:])}")
-    if active_goal:
-        ctx_parts.append(
-            f"The user's current goal: '{active_goal}'. "
-            "Keep this goal in mind and proactively guide progress toward it."
-        )
-
-    retrieved = list(state.get("retrieved", []))
-    for i, wr in enumerate(web_results):
-        retrieved.append({
-            "id": f"web_{i}",
-            "topic": wr.get("title") or "Web search result",
-            "domain": state["routed_domain"],
-            "score": 0.7,
-            "text": wr["text"],
-            "source": wr.get("url", ""),
-        })
+    retrieved = _merge_web_results(state)
+    context = _build_context(state)     # shared helper — includes tone hints
 
     collected: list[str] = []
     via_bag = {"via": "stream"}
@@ -405,7 +393,7 @@ async def stream_run(
         lang=lang,
         history=history,
         retrieved=retrieved,
-        context=" ".join(ctx_parts),
+        context=context,
         _via_bag=via_bag,
     ):
         collected.append(token)
@@ -431,8 +419,8 @@ async def stream_run(
         "citedIndices": cited,
         "confidence": _confidence_from(rag_hits),
         "goal": goal,
-        "memorySummary": memory_summary,
-        "webSearched": bool(web_results),
+        "memorySummary": state.get("memory_summary"),
+        "webSearched": bool(state.get("web_results")),
         "routing": {
             "intent": state.get("intent"),
             "reasoning": state.get("reasoning"),
