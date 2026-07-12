@@ -35,24 +35,40 @@ def test_build_sources_handles_missing_rerank_score():
 
 
 def test_confidence_high_when_rerank_strong():
-    hits = [{"rerank_score": 7.2, "score": 0.9}]
+    # Multi-factor system: needs authority + source + strong rerank to reach High (>= 0.72)
+    hits = [{
+        "rerank_score": 8.5, "score": 0.95,
+        "sourceAuthority": "Authoritative", "reviewStatus": "Verified",
+        "source": "RTI Act 2005",
+    }]
     assert _confidence_from(hits) == "High"
 
 
 def test_confidence_medium_when_rerank_middling():
+    # Minimal hit (no authority/source metadata) with decent scores → Medium
     hits = [{"rerank_score": 2.5, "score": 0.9}]
     assert _confidence_from(hits) == "Medium"
 
 
 def test_confidence_low_when_rerank_weak():
-    hits = [{"rerank_score": 0.3, "score": 0.9}]
+    # Low authority + needs review + weak scores → Low (< 0.52)
+    hits = [{
+        "rerank_score": -3.0, "score": 0.55,
+        "sourceAuthority": "Secondary", "reviewStatus": "NeedsReview",
+    }]
     assert _confidence_from(hits) == "Low"
 
 
 def test_confidence_falls_back_to_faiss_score_when_no_rerank():
-    hits = [{"score": 0.92}]
-    assert _confidence_from(hits) == "High"
-    assert _confidence_from([{"score": 0.78}]) == "Medium"
+    # Without rerank, rerank weight falls back to FAISS score weight.
+    # High authority + verified + strong FAISS → High
+    assert _confidence_from([{
+        "score": 0.95, "sourceAuthority": "Authoritative",
+        "reviewStatus": "Verified", "source": "Act",
+    }]) == "High"
+    # Minimal hit, mid FAISS score → Medium (score ≥ 0.825 needed without authority)
+    assert _confidence_from([{"score": 0.85}]) == "Medium"
+    # Very low FAISS score → Low
     assert _confidence_from([{"score": 0.50}]) == "Low"
 
 

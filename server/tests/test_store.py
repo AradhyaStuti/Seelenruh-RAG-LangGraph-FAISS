@@ -60,6 +60,7 @@ def test_cache_roundtrip_with_correct_version(tmp_path, monkeypatch):
     monkeypatch.setattr("rag.store.CACHE_DIR", cache)
     monkeypatch.setattr("rag.store.INDEX_PATH", cache / "faiss.index")
     monkeypatch.setattr("rag.store.META_PATH", cache / "meta.json")
+    monkeypatch.setattr("rag.store.DELETED_PATH", cache / "deleted.json")
 
     store1 = VectorStore()
     store1.build(_fake_chunks(), _fake_vectors())
