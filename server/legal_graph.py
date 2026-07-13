@@ -58,9 +58,8 @@ class LegalState(TypedDict, total=False):
     confidence:    str    # "High" | "Medium" | "Low" | "None" — from outer graph
 
     # Agent 7 output
-    composer_messages: list[dict]
-    response:          str
-    via:               str
+    response: str
+    via:      str
 
 
 # ──────────────────────────────────────────────────────────────
@@ -207,7 +206,7 @@ async def _compose(state: LegalState) -> dict:
         )
         response_text += build_guardrail_note(guardrail_result)
 
-    return {"response": response_text, "via": result["via"], "composer_messages": messages}
+    return {"response": response_text, "via": result["via"]}
 
 
 # ──────────────────────────────────────────────────────────────

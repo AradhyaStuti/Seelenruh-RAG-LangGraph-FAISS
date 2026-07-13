@@ -43,10 +43,7 @@ _TONE_HINTS = {
 def _cited_indices(response: str, n_sources: int) -> list[int]:
     seen: list[int] = []
     for match in _CITATION_RE.finditer(response or ""):
-        try:
-            idx = int(match.group(1))
-        except (ValueError, IndexError):
-            continue
+        idx = int(match.group(1))
         if 1 <= idx <= n_sources and idx not in seen:
             seen.append(idx)
     return seen

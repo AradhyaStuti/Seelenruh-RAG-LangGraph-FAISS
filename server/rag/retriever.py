@@ -317,10 +317,7 @@ async def init() -> None:
     if _store.load() and _store.size() == len(CHUNKS):
         log.info("loaded from cache", chunks=_store.size())
         # Build BM25 from cached store's chunks
-        cached_chunks = _store.get_all_chunks() if hasattr(_store, "get_all_chunks") else []
-        if not cached_chunks:
-            cached_chunks = [enrich_chunk(c) for c in CHUNKS]
-        _build_bm25(cached_chunks)
+        _build_bm25(_store.meta)
         _ready = True
         return
 

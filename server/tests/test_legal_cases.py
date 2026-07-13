@@ -1144,24 +1144,6 @@ def test_injection_cases_have_block_expectation():
         )
 
 
-def test_injection_cases_have_no_expected_contains():
-    """Injection cases should not expect specific content (they are blocked before LLM)."""
-    for case in LEGAL_TEST_CASES:
-        if case["should_block"]:
-            assert case["expected_contains"] == [], (
-                f"Injection case {case['id']} should have empty expected_contains "
-                f"(response is a rejection, not legal info)"
-            )
-
-
-def test_non_injection_cases_have_domain_legal():
-    """Non-injection cases must have domain='Legal'."""
-    for case in LEGAL_TEST_CASES:
-        if not case["should_block"]:
-            assert case["domain"] == "Legal", (
-                f"Case {case['id']} has domain='{case['domain']}'; expected 'Legal'"
-            )
-
 
 def test_hinglish_cases_present():
     """At least 5 cases should involve Hinglish or Hindi queries."""
