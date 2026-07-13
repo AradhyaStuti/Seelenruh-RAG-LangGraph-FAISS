@@ -59,6 +59,7 @@ Rules:
   Use "Contract" for breach of contract, service agreements, freelancer disputes, builder defaults
   Use "Inheritance" for will disputes, succession, ancestral property, intestate succession
   Use "MedicalNegligence" for hospital errors, wrong surgery, delayed diagnosis, doctor misconduct
+  Use "Employment" for unpaid salary, salary withheld, F&F not settled, experience letter withheld, wrongful termination, notice period pay — these are LABOUR/CIVIL matters; only add "Criminal" as secondary_category if facts clearly indicate fraud or criminal breach of trust
   Use "LabourCodes" for PF/EPF disputes, gratuity denial, maternity benefit, gig worker rights, Labour Code compliance
   Use "DPDP" for data privacy, data breach, personal data misuse, consent withdrawal, Data Protection Board
   Use "MotorVehicles" for road accidents, MACT claims, third-party insurance, hit-and-run, traffic offences
@@ -79,7 +80,7 @@ Rules:
 - missing_facts: facts NOT provided that would materially change the guidance (max 3)
   For Tenant: ["state/city of property", "written rent agreement or oral only"]
   For Divorce: ["personal law / religion", "contested or mutual consent"]
-  For Employment: ["government or private employer", "workman or managerial role"]
+  For Employment: ["government or private employer", "workman or managerial role", "still employed or terminated", "how many months salary unpaid", "appointment/offer letter available"]
   For ChequeBounce: ["days since return memo received", "legal notice already sent?"]
   For Contract: ["written contract or verbal", "amount involved", "nature of breach"]
   For Inheritance: ["deceased's religion / applicable personal law", "will exists or intestate"]
@@ -523,55 +524,85 @@ _LEGAL_KNOWLEDGE: dict[str, dict] = {
 
     "Employment": {
         "applicable_laws": [
-            "Industrial Disputes Act, 1947 (ID Act) — wrongful termination, retrenchment (applies to 'workmen' — non-supervisory)",
-            "Shops and Establishments Acts — state-specific, applies to most commercial employees",
-            "Payment of Gratuity Act, 1972 — gratuity = 15 days salary × years of service ÷ 26, after 5 years",
-            "Payment of Wages Act, 1936 — timely wage payment",
-            "EPF & Misc. Provisions Act, 1952 — provident fund rights",
-            "POSH Act, 2013 — workplace sexual harassment",
+            # ── Labour Codes 2020 (consolidating older standalone acts; implementation varies by state) ──
+            "Code on Wages, 2019 — consolidates Payment of Wages Act 1936, Minimum Wages Act, Payment of Bonus Act; ensures timely payment of wages to all employees including gig workers",
+            "Industrial Relations Code, 2020 — consolidates Industrial Disputes Act 1947 (ID Act), Trade Unions Act, Industrial Employment (Standing Orders) Act; governs wrongful termination and retrenchment",
+            "Code on Social Security, 2020 — consolidates EPF Act 1952, Payment of Gratuity Act 1972, Maternity Benefit Act; extends coverage to gig/platform workers",
+            "Occupational Safety, Health and Working Conditions Code, 2020 — consolidates Factories Act, Contract Labour Act; governs working conditions",
+            # ── Standalone acts still widely applicable ──
+            "Industrial Disputes Act, 1947 (ID Act) — still operative in most states; applies to 'workmen' (non-supervisory employees); governs wrongful termination, retrenchment, lay-off",
+            "Payment of Gratuity Act, 1972 — gratuity = 15 days × years of service ÷ 26; payable after 5 years continuous service; maximum ₹20 lakh",
+            "Shops and Establishments Acts — state-specific; covers most commercial employees not governed by Factories Act",
+            "EPF & Miscellaneous Provisions Act, 1952 — provident fund rights; 12% employer + 12% employee contribution",
+            "POSH Act, 2013 — workplace sexual harassment; Internal Complaints Committee (ICC) mandatory for employers with 10+ employees",
             "Contract Labour (Regulation and Abolition) Act, 1970 — for contract/outsourced workers",
         ],
+        "dispute_classification": {
+            "labour_dispute": "Unpaid salary, wrongful termination, retrenchment, PF deduction issues, gratuity denial — FILE WITH LABOUR COMMISSIONER or labour court",
+            "civil_dispute": "Breach of employment contract, F&F settlement not paid, experience letter withheld — SEND LEGAL NOTICE, then civil suit",
+            "administrative_complaint": "PF not deposited by employer — FILE WITH EPFO Regional Office or Grievance Portal",
+            "criminal_offence_only_if": "Employer fraudulently induced employment (cheating), criminally misappropriated PF deductions already cut from salary, forged documents — ONLY then may FIR under BNS be appropriate",
+            "WARNING": "DO NOT recommend FIR merely because salary is unpaid. Unpaid wages are a labour/civil matter. Explicitly state this when advising users.",
+        },
         "typical_remedies": [
-            "Reinstatement (wrongful termination for 'workmen')",
-            "Back wages from termination date",
-            "Retrenchment compensation (1 month per year of service)",
-            "Recovery of withheld salary, PF, gratuity, bonus",
-            "Compensation for POSH violation",
+            "Reinstatement with back wages (wrongful termination of 'workmen' — ID Act)",
+            "Retrenchment compensation (1 month per year of service for workmen)",
+            "Recovery of withheld salary, PF, gratuity, earned-leave encashment, notice-period pay",
+            "Full and final settlement (F&F) — includes all dues payable on exit",
+            "Experience / relieving letter (employer cannot lawfully withhold this)",
+            "Compensation for POSH violation (decided by ICC/LCC)",
         ],
         "evidence_checklist": [
-            "Offer letter and appointment letter",
-            "All employment contracts, increments, and promotion letters",
-            "Last 12 months salary slips",
-            "Bank statements showing salary credits",
+            "Appointment letter / offer letter (proof of employment terms)",
+            "All employment contracts, increment and promotion letters",
+            "Last 6–12 months salary slips",
+            "Bank statements showing salary credits (and any months where credit is missing)",
+            "Attendance records (if employer disputes work done)",
             "Performance reviews and appraisals",
-            "Termination letter (request one — employer must give it)",
-            "All HR communications about the dispute (emails, letters)",
-            "PF UAN number and EPF account statement",
+            "Termination letter or email (request one in writing — employer should provide)",
+            "WhatsApp/email communication about salary, termination, or HR disputes",
+            "Any written salary demand or grievance already sent",
+            "PF UAN number and EPF passbook / account statement",
+            "Full and final settlement statement (if partially paid)",
+            "Experience letter / relieving letter (or evidence of withholding)",
+            "Notice period agreement from contract",
         ],
         "procedure_steps": [
-            "Send grievance in writing to HR/management — establish paper trail",
-            "Approach Labour Commissioner / ALC for conciliation (free, fast)",
-            "File complaint before Industrial Tribunal / Labour Court (for 'workmen')",
-            "For PF: file with EPFO regional office or EPFO Grievance Portal (epfigms.gov.in)",
-            "For gratuity: application to employer first, then Payment of Gratuity Authority",
-            "For POSH: file with ICC within 3 months of last incident (critical deadline)",
+            "Step 1 — PRESERVE EVIDENCE: Save appointment letter, salary slips, bank statements, all emails and WhatsApp chats about pay/termination.",
+            "Step 2 — CHECK YOUR CONTRACT: Confirm what notice period, salary, F&F terms, and dispute resolution clause apply.",
+            "Step 3 — WRITTEN DEMAND: Send a written salary demand / grievance to HR and management by email (creates paper trail). WhatsApp also works but email is cleaner evidence.",
+            "Step 4 — INTERNAL ESCALATION: If HR ignores for 1–2 weeks, escalate to the MD/CEO in writing. State exact months unpaid and amount.",
+            "Step 5 — LABOUR AUTHORITY (primary remedy): File complaint with the Labour Commissioner / Assistant Labour Commissioner (ALC) in your district. Free, no lawyer needed. They call both parties for conciliation within 30–45 days.",
+            "Step 6 — LEGAL NOTICE (if employer is unresponsive): Have a lawyer send a formal legal notice under the relevant labour statute. Often triggers settlement without court.",
+            "Step 7 — LABOUR COURT / TRIBUNAL: For 'workmen' (non-supervisory) — file before the Industrial Tribunal or Labour Court. For others — civil court suit for money recovery.",
+            "Step 8 — PF ISSUES SEPARATELY: If PF was deducted but not deposited → file directly with EPFO Regional Office and the EPFO Grievance Portal (epfigms.gov.in). This is a separate process from salary recovery.",
+            "Step 9 — FIR ONLY IF CRIMINAL: Only consider FIR if there is evidence of a cognizable criminal offence — e.g., employer collected PF deductions from salary and misappropriated them (criminal breach of trust), or employer used fraudulent documents. Unpaid salary alone does NOT justify an FIR.",
         ],
-        "limitation_period": "ID Act retrenchment: file within 3 years. POSH: 3 months from last incident (extendable to 6 months). Gratuity: 1 year from due date. PF: varies.",
+        "limitation_period": "ID Act retrenchment: 3 years. POSH complaint: 3 months from last incident (extendable to 6 months for good cause). Gratuity: application within 30 days of becoming due (employer) / 1 year (employee). PF: EPFO accepts complaints anytime during employment + 3 years. Civil suit for wages: 3 years.",
         "authorities": [
-            "Labour Commissioner / ALC (state level)", "Industrial Tribunal / Labour Court",
-            "EPFO Regional Office / EPFO Grievance Portal", "Internal Complaints Committee (ICC) for POSH",
+            "Labour Commissioner / ALC (state level) — primary free authority for labour disputes",
+            "Industrial Tribunal / Labour Court — for 'workmen' wrongful termination, retrenchment",
+            "EPFO Regional Office / Grievance Portal (epfigms.gov.in) — PF non-deposit, withdrawal issues",
+            "Payment of Gratuity Authority (Labour Commissioner acts as authority) — gratuity denial",
+            "Internal Complaints Committee (ICC) — POSH complaints (employer's ICC)",
+            "Local Complaints Committee (LCC) — POSH, if employer has no ICC or has fewer than 10 employees",
             "She-Box portal (shebox.wcd.gov.in) — government sector POSH",
+            "Civil Court — for non-workman salary/F&F recovery",
         ],
-        "typical_timeline": "Labour conciliation: 30–45 days. Labour Court: 1–3 years. POSH ICC: must complete in 90 days.",
-        "typical_costs": "Conciliation: Free. Labour Court filing: ₹200–₹500. Lawyer: ₹15,000–₹75,000. NALSA for eligible.",
+        "typical_timeline": "Labour conciliation: 30–45 days. Labour Court: 1–3 years. EPFO grievance: 30–60 days. POSH ICC: must complete in 90 days.",
+        "typical_costs": "Labour Commissioner complaint: Free. Labour Court filing: ₹200–₹500. Civil suit: ₹500–₹2,000 + ad valorem. Lawyer: ₹15,000–₹75,000. NALSA for eligible.",
         "common_mistakes": [
-            "Signing Full and Final Settlement without understanding what rights you waive",
-            "Missing POSH 3-month deadline — it's absolute (extendable only for good cause to 6 months)",
-            "Not getting a written termination letter — fight for one",
-            "Confusing 'workman' (covered by ID Act) vs 'supervisor/manager' (different rights)",
-            "Not following internal grievance mechanism first — courts and tribunals expect it",
+            "Filing an FIR for unpaid salary — unpaid wages are a LABOUR dispute, not a criminal matter unless there is evidence of fraud, criminal breach of trust, or forgery; police often cannot help and may dismiss you",
+            "Signing Full and Final Settlement without reviewing what dues you are releasing — once signed it is very difficult to challenge",
+            "Missing POSH 3-month deadline — courts treat it as absolute; act promptly",
+            "Not getting a written termination letter — request it in writing; employer's silence is itself evidence",
+            "Confusing 'workman' (ID Act protection) vs 'supervisor/manager' (different rights) — depends on salary, role, and nature of work",
+            "Not filing a written grievance first — Labour Courts and tribunals expect you to exhaust internal remedies",
+            "Forgetting to claim earned-leave encashment in F&F — it is a statutory right, not a favour",
+            "PF deducted but not deposited — this is employer fraud on the PF fund; report directly to EPFO, not police",
         ],
-        "free_legal_aid": "NALSA and state DLSA. Labour Commissioner conciliation is free.",
+        "important_note": "The 4 Labour Codes 2020 (Wages, Industrial Relations, Social Security, OHS) consolidate 29+ older labour laws. Full implementation and state rules vary — always verify which specific laws and rules are currently operative in your state before filing.",
+        "free_legal_aid": "NALSA (nalsa.gov.in | 15100) and state DLSA. Labour Commissioner conciliation is free. EPFO grievance is free. Labour Court filing fee is nominal.",
     },
 
     "ChequeBounce": {
@@ -1512,7 +1543,7 @@ _RIGHTS_KW: dict[str, list[str]] = {
     "Consumer":          ["Consumer Protection", "COPRA", "deficiency", "unfair trade practice", "warranty", "consumer right", "refund"],
     "RTI":               ["Right to Information", "RTI Act", "public authority", "exemption", "Section 8", "CPIO", "information access"],
     "Tenant":            ["tenant", "landlord", "rent", "eviction", "Transfer of Property", "lease", "rent control", "security deposit"],
-    "Employment":        ["employment", "labour", "termination", "retrenchment", "Industrial Disputes", "workman", "POSH", "gratuity", "PF"],
+    "Employment":        ["employment", "labour", "termination", "retrenchment", "Industrial Disputes", "workman", "POSH", "gratuity", "PF", "unpaid salary", "wages withheld", "full and final", "F&F settlement", "experience letter", "relieving letter", "notice period pay", "Code on Wages", "Shops and Establishments"],
     "ChequeBounce":      ["cheque bounce", "NI Act", "Section 138", "dishonour", "criminal liability", "negotiable instrument"],
     "Bail":              ["bail", "bailable", "non-bailable", "BNSS 480", "BNSS 482", "anticipatory bail", "default bail", "custody"],
     "POCSO":             ["POCSO", "child protection", "sexual assault minor", "JJ Act", "child abuse"],
@@ -1537,7 +1568,7 @@ _PROCEDURE_KW: dict[str, list[str]] = {
     "Consumer":          ["District Commission", "State Commission", "NCDRC", "complaint filing", "forum procedure", "edaakhil"],
     "RTI":               ["RTI application", "30 days", "first appeal", "second appeal", "CIC", "SIC", "CPIO"],
     "Tenant":            ["rent controller", "eviction notice", "quit notice", "civil court", "15 day notice", "rent tribunal"],
-    "Employment":        ["labour court", "grievance", "labour commissioner", "industrial tribunal", "conciliation", "EPFO"],
+    "Employment":        ["labour court", "grievance", "labour commissioner", "industrial tribunal", "conciliation", "EPFO", "written demand", "salary demand letter", "legal notice employer", "EPFO grievance", "Shops Establishments complaint", "F&F full and final", "experience letter demand"],
     "ChequeBounce":      ["legal notice", "30 days", "magistrate complaint", "criminal complaint NI Act", "return memo", "RPAD"],
     "Bail":              ["bail application", "sessions court", "bail bond", "personal bond", "BNSS 482 application", "default bail"],
     "POCSO":             ["special court", "child welfare committee", "SJPU", "mandatory reporting", "childline"],
