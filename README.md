@@ -24,7 +24,7 @@ What started as a simple RAG chatbot turned into something more interesting once
 ## The four assistants
 
 - **Usha** — mental health and emotional support. Designed to feel like talking to a calm, older friend, not a clinical chatbot. No bullet-point lists, no "your feelings are valid" every message.
-- **Umang** — legal rights. FIR filing, RTI, consumer complaints, tenant rights, divorce — always cited from actual laws and sections.
+- **Umang** — legal rights. FIR filing, RTI, consumer complaints, tenant rights, labour law, divorce — always grounded in actual Indian law and section numbers. Covers the new BNS/BNSS/BSA 2023 codes replacing IPC/CrPC.
 - **Aarogya** — government schemes. PM-JAY, PM-KISAN, MGNREGA, scholarships, ration cards, and state-level schemes for Delhi, Gujarat, Rajasthan, Bihar, Punjab, Kerala, Himachal Pradesh, Goa.
 - **Raksha** — safety and emergencies. Domestic violence, cybercrime, stalking, panic response. Returns structured step-by-step cards with helpline numbers, not paragraphs.
 
@@ -53,14 +53,82 @@ After every response, a background task compresses the conversation into a 2–3
 **3. Goal tracking**
 Every turn, `detect_goal` runs in parallel with intent and emotion detection. If it finds something actionable — `"file an RTI"`, `"apply for PM-JAY"`, `"find a therapist"` — it stores that goal and surfaces it on every subsequent turn. Once a goal is stored, the detector only fires again if it sees a *new or changed* goal — no redundant DB writes. A live goal badge appears in the UI so the user can see what the agent is tracking.
 
-One thing that took a while: getting the intent classifier to correctly handle Hinglish. A lot of edge cases — someone writing `"RTI kaise file karein"` would get misrouted because the classifier saw Hindi words and defaulted to Mental Health. Adding explicit Hinglish examples and keyword guidance to the prompt fixed most of it.
+---
+
+## Umang's legal pipeline — multi-agent architecture
+
+Umang uses a dedicated 3-node LangGraph sub-graph with a modular prompt architecture:
+
+```
+query → _analyze (8B) → _prepare (Python) → _compose (70B) → quality gates → response
+```
+
+**Agent 1 — Case Analyzer (llama-3.1-8b-instant)**
+Classifies the query with structured JSON output: `category`, `issue_type` (Civil/Criminal/Employment/Family/Property/Consumer/Cyber/Administrative), `employment_type`, `property_type`, `urgency`, `known_facts`, `missing_facts`, `follow_up`, `limitation_concern`.
+
+**Agents 2–6 — Preparation (Python)**
+Organises RAG chunks by type (rights / procedure / general), builds a deterministic legal reasoning context from `_LEGAL_KNOWLEDGE`, detects jurisdiction from the query, loads document templates if needed.
+
+**Agent 7 — Response Composer (llama-3.3-70b-versatile)**
+Synthesises the final response with a system prompt assembled from modular components:
+
+| Component | Module | ~Tokens |
+|-----------|--------|---------|
+| Persona (10 core rules) | `responder.py` → `PERSONA["Legal"]` | ~730 |
+| Language instruction | `language_engine.py` → `build_language_instruction()` | ~100 |
+| Response format (9 sections) | `response_template.py` → `RESPONSE_TEMPLATE_DESCRIPTION` | ~350 |
+| Few-shot example (1 relevant) | `few_shot_examples.py` → `get_few_shot_examples()` | ~400–600 |
+| Case analysis block | `legal_agents.py` internal | ~100 |
+| Legal reasoning context | `_LEGAL_KNOWLEDGE` dict | ~400 |
+| Retrieved knowledge (5 chunks) | FAISS + BM25 hybrid | ~1,000 |
+| **Total** | | **~3,100–3,280 tokens** |
+
+**Post-response quality gates**
+Every response passes through two validators before being returned:
+
+- **Hallucination guardrails** (`hallucination_guardrails.py`) — checks section numbers against a 40-act whitelist (`KNOWN_ACTS`) with valid section ranges. Sections cited beyond the known maximum trigger a verification note.
+- **Quality checker** (`quality_checker.py`) — pattern-based checks for overpromise language ("you will definitely win"), German law bleed-in, FIR misuse for salary disputes, and unverified helpline numbers.
+
+**FIR Guard**
+Umang never recommends filing a police complaint for unpaid salary or civil rent/warranty disputes. The Case Analyzer classifies these as `labour_dispute` or `civil_dispute` by default. Escalation order: written demand → Labour Commissioner (free) → Labour Court → FIR only if fraud/forgery/criminal offence.
+
+---
+
+## RAG pipeline — hybrid retrieval
+
+```
+query → normalise (Hinglish expansion + OCR cleanup) → legal query expansion (37+ regex patterns)
+      → FAISS dense (multilingual-e5-small) + BM25 sparse (rank-bm25)
+      → RRF fusion (k=60) → cross-encoder reranking → top-5 chunks
+```
+
+**Reciprocal Rank Fusion** combines dense semantic retrieval (FAISS) with lexical retrieval (BM25) without score normalisation issues. BM25 especially helps for exact law citations (`"Section 138 NI Act"`) that dense embeddings may not rank highly.
+
+BM25 degrades gracefully — if `rank-bm25` is not installed, the pipeline falls back to FAISS-only with no code changes needed.
+
+**Hinglish map** — 80+ Roman-script Hindi terms expanded to English equivalents before embedding:
+`"tankhwaah"` → `"salary wages"`, `"kirayedaar"` → `"tenant renter"`, `"vakeel"` → `"lawyer"`, `"f&f"` → `"full and final settlement dues"`.
+
+**Legal query expansion** — 37+ regex patterns append domain terminology to vague queries before embedding:
+`"salary nahi mili"` → `+ "Code on Wages 2019 Payment of Wages Act unpaid salary labour commissioner..."`
+
+---
+
+## Multilingual support
+
+Language is detected heuristically at request time (no LLM needed):
+1. Devanagari unicode block → Hindi (`hi`)
+2. German markers/characters (ä, ö, ü, ß + keyword list) → German (`de`)
+3. Hinglish marker words (mujhe, kya, chahiye, nahi…) → Hinglish (`hi-roman`)
+4. Fallback → English (`en`)
+
+Each language gets a tailored instruction injected into the system prompt. German responses always cite Indian law — never German Mietrecht, BGB, or German courts. Indian legal terms are translated in parentheses: `"FIR (Strafanzeige bei der indischen Polizei)"`.
 
 ---
 
 ## Other features
 
-- **RAG pipeline**: `multilingual-e5-small` embeddings → FAISS vector search (overfetch 15) → cross-encoder reranker (`ms-marco-MiniLM-L-6-v2`). Confidence shown per-response (High / Medium / Low / None). OCR artifact cleanup before embedding lookup. Domain-aware staleness penalties (schemes: 2/6 month thresholds; statutes: 6/18 months).
-- **Scheme eligibility checker**: rule-based, not LLM. I tried LLMs for eligibility and they were too vague. The deterministic checker takes state, age, income, and category and returns exactly which schemes match.
+- **Scheme eligibility checker**: rule-based, not LLM. The deterministic checker takes state, age, income, and category and returns exactly which schemes match.
 - **Legal document templates**: RTI, consumer complaint, rent notice — filled from form inputs, not AI-generated. Keeps them legally consistent.
 - **Automatic intent routing**: ask a legal question in the mental health tab and the agent detects it and reroutes. The UI shows the reasoning.
 - Mood tracker, breathing companion, session summaries, saved moments, conversation export, offline detection, error boundary.
@@ -70,19 +138,49 @@ One thing that took a while: getting the intent classifier to correctly handle H
 
 ## Tech stack
 
-| Layer         | What I used                                                                      |
-| ------------- | -------------------------------------------------------------------------------- |
-| Frontend      | React 18, Vite, Tailwind CSS, shadcn/ui, Radix UI                                |
-| Backend       | Python 3.10, FastAPI, LangGraph                                                  |
-| LLMs          | Groq API — Llama 3.3 70B (responses), Llama 3.1 8B (intent/emotion/goal/memory) |
-| Embeddings    | `intfloat/multilingual-e5-small`                                                 |
-| Vector search | FAISS (CPU)                                                                      |
-| Reranker      | `cross-encoder/ms-marco-MiniLM-L-6-v2`                                          |
-| Database      | MongoDB Atlas (Motor async driver)                                               |
-| Auth          | PyJWT + bcrypt                                                                   |
-| Rate limiting | slowapi                                                                          |
-| Web search    | DuckDuckGo + Wikipedia + Brave Search (concurrent, with retry backoff)           |
-| Deployment    | Docker, Hugging Face Spaces                                                      |
+| Layer | What I used |
+|-------|-------------|
+| Frontend | React 18, Vite, Tailwind CSS, shadcn/ui, Radix UI |
+| Backend | Python 3.10, FastAPI, LangGraph |
+| LLMs | Groq API — Llama 3.3 70B (responses), Llama 3.1 8B (intent/emotion/goal/memory) |
+| Embeddings | `intfloat/multilingual-e5-small` |
+| Vector search | FAISS (CPU) + BM25 hybrid (rank-bm25, Reciprocal Rank Fusion) |
+| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
+| Database | MongoDB Atlas (Motor async driver) |
+| Auth | PyJWT + bcrypt |
+| Rate limiting | slowapi |
+| Web search | DuckDuckGo + Wikipedia + Brave Search (concurrent, with retry backoff) |
+| Deployment | Docker, Hugging Face Spaces |
+
+---
+
+## Project structure
+
+```
+server/
+├── ai/
+│   ├── legal_agents.py          # 7-agent pipeline (Case Analyzer → Response Composer)
+│   ├── hallucination_guardrails.py  # Citation validation against KNOWN_ACTS whitelist
+│   ├── language_engine.py       # Language detection + per-language instructions
+│   ├── quality_checker.py       # Post-response pattern validation
+│   ├── few_shot_examples.py     # 10 curated Q&A examples for system prompt injection
+│   ├── response_template.py     # 9-section response format specification
+│   └── responder.py             # Persona definitions + non-Legal response pipeline
+├── rag/
+│   ├── retriever.py             # FAISS + BM25 hybrid retrieval with RRF fusion
+│   ├── knowledge_meta.py        # Domain-aware confidence scoring
+│   └── knowledge/               # RAG chunk files
+├── legal_graph.py               # LangGraph sub-graph for Umang
+├── tests/
+│   └── test_legal_cases.py      # 91 test cases across all legal categories
+docs/
+├── system_prompt.md             # System prompt component architecture + token budget
+├── rag_architecture.md          # Full RAG pipeline diagram and configuration
+├── response_template.md         # Response section definitions
+├── few_shot_examples.md         # Example bank and selection logic
+├── knowledge_base_structure.md  # Static knowledge + dynamic RAG chunk structure
+└── developer_documentation.md   # Architecture overview, env vars, testing guide
+```
 
 ---
 
@@ -133,7 +231,7 @@ npm --prefix client run dev
 
 Open `http://localhost:5173`. Backend runs on port 5000.
 
-First startup downloads the embedding model (`multilingual-e5-small`) — takes 1–2 minutes. Subsequent starts load from cache and are instant.
+First startup downloads the embedding model (`multilingual-e5-small`) and builds the FAISS + BM25 index — takes 1–2 minutes. Subsequent starts load from cache and are instant.
 
 ---
 
