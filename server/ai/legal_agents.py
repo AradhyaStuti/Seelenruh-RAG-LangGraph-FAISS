@@ -36,7 +36,7 @@ You are a senior Indian legal case analyst for Umang, a legal information assist
 Analyse the user's query deeply and output ONLY a valid JSON object — no markdown, no explanation.
 
 {
-  "category": "DomesticViolence|Divorce|Maintenance|FIR|Consumer|RTI|Tenant|Employment|Property|Cybercrime|POSH|ChequeBounce|Bail|POCSO|Constitutional|Criminal|Contract|Inheritance|MedicalNegligence|General",
+  "category": "DomesticViolence|Divorce|Maintenance|FIR|Consumer|RTI|Tenant|Employment|Property|Cybercrime|POSH|ChequeBounce|Bail|POCSO|Constitutional|Criminal|Contract|Inheritance|MedicalNegligence|LabourCodes|DPDP|MotorVehicles|ChildCustody|RTE|General",
   "urgency": "immediate|recent|informational",
   "multi_domain": false,
   "secondary_categories": [],
@@ -59,6 +59,11 @@ Rules:
   Use "Contract" for breach of contract, service agreements, freelancer disputes, builder defaults
   Use "Inheritance" for will disputes, succession, ancestral property, intestate succession
   Use "MedicalNegligence" for hospital errors, wrong surgery, delayed diagnosis, doctor misconduct
+  Use "LabourCodes" for PF/EPF disputes, gratuity denial, maternity benefit, gig worker rights, Labour Code compliance
+  Use "DPDP" for data privacy, data breach, personal data misuse, consent withdrawal, Data Protection Board
+  Use "MotorVehicles" for road accidents, MACT claims, third-party insurance, hit-and-run, traffic offences
+  Use "ChildCustody" for custody of minor children, guardianship, visitation rights, parental disputes over children
+  Use "RTE" for school admission (EWS/25% quota), free education, physical punishment in school, child education rights
   Use "Criminal" for general criminal matters (assault, theft, cheating) not covered by more specific categories
   Use "General" ONLY when no specific category fits
 - urgency (be precise):
@@ -1069,6 +1074,269 @@ _LEGAL_KNOWLEDGE: dict[str, dict] = {
         "free_legal_aid": "NALSA for eligible patients. Consumer Court does not require a lawyer. National Human Rights Commission accepts pro se complaints.",
     },
 
+    "LabourCodes": {
+        "applicable_laws": [
+            "Code on Wages, 2019 — consolidates Payment of Wages Act, Minimum Wages Act, Payment of Bonus Act, Equal Remuneration Act; applies to all employees",
+            "Industrial Relations Code, 2020 — consolidates Trade Unions Act, Industrial Employment (Standing Orders) Act, Industrial Disputes Act; rationalises retrenchment rules",
+            "Code on Social Security, 2020 — consolidates EPF, ESI, Gratuity, Maternity Benefit, Building & Construction Workers Acts; extends to gig & platform workers",
+            "Occupational Safety, Health and Working Conditions Code, 2020 — consolidates Factories Act and 12 other laws; sets safety standards across industries",
+            "Payment of Gratuity Act, 1972 (absorbed into Social Security Code) — 5 years continuous service triggers gratuity; max ₹20 lakh",
+            "Employees' Provident Funds & Miscellaneous Provisions Act, 1952 (absorbed) — 12% employer + 12% employee PF contribution; EPFO enforcement",
+            "Maternity Benefit Act, 1961 (absorbed) — 26 weeks paid maternity leave (for first two children); crèche facilities mandatory for 50+ employees",
+        ],
+        "typical_remedies": [
+            "Back wages and interest for unpaid salary (Code on Wages)",
+            "Reinstatement or compensation for unlawful retrenchment (Industrial Relations Code)",
+            "Recovery of PF dues with interest and damages (EPFO)",
+            "Gratuity with 10% interest per annum if withheld",
+            "Maternity benefit recovery through labour commissioner",
+            "Social security benefits for gig/platform workers (Social Security Code — notified portions)",
+        ],
+        "evidence_checklist": [
+            "Appointment/offer letter and job description",
+            "Salary slips for last 6 months (or payroll records)",
+            "Bank statements showing salary credits / gaps",
+            "PF account statement (UAN portal: unifiedportal-mem.epfindia.gov.in)",
+            "Form 16 or Form 12B from employer",
+            "Any written communication about termination, retrenchment, or wage dispute",
+            "Attendance records / leave records if disputed",
+        ],
+        "procedure_steps": [
+            "For unpaid wages: file complaint with Labour Commissioner / Payment of Wages Authority in your district",
+            "For PF non-deposit: file complaint at EPFO regional office OR online at epfindia.gov.in",
+            "For gratuity: apply in writing to employer first; if rejected, file before Controlling Authority (Labour Commissioner) within 60 days",
+            "For wrongful termination: file complaint before Labour Court / Industrial Tribunal (under Industrial Relations Code)",
+            "For maternity benefit: complaint to Inspector under Maternity Benefit Act / Controlling Authority",
+            "Shram Suvidha portal (shramsuvidha.gov.in) for centralised grievances — all 4 Labour Codes covered",
+        ],
+        "limitation_period": "Wages: 1 year from due date. Gratuity: 60 days to apply to employer after retirement/resignation; 90 days to Controlling Authority if rejected. PF: no strict limitation but file within 3 years for best results.",
+        "authorities": [
+            "Labour Commissioner / Asst Labour Commissioner (district)",
+            "EPFO Regional/Sub-Regional Office",
+            "Controlling Authority (Gratuity Act)",
+            "Labour Court / Industrial Tribunal",
+            "Shram Suvidha Portal (central grievance)",
+        ],
+        "typical_timeline": "Labour Commissioner: 1–3 months. Labour Court: 6 months–2 years.",
+        "typical_costs": "Filing fees: nominal (₹50–₹500). Lawyer optional for most labour complaints. NALSA provides free aid.",
+        "common_mistakes": [
+            "Not activating UAN or checking PF balance — employer may be deducting but not depositing",
+            "Missing limitation period for gratuity (60 days after entitlement to apply to employer)",
+            "Accepting Full & Final settlement verbally — always insist on written F&F statement",
+            "Not preserving salary slips — most disputes turn on proof of salary",
+            "Assuming 'contract workers' have no rights — all workers covered under Labour Codes",
+        ],
+        "free_legal_aid": "NALSA (15100). Labour Commissioner provides grievance mechanism free of charge. EPFO complaints require no lawyer.",
+    },
+
+    "DPDP": {
+        "applicable_laws": [
+            "Digital Personal Data Protection Act, 2023 (DPDP Act) — India's first comprehensive data privacy law; governs collection, storage, and use of digital personal data",
+            "DPDP Act Section 4 — lawful basis for processing: consent OR legitimate use",
+            "DPDP Act Section 6 — consent must be free, specific, informed, unconditional, and unambiguous; may be withdrawn at any time",
+            "DPDP Act Section 11 — Data Principal rights: right to access information, right to correction, right to erasure, right to grievance redressal, right to nominate",
+            "DPDP Act Section 16 — Data Fiduciary duties: purpose limitation, storage limitation, accuracy, security safeguards",
+            "DPDP Act Section 40 — Data Protection Board of India (DPBI) adjudicates complaints; penalties up to ₹250 crore",
+            "IT Act, 2000 Section 43A — compensation for failure to protect sensitive personal data (still applicable alongside DPDP Act)",
+        ],
+        "typical_remedies": [
+            "Complaint to Data Protection Board of India (DPBI) for data breaches or refusal of rights",
+            "Withdrawal of consent — Data Fiduciary must stop processing within reasonable time",
+            "Right to erasure — personal data deleted unless retention is legally mandated",
+            "Right to correction of inaccurate data held by a company",
+            "Compensation under IT Act Section 43A for data breach causing loss",
+            "Financial penalty on Data Fiduciary up to ₹250 crore (imposed by DPBI)",
+        ],
+        "evidence_checklist": [
+            "Screenshot/copy of consent given (or privacy policy at time of sign-up)",
+            "Written request to company for access/correction/erasure with date",
+            "Company's response (or proof of non-response after 30 days)",
+            "Evidence of the data breach or misuse (email, SMS, bank statement, news report)",
+            "Communications with the company's Grievance Officer",
+        ],
+        "procedure_steps": [
+            "Step 1: Contact the company's Grievance Officer (every company must publish one under DPDP Act / IT Rules)",
+            "Step 2: If no response in 30 days, escalate to Data Protection Board of India (DPBI) — rules still being notified",
+            "Step 3: For existing breaches under IT Act, file complaint at cybercrime.gov.in (Section 43A claim)",
+            "Step 4: For financial fraud resulting from data breach, also file at 1930 cyber helpline",
+        ],
+        "limitation_period": "DPDP Act limitation not yet fully notified. IT Act Section 43A: general civil limitation of 3 years.",
+        "authorities": [
+            "Data Protection Board of India (DPBI) — central authority under DPDP Act",
+            "Company's Grievance Officer (mandatory contact first)",
+            "CERT-In (cert-in.org.in) for data breach reporting",
+            "Cybercrime portal (cybercrime.gov.in) for fraud resulting from breach",
+        ],
+        "typical_timeline": "DPBI: rules still being notified (as of 2025). IT Act complaints: 6–18 months.",
+        "typical_costs": "DPBI complaint: expected to be low-fee. Cybercrime portal: free. IT Act civil suit: standard court fees.",
+        "common_mistakes": [
+            "Not contacting the company's Grievance Officer first — mandatory prerequisite for DPBI complaint",
+            "Thinking DPDP Act is fully operational — secondary legislation (rules) still being notified as of mid-2025",
+            "Confusing DPDP Act with IT Act Section 43A — both may apply for existing breaches",
+            "Not preserving proof of consent given and withdrawal requested",
+        ],
+        "free_legal_aid": "NALSA (15100). Cybercrime portal complaints are self-service and free. CERT-In reports require no lawyer.",
+    },
+
+    "MotorVehicles": {
+        "applicable_laws": [
+            "Motor Vehicles Act, 1988 (amended 2019) — governs registration, licensing, insurance, traffic offences, accident claims",
+            "MV Act Section 140 — no-fault liability: ₹50,000 for permanent disability, ₹25,000 for death — payable without proving negligence",
+            "MV Act Section 163A — structured formula compensation for hit-and-run or uninsured vehicle deaths (Second Schedule)",
+            "MV Act Section 166 — compensation claim before Motor Accident Claims Tribunal (MACT); claimant need not prove negligence separately",
+            "MV Act Section 147 — compulsory third-party insurance mandatory for all vehicles; insurer must compensate victims",
+            "MV Act Section 185 — drunk driving (>30mg/100ml blood alcohol): Rs.10,000 fine + 6 months imprisonment for first offence",
+            "Insurance Regulatory and Development Authority of India (IRDAI) — regulates motor insurance; complaints via Bima Bharosa portal",
+        ],
+        "typical_remedies": [
+            "Compensation from MACT for death or injury (no-fault or negligence-based — whichever higher)",
+            "Third-party insurer liable even if owner/driver uninsured (within limits)",
+            "Hit-and-run fund: Solatium Fund Scheme (Central Motor Vehicles Rules) — ₹2 lakh (death), ₹50,000 (grievous injury)",
+            "Insurance claim for own vehicle damage (comprehensive policy)",
+            "Damages for pain and suffering, loss of earnings, medical expenses, loss of consortium",
+            "Interim compensation under Section 140 within 30 days of claim",
+        ],
+        "evidence_checklist": [
+            "FIR copy from police station (essential for insurance and MACT claim)",
+            "Medical records, bills, and discharge summary",
+            "Vehicle registration certificate (RC) and insurance documents",
+            "DL of the vehicle owner/driver",
+            "Panchnama (spot inspection by police)",
+            "Witness names and contact",
+            "Photographs of accident scene, vehicle damage, injuries",
+            "Post-mortem report if death occurred",
+            "Loss of income proof (salary slips, business records) for compensation calculation",
+        ],
+        "procedure_steps": [
+            "Step 1: Call 112 / 1033 (highway helpline); ensure injured receive medical care",
+            "Step 2: Inform police immediately — FIR is essential for all claims",
+            "Step 3: Notify insurance company within 24–48 hours (as required by policy)",
+            "Step 4: File claim petition before Motor Accident Claims Tribunal (MACT) at the district where accident occurred OR where claimant resides",
+            "Step 5: For hit-and-run: apply to Claims Inspector / Police for Solatium Fund disbursement",
+            "Step 6: MACT adjudicates and awards compensation (no court fee for MACT claim)",
+        ],
+        "limitation_period": "MACT claim: 6 months from accident date (Section 166, though courts often condone delay with good reason). File as early as possible.",
+        "authorities": [
+            "Motor Accident Claims Tribunal (MACT) — at district level",
+            "Insurance company (Third-party claims)",
+            "IRDAI (insurance regulator): irdai.gov.in | Bima Bharosa portal",
+            "National Highway Authority / 1033 (highway accidents)",
+            "Parivahan portal: parivahan.gov.in (RC/DL verification)",
+        ],
+        "typical_timeline": "Interim Section 140 order: 30 days. Full MACT award: 6 months–2 years.",
+        "typical_costs": "MACT filing: no court fee. Lawyer: ₹5,000–₹30,000 (often on contingency). Insurance surveyor: appointed by insurer.",
+        "common_mistakes": [
+            "Not filing FIR — insurance companies use absence of FIR to deny claims",
+            "Missing 6-month limitation for MACT (file immediately, don't wait for treatment to finish)",
+            "Accepting insurer's first settlement offer without MACT — typically far lower than tribunal award",
+            "Not claiming under Section 140 (no-fault) for immediate interim relief",
+            "Forgetting to add ALL liable parties: owner + driver + insurer as respondents in MACT",
+        ],
+        "free_legal_aid": "MACT requires no court fee. NALSA (15100) provides free lawyers for road accident victims. Many lawyers take motor accident cases on contingency.",
+    },
+
+    "ChildCustody": {
+        "applicable_laws": [
+            "Guardians and Wards Act, 1890 — governs custody for all religions; court's paramount consideration is 'welfare of the child'",
+            "Hindu Minority and Guardianship Act, 1956 — father is natural guardian of minor Hindu child, but mother is preferred for children under 5",
+            "Special Marriage Act, 1954 Section 38 — custody provisions for civil marriages",
+            "Muslim Personal Law — mother (mother's custody/hizanat) preferred for young children (boys till 7, girls till puberty in Hanafi law); father is natural guardian",
+            "BNS Section 95 — wrongful confinement / taking child away in violation of court order is a criminal offence",
+            "Supreme Court: Gaurav Nagpal v. Sumedha Nagpal (2009) — child's welfare is the supreme and paramount consideration overriding all else",
+        ],
+        "typical_remedies": [
+            "Custody order (physical custody — who the child lives with)",
+            "Visitation / access rights for the non-custodial parent",
+            "Interim custody order (obtained quickly while main case is pending)",
+            "Modification of custody order if circumstances change significantly",
+            "Habeas corpus in High Court for immediate recovery of child taken wrongfully",
+        ],
+        "evidence_checklist": [
+            "Child's birth certificate",
+            "Marriage certificate (for parental status)",
+            "Proof of stable home environment (photos, rent agreement, employment proof)",
+            "School records and child's academic performance",
+            "Medical records / health status of child",
+            "Evidence of other parent's conduct if relevant (screenshots, FIR, medical reports)",
+            "Financial capability evidence (income proof, bank statements)",
+        ],
+        "procedure_steps": [
+            "File custody petition before Family Court (or District Court where no Family Court exists)",
+            "Apply for interim custody order simultaneously — court can grant within days",
+            "Court will typically interview the child if old enough to express preference",
+            "Mediation may be ordered (Family Courts Act — attempt mediation before trial)",
+            "For child taken to another state: file writ of habeas corpus in relevant High Court",
+            "Violation of custody order: file contempt of court petition",
+        ],
+        "limitation_period": "No strict limitation for initial custody petition. For modification: significant change in circumstances must be shown.",
+        "authorities": [
+            "Family Court (primary forum)",
+            "District Court (where no Family Court exists)",
+            "High Court (habeas corpus for immediate recovery, or appeals)",
+            "Child Welfare Committee (if child welfare concerns exist)",
+        ],
+        "typical_timeline": "Interim custody: 1–4 weeks. Final order: 6 months–2 years.",
+        "typical_costs": "Filing: ₹200–₹1,000. Lawyer: ₹15,000–₹1,00,000. NALSA provides free legal aid for eligible persons.",
+        "common_mistakes": [
+            "Taking the child away from the other parent without court order — contempt risk + criminal exposure",
+            "Not applying for interim custody immediately — delays allow status quo to entrench",
+            "Thinking religion determines everything — courts apply 'welfare of child' test above personal law",
+            "Not including child support / maintenance in the same petition",
+            "Alienating the child against the other parent — courts penalise parental alienation",
+        ],
+        "free_legal_aid": "NALSA (15100). Women seeking custody can approach NCW (ncw.nic.in) for referrals. Child welfare matters — Child Welfare Committee can be involved at no cost.",
+    },
+
+    "RTE": {
+        "applicable_laws": [
+            "Right to Education Act, 2009 (RTE Act) — free and compulsory education for all children aged 6–14 (Classes 1–8) is a Fundamental Right under Article 21A",
+            "RTE Act Section 12(1)(c) — every private unaided school must reserve 25% seats for children from economically weaker sections (EWS) and disadvantaged groups (DG); government reimburses",
+            "RTE Act Section 16 — no child shall be held back (detained) in any class until completion of elementary education (Classes 1–8)",
+            "RTE Act Section 17 — physical punishment and mental harassment of children is prohibited; teacher is liable",
+            "RTE Act Section 28 — private tutoring by teachers of the students they teach is prohibited",
+            "RTE Act Section 32 — complaint to Local Authority first; if unresolved, to State Commission for Protection of Child Rights (SCPCR)",
+            "POCSO Act 2012 — if school abuse is sexual in nature, POCSO applies alongside RTE",
+        ],
+        "typical_remedies": [
+            "Admission under 25% EWS/DG quota in any private school near your home",
+            "Complaint to District Education Officer (DEO) for school violations",
+            "Complaint to SCPCR (State Commission for Protection of Child Rights) for persistent non-compliance",
+            "Action against teacher for physical punishment (school administration + DEO)",
+            "No-detention policy: child cannot be expelled or failed before Class 8",
+        ],
+        "evidence_checklist": [
+            "Child's birth certificate",
+            "Proof of residence (Aadhaar, ration card, electricity bill)",
+            "Income certificate (for EWS/DG admission — issued by Tehsildar/SDM)",
+            "Caste certificate if applicable (SC/ST/OBC)",
+            "Photographs of any injury if physical punishment occurred",
+            "Written complaints previously made to school",
+        ],
+        "procedure_steps": [
+            "EWS/DG admission: apply online at your state's education portal or visit the school during admission season (typically January–March)",
+            "School refusing admission: complain to Block Education Officer (BEO) or District Education Officer (DEO)",
+            "Physical punishment: complain in writing to school principal, then DEO, then SCPCR",
+            "SCPCR complaint: state-specific portals — e.g. Delhi (dcpcr.gov.in), Maharashtra (wcd.maharashtra.gov.in), etc.",
+            "National Commission for Protection of Child Rights (NCPCR): ncpcr.gov.in | 1800-11-9176",
+        ],
+        "limitation_period": "No strict limitation for most RTE complaints. EWS admissions: state-specific annual deadlines.",
+        "authorities": [
+            "Block Education Officer (BEO) — first contact",
+            "District Education Officer (DEO)",
+            "State Commission for Protection of Child Rights (SCPCR)",
+            "National Commission for Protection of Child Rights (NCPCR): ncpcr.gov.in | 1800-11-9176",
+        ],
+        "typical_timeline": "EWS admission order: 2–4 weeks. SCPCR complaint: 30–90 days.",
+        "typical_costs": "RTE admission: completely FREE (government reimburses school). Complaints to DEO/SCPCR/NCPCR: free.",
+        "common_mistakes": [
+            "Not knowing the 25% EWS quota exists — many parents miss it due to lack of awareness",
+            "Missing state-specific EWS admission windows (usually January–March)",
+            "Assuming private schools can legally expel or detain children before Class 8 — they cannot",
+            "Not reporting physical punishment formally — informal complaints to teachers rarely result in change",
+        ],
+        "free_legal_aid": "NALSA (15100). NCPCR (1800-11-9176) provides guidance free of charge. Complaints to DEO and SCPCR are free and require no lawyer.",
+    },
+
     "General": {
         "applicable_laws": [
             "Indian Constitution — fundamental rights under Part III (Articles 14, 19, 21, 22, 32)",
@@ -1255,6 +1523,11 @@ _RIGHTS_KW: dict[str, list[str]] = {
     "Contract":         ["contract", "agreement", "breach", "specific performance", "damages", "Indian Contract Act", "consideration", "void", "voidable", "rescind"],
     "Inheritance":      ["inheritance", "succession", "Hindu Succession Act", "intestate", "will", "probate", "legal heir", "coparcener", "ancestral property"],
     "MedicalNegligence": ["medical negligence", "doctor negligence", "hospital negligence", "Consumer Protection medical", "IMC Act", "Jacob Mathew", "standard of care", "iatrogenic"],
+    "LabourCodes":      ["Code on Wages", "Social Security Code", "Industrial Relations Code", "gig worker", "platform worker", "EPFO", "PF provident fund", "gratuity", "maternity benefit", "ESI"],
+    "DPDP":             ["data protection", "DPDP Act", "personal data", "data breach", "Data Protection Board", "consent withdrawal", "right to erasure", "data fiduciary", "digital privacy"],
+    "MotorVehicles":    ["motor accident", "MACT", "third party insurance", "Motor Vehicles Act", "hit and run", "solatium", "vehicle compensation", "traffic offence", "road accident"],
+    "ChildCustody":     ["child custody", "guardianship", "Guardians and Wards Act", "visitation rights", "welfare of child", "parental rights", "custody order"],
+    "RTE":              ["right to education", "RTE Act", "EWS admission", "free education", "school admission", "Article 21A", "NCPCR", "no detention", "physical punishment school"],
 }
 
 _PROCEDURE_KW: dict[str, list[str]] = {
@@ -1275,6 +1548,11 @@ _PROCEDURE_KW: dict[str, list[str]] = {
     "Inheritance":      ["succession certificate", "probate court", "letters of administration", "partition suit", "family settlement deed", "mutation of revenue records"],
     "MedicalNegligence": ["consumer forum medical", "District Commission", "state medical council", "IMC complaint", "hospital notice", "evidence preservation medical"],
     "Maintenance":      ["family court", "family magistrate", "execution petition", "Maintenance Tribunal", "SDM office", "Section 23 application", "NALSA", "legal aid"],
+    "LabourCodes":      ["labour commissioner", "EPFO regional office", "shramsuvidha.gov.in", "labour court", "Industrial Tribunal", "Controlling Authority", "PF complaint", "gratuity application"],
+    "DPDP":             ["Data Protection Board", "Grievance Officer company", "cybercrime.gov.in", "CERT-In", "meity.gov.in", "consent withdrawal notice"],
+    "MotorVehicles":    ["Motor Accident Claims Tribunal", "MACT petition", "insurance claim", "IRDAI complaint", "Solatium Fund", "parivahan.gov.in", "1033 highway helpline"],
+    "ChildCustody":     ["family court petition", "interim custody", "habeas corpus High Court", "mediation", "Child Welfare Committee", "visitation order"],
+    "RTE":              ["Block Education Officer", "District Education Officer", "SCPCR complaint", "NCPCR", "ncpcr.gov.in", "EWS lottery", "school admission portal"],
 }
 
 
