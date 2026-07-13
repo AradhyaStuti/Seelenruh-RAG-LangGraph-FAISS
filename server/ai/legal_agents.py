@@ -1948,11 +1948,14 @@ def build_composer_messages(
       • Common mistakes to warn against
       • Multi-domain analysis
     """
-    from ai.responder import PERSONA, LANG_INSTRUCTIONS, FALLBACK_LINKS, SOURCES_SECTION_PROMPT
+    from ai.responder import PERSONA, FALLBACK_LINKS, SOURCES_SECTION_PROMPT
+    from ai.language_engine import build_language_instruction
+    from ai.response_template import RESPONSE_TEMPLATE_DESCRIPTION
+    from ai.few_shot_examples import get_few_shot_examples
 
     history = trim_history(history)
     persona = PERSONA["Legal"]
-    lang_instr = LANG_INSTRUCTIONS.get(lang, LANG_INSTRUCTIONS["auto"])
+    lang_instr = build_language_instruction(lang, user_text=query)
 
     # Organise RAG chunks by category
     rights_chunks  = organized_chunks.get("rights", [])
@@ -2067,9 +2070,20 @@ def build_composer_messages(
     context_section = f"\nCONVERSATION CONTEXT: {outer_context}\n" if outer_context else ""
     fallback = FALLBACK_LINKS.get("Legal", "")
 
+    # Few-shot examples — inject 1-2 examples relevant to this category/lang
+    cat_for_shots = case_analysis.get("category", "*")
+    few_shot_block = get_few_shot_examples(
+        category=cat_for_shots, lang=lang, max_examples=1
+    )
+    few_shot_section = f"\n{few_shot_block}\n" if few_shot_block else ""
+
     system_prompt = f"""{persona}
 
 LANGUAGE: {lang_instr}
+
+RESPONSE FORMAT:
+{RESPONSE_TEMPLATE_DESCRIPTION}
+{few_shot_section}
 {context_section}
 {analysis_block}
 

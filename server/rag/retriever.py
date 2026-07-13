@@ -1,8 +1,15 @@
-# Two-stage retrieval: FAISS for candidates, cross-encoder for reranking.
+# Two-stage retrieval: FAISS dense + BM25 sparse hybrid, cross-encoder reranking.
 import asyncio
 import re
 import time
 from typing import Optional
+
+try:
+    from rank_bm25 import BM25Okapi
+    _BM25_AVAILABLE = True
+except ImportError:
+    BM25Okapi = None  # type: ignore[assignment,misc]
+    _BM25_AVAILABLE = False
 
 from rag import embedder, reranker
 from rag.knowledge import CHUNKS
@@ -238,15 +245,82 @@ _store = VectorStore()
 _ready = False
 _write_lock = asyncio.Lock()
 
+# BM25 sparse index — built alongside FAISS during init()
+_bm25_index: Optional["BM25Okapi"] = None  # type: ignore[type-arg]
+_bm25_chunks: list[dict] = []  # parallel list to BM25 corpus
+
+
+def _tokenize(text: str) -> list[str]:
+    """Simple whitespace + punctuation tokenizer for BM25."""
+    return re.sub(r"[^\w\s]", " ", text.lower()).split()
+
+
+def _build_bm25(chunks: list[dict]) -> None:
+    """Build (or rebuild) the BM25 index from enriched chunks."""
+    global _bm25_index, _bm25_chunks
+    if not _BM25_AVAILABLE:
+        return
+    corpus = [_tokenize(f"{c.get('topic', '')} {c.get('text', '')}") for c in chunks]
+    _bm25_chunks = list(chunks)
+    _bm25_index = BM25Okapi(corpus)
+    log.info("bm25_index_built", docs=len(corpus))
+
+
+def _bm25_search(query: str, k: int, domain: Optional[str] = None) -> list[dict]:
+    """Return up to *k* BM25-ranked chunks, optionally filtered by domain."""
+    if _bm25_index is None or not _bm25_chunks:
+        return []
+    tokens = _tokenize(query)
+    scores = _bm25_index.get_scores(tokens)
+    # pair (score, chunk) — filter by domain if requested
+    pairs = [
+        (scores[i], _bm25_chunks[i])
+        for i in range(len(_bm25_chunks))
+        if domain is None or _bm25_chunks[i].get("domain") == domain
+    ]
+    pairs.sort(key=lambda x: x[0], reverse=True)
+    return [c for _, c in pairs[:k]]
+
+
+def _rrf_fuse(
+    faiss_hits: list[dict],
+    bm25_hits: list[dict],
+    k_param: int = 60,
+) -> list[dict]:
+    """
+    Reciprocal Rank Fusion of two ranked lists.
+    Returns deduplicated list ordered by fused score descending.
+    """
+    scores: dict[str, float] = {}
+    id_to_chunk: dict[str, dict] = {}
+
+    for rank, chunk in enumerate(faiss_hits):
+        cid = chunk.get("id", "") or chunk.get("topic", f"faiss_{rank}")
+        scores[cid] = scores.get(cid, 0.0) + 1.0 / (k_param + rank + 1)
+        id_to_chunk[cid] = chunk
+
+    for rank, chunk in enumerate(bm25_hits):
+        cid = chunk.get("id", "") or chunk.get("topic", f"bm25_{rank}")
+        scores[cid] = scores.get(cid, 0.0) + 1.0 / (k_param + rank + 1)
+        id_to_chunk[cid] = chunk
+
+    sorted_ids = sorted(scores, key=lambda x: scores[x], reverse=True)
+    return [id_to_chunk[cid] for cid in sorted_ids]
+
 
 async def init() -> None:
-    """Build or load the FAISS index."""
+    """Build or load the FAISS index and BM25 index."""
     global _ready
     if _ready:
         return
 
     if _store.load() and _store.size() == len(CHUNKS):
         log.info("loaded from cache", chunks=_store.size())
+        # Build BM25 from cached store's chunks
+        cached_chunks = _store.get_all_chunks() if hasattr(_store, "get_all_chunks") else []
+        if not cached_chunks:
+            cached_chunks = [enrich_chunk(c) for c in CHUNKS]
+        _build_bm25(cached_chunks)
         _ready = True
         return
 
@@ -257,7 +331,8 @@ async def init() -> None:
     vectors = await asyncio.to_thread(embedder.embed_many, texts)
     _store.build(enriched, vectors)
     _store.save()
-    log.info("index built", chunks=_store.size(), ms=int((time.time() - t0) * 1000))
+    _build_bm25(enriched)
+    log.info("index built", chunks=_store.size(), ms=int((time.time() - t0) * 1000), bm25=_BM25_AVAILABLE)
     _ready = True
 
 
@@ -348,7 +423,17 @@ async def retrieve(query: str, *, domain: Optional[str] = None, k: int = RETRIEV
         query = _expand_legal_query(query)
     qv = await asyncio.to_thread(embedder.embed_one, f"query: {query}")
     fetch_k = _overfetch_k(k, domain)
-    candidates = _store.search(qv, k=fetch_k, domain=domain)
+
+    # Dense retrieval (FAISS)
+    faiss_hits = _store.search(qv, k=fetch_k, domain=domain)
+
+    # Sparse retrieval (BM25) — only if available and have hits
+    if _BM25_AVAILABLE and _bm25_index is not None:
+        bm25_hits = _bm25_search(query, k=fetch_k, domain=domain)
+        # Fuse with Reciprocal Rank Fusion
+        candidates = _rrf_fuse(faiss_hits, bm25_hits)
+    else:
+        candidates = faiss_hits
 
     if reranker.is_enabled() and len(candidates) > k:
         results = await reranker.rerank(query, candidates, k=k)

@@ -23,6 +23,8 @@ from langgraph.graph import StateGraph, START, END
 
 from ai import legal_agents
 from ai.provider import chat, _ollama_up, _is_fallback_worthy
+from ai.quality_checker import check_response, append_quality_note
+from ai.hallucination_guardrails import validate_citations, build_guardrail_note
 from config import GROQ_MODEL_SMART
 from logger import get_logger
 
@@ -183,7 +185,29 @@ async def _compose(state: LegalState) -> dict:
         max_tokens=max_tokens,
         messages=messages,
     )
-    return {"response": result["content"], "via": result["via"], "composer_messages": messages}
+    response_text = result["content"]
+    category = state.get("case_analysis", {}).get("category", "*")
+
+    # Post-response quality gates (non-streaming path only)
+    quality_result = check_response(response_text, category=category)
+    if not quality_result.passed:
+        log.warning(
+            "quality_check_failed",
+            issues=quality_result.summary(),
+            category=category,
+        )
+        response_text = append_quality_note(response_text, quality_result)
+
+    guardrail_result = validate_citations(response_text)
+    if not guardrail_result.passed:
+        log.warning(
+            "citation_guardrail_failed",
+            flagged=guardrail_result.flagged_sections,
+            category=category,
+        )
+        response_text += build_guardrail_note(guardrail_result)
+
+    return {"response": response_text, "via": result["via"], "composer_messages": messages}
 
 
 # ──────────────────────────────────────────────────────────────
