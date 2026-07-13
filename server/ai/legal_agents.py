@@ -33,10 +33,19 @@ log = get_logger("legal_agents")
 
 _CASE_ANALYZER_SYSTEM = """\
 You are a senior Indian legal case analyst for Umang, a legal information assistant.
-Analyse the user's query deeply and output ONLY a valid JSON object — no markdown, no explanation.
+Analyse the user's query using this reasoning chain:
+  1. Identify the legal issue and its type (civil / criminal / family / consumer / employment / property / cyber / administrative / constitutional)
+  2. Identify the jurisdiction (which state, central law, or personal law)
+  3. Identify applicable law framework (Labour Code / Consumer Act / IPC-BNS / personal law / etc.)
+  4. Identify what evidence would matter
+  5. Identify the correct remedy and authority
+  6. Extract or flag missing facts that would materially change the guidance
+
+Output ONLY a valid JSON object — no markdown, no explanation.
 
 {
   "category": "DomesticViolence|Divorce|Maintenance|FIR|Consumer|RTI|Tenant|Employment|Property|Cybercrime|POSH|ChequeBounce|Bail|POCSO|Constitutional|Criminal|Contract|Inheritance|MedicalNegligence|LabourCodes|DPDP|MotorVehicles|ChildCustody|RTE|General",
+  "issue_type": "Civil|Criminal|Family|Consumer|Employment|Property|Cyber|Administrative|Constitutional|Mixed",
   "urgency": "immediate|recent|informational",
   "multi_domain": false,
   "secondary_categories": [],
@@ -51,10 +60,23 @@ Analyse the user's query deeply and output ONLY a valid JSON object — no markd
   "needs_cost_estimate": false,
   "state_hint": null,
   "personal_law": null,
+  "employment_type": null,
+  "property_type": null,
   "follow_up": null
 }
 
 Rules:
+- issue_type: the LEGAL NATURE of the dispute — determines which court / authority handles it:
+  Civil = contracts, property, money recovery, injunctions
+  Criminal = FIR, arrest, prosecution (BNS/IPC offences)
+  Family = divorce, maintenance, custody, inheritance under personal law
+  Consumer = deficiency of service, product defect, unfair trade practice
+  Employment = unpaid wages, wrongful termination, F&F, POSH, PF disputes
+  Property = rent/eviction, land rights, RERA, succession
+  Cyber = IT Act offences, data breach, online fraud
+  Administrative = RTI, government officer misconduct, scheme denial
+  Constitutional = fundamental rights, writ jurisdiction
+  Mixed = genuinely straddles 2+ types (e.g. domestic violence is Family + Criminal)
 - category: single MOST SPECIFIC match for the primary legal issue
   Use "Contract" for breach of contract, service agreements, freelancer disputes, builder defaults
   Use "Inheritance" for will disputes, succession, ancestral property, intestate succession
@@ -78,7 +100,7 @@ Rules:
 - known_facts: specific facts the user explicitly stated (max 5 short strings)
   Examples: "cheque amount ₹50,000", "bounced 2 weeks ago", "in Maharashtra", "private company employer", "married under HMA", "no written contract"
 - missing_facts: facts NOT provided that would materially change the guidance (max 3)
-  For Tenant: ["state/city of property", "written rent agreement or oral only"]
+  For Tenant: ["state/city of property", "written rent agreement or oral only", "occupancy type: rented flat / PG / hostel / commercial / agricultural"]
   For Divorce: ["personal law / religion", "contested or mutual consent"]
   For Employment: ["government or private employer", "workman or managerial role", "still employed or terminated", "how many months salary unpaid", "appointment/offer letter available"]
   For ChequeBounce: ["days since return memo received", "legal notice already sent?"]
@@ -96,6 +118,12 @@ Rules:
 - needs_cost_estimate: true if user asks about fees, court costs, lawyer charges, or "can I afford"
 - state_hint: exact Indian state name if clearly mentioned (e.g. "Maharashtra", "Delhi", "Tamil Nadu"), else null
 - personal_law: for Divorce / Maintenance / Inheritance — Hindu | Muslim | Christian | Parsi | Special | null
+- employment_type: for Employment / LabourCodes — extract from user message if stated:
+  "private_employee" | "government_employee" | "contract_worker" | "gig_worker" | "domestic_worker" | "intern" | "apprentice" | "factory_worker" | null
+  Different legal frameworks apply: ID Act (private workmen) | Service Rules (government) | Contract Labour Act | Code on Social Security (gig/domestic) | Apprentices Act (apprentice)
+- property_type: for Tenant / Property disputes — extract from user message if stated:
+  "rented_residential" | "pg_hostel" | "commercial_lease" | "agricultural" | "owned_property" | "inherited_property" | null
+  Determines whether Rent Control Act / Transfer of Property Act / agricultural tenancy law / personal law applies
 - follow_up: ONE natural conversation question whose answer would most change the guidance
   CRITICAL: set follow_up to null if missing_facts is empty []
   Make it conversational ("Which state are you in?") NOT form-like ("State: ___")
@@ -124,6 +152,9 @@ async def analyze_case(query: str, history: list[dict], lang: str) -> dict:
         "needs_cost_estimate": False,
         "state_hint": None,
         "personal_law": None,
+        "issue_type": None,
+        "employment_type": None,
+        "property_type": None,
         "follow_up": None,
     }
 
@@ -1953,16 +1984,19 @@ def build_composer_messages(
         "(No specific RAG knowledge retrieved — rely on your legal reasoning context above)"
 
     # Case analysis summary for the composer
-    cat       = case_analysis.get("category", "General")
-    urgency   = case_analysis.get("urgency", "informational")
-    follow_up = case_analysis.get("follow_up")
-    pers_law  = case_analysis.get("personal_law")
-    needs_r   = case_analysis.get("needs_rights", True)
-    needs_p   = case_analysis.get("needs_procedure", True)
-    needs_doc = case_analysis.get("needs_document", False)
-    doc_type  = case_analysis.get("doc_type")
-    multi_dom = case_analysis.get("multi_domain", False)
-    lim_warn  = case_analysis.get("limitation_concern", False)
+    cat             = case_analysis.get("category", "General")
+    issue_type      = case_analysis.get("issue_type")
+    urgency         = case_analysis.get("urgency", "informational")
+    follow_up       = case_analysis.get("follow_up")
+    pers_law        = case_analysis.get("personal_law")
+    employment_type = case_analysis.get("employment_type")
+    property_type   = case_analysis.get("property_type")
+    needs_r         = case_analysis.get("needs_rights", True)
+    needs_p         = case_analysis.get("needs_procedure", True)
+    needs_doc       = case_analysis.get("needs_document", False)
+    doc_type        = case_analysis.get("doc_type")
+    multi_dom       = case_analysis.get("multi_domain", False)
+    lim_warn        = case_analysis.get("limitation_concern", False)
 
     focus = [x for x, flag in [
         ("legal rights / protections", needs_r),
@@ -1974,10 +2008,26 @@ def build_composer_messages(
         f"Category: {cat}" + (" (multi-domain)" if multi_dom else ""),
         f"Urgency: {urgency}" + (" — ADDRESS SAFETY FIRST" if urgency == "immediate" else ""),
     ]
+    if issue_type:
+        analysis_lines.append(
+            f"Issue type: {issue_type} — include '## Issue Type' in response using this classification."
+        )
     if jurisdiction:
         analysis_lines.append(f"Jurisdiction: {jurisdiction} (note state-specific variations)")
     if pers_law:
         analysis_lines.append(f"Personal law: {pers_law}")
+    if employment_type:
+        analysis_lines.append(
+            f"Employment type: {employment_type} — tailor applicable law accordingly "
+            "(private_employee → ID Act / Code on Wages; government_employee → service rules; "
+            "gig_worker/domestic_worker → Code on Social Security; intern/apprentice → limited protection)."
+        )
+    if property_type:
+        analysis_lines.append(
+            f"Property/occupancy type: {property_type} — affects which law applies "
+            "(rented_residential → Rent Control Act; pg_hostel → limited statutory protection; "
+            "commercial_lease → Transfer of Property Act; agricultural → state land tenancy law)."
+        )
     if focus:
         analysis_lines.append(f"Response focus: {', '.join(focus)}")
     if lim_warn:
