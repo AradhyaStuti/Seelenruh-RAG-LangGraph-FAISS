@@ -23,12 +23,13 @@ What started as a simple RAG chatbot turned into something more interesting once
 
 ## The four assistants
 
-- **Usha** — mental health and emotional support. Designed to feel like talking to a calm, older friend, not a clinical chatbot. No bullet-point lists, no "your feelings are valid" every message.
-- **Umang** — legal rights. FIR filing, RTI, consumer complaints, tenant rights, labour law, divorce — always grounded in actual Indian law and section numbers. Covers the new BNS/BNSS/BSA 2023 codes replacing IPC/CrPC.
-- **Aarogya** — government schemes. PM-JAY, PM-KISAN, MGNREGA, scholarships, ration cards, and state-level schemes for Delhi, Gujarat, Rajasthan, Bihar, Punjab, Kerala, Himachal Pradesh, Goa.
-- **Raksha** — safety and emergencies. Domestic violence, cybercrime, stalking, panic response. Returns structured step-by-step cards with helpline numbers, not paragraphs.
+**Usha** — mental health and emotional support. Designed to feel like talking to a calm, older friend, not a clinical chatbot. No bullet-point lists, no "your feelings are valid" every message. Replies mirror the user's language and register — Hinglish stays Hinglish, Devanagari stays Devanagari.
 
-Each assistant uses RAG so answers are grounded in actual documents, not just whatever the LLM guesses. Responses cite sources inline, and staleness penalties are domain-aware — government scheme chunks expire aggressively (budget cycles change fast), while legal statutes are treated as stable.
+**Umang** — Indian legal rights. Covers criminal law (BNS/BNSS/BSA 2023, the new codes that replaced IPC/CrPC from July 2024), civil rights, family law, consumer protection, labour law (including the four Labour Codes 2020), property/tenant rights, cybercrime, RTI, and more. Every response is structured, cites specific acts and section numbers, distinguishes civil from criminal remedies, and never recommends a police complaint where a Labour Commissioner or consumer forum is the correct first step.
+
+**Aarogya** — government schemes and entitlements. PM-JAY, PM-KISAN, MGNREGA, scholarships, ration cards, Mudra loans, eShram, and state-level schemes for Delhi, Gujarat, Rajasthan, Bihar, Punjab, Kerala, Himachal Pradesh, and Goa. Includes a deterministic eligibility checker (rule-based, not LLM) that matches the user's state, age, income, and category against scheme criteria.
+
+**Raksha** — safety and emergencies. Domestic violence (immediate danger → safety plan; legal procedure → Umang), cybercrime, stalking, online fraud. Active emergencies get the Step 1/2/3 format with helpline numbers upfront; post-incident queries get acknowledgment then concrete reporting steps.
 
 ---
 
@@ -45,94 +46,255 @@ START → load_memory → classify → route → retrieve → maybe_search → g
 Three things make this genuinely agentic rather than just a chatbot with a knowledge base:
 
 **1. Autonomous web search**
-The agent decides on its own whether to run a web search. It triggers when the query has real-time signals (`latest`, `current`, `2025`, helpline numbers, `abhi`, `naya`…), when RAG returns too few or low-confidence results, or always for Legal and Government Schemes domains (those go stale fast). DuckDuckGo, Wikipedia, and optionally Brave Search run concurrently with retry backoff so a flaky network doesn't silently drop results.
+The agent decides on its own whether to run a web search. It triggers when the query has real-time signals (`latest`, `current`, `2025`, helpline numbers, `abhi`, `naya`…), when RAG returns too few or low-confidence results, or always for Legal and Government Schemes domains. DuckDuckGo, Wikipedia, and optionally Brave Search run concurrently with retry backoff.
 
 **2. Self-evolving memory**
-After every response, a background task compresses the conversation into a 2–3 sentence summary and extends an emotion arc (`neutral → anxious → calm → …`). Both go into MongoDB. Next turn, `load_memory` fetches them and injects them into the system prompt as a `CONVERSATION CONTEXT` block — correctly in the system prompt, not mixed into the user message. The user never has to repeat context — the agent just remembers.
+After every response, a background task compresses the conversation into a 2–3 sentence summary and extends an emotion arc (`neutral → anxious → calm → …`). Both go into MongoDB. Next turn, `load_memory` fetches them and injects them into the system prompt as a `CONVERSATION CONTEXT` block — correctly in the system prompt, not mixed into the user message.
 
 **3. Goal tracking**
-Every turn, `detect_goal` runs in parallel with intent and emotion detection. If it finds something actionable — `"file an RTI"`, `"apply for PM-JAY"`, `"find a therapist"` — it stores that goal and surfaces it on every subsequent turn. Once a goal is stored, the detector only fires again if it sees a *new or changed* goal — no redundant DB writes. A live goal badge appears in the UI so the user can see what the agent is tracking.
+Every turn, `detect_goal` runs in parallel with intent and emotion detection. If it finds something actionable — `"file an RTI"`, `"apply for PM-JAY"`, `"find a therapist"` — it stores that goal and surfaces it on every subsequent turn. A live goal badge appears in the UI so the user can see what the agent is tracking.
 
 ---
 
-## Umang's legal pipeline — multi-agent architecture
+## Umang's legal pipeline
 
-Umang uses a dedicated 3-node LangGraph sub-graph with a modular prompt architecture:
+Umang uses a dedicated 3-node LangGraph sub-graph. Each node is a specialised agent; the 70B model only runs once (compose step), keeping latency acceptable on free-tier Groq.
 
 ```
-query → _analyze (8B) → _prepare (Python) → _compose (70B) → quality gates → response
+query
+  │
+  ▼  Agent 1 — Case Analyzer (llama-3.1-8b-instant)
+  │  Structured JSON output:
+  │    category (25 options), issue_type, urgency, employment_type,
+  │    property_type, known_facts, missing_facts, follow_up,
+  │    limitation_concern, personal_law, jurisdiction
+  │
+  ▼  Agents 2–6 — Preparation (Python, no LLM call)
+  │  Organise RAG chunks by type (rights / procedure / general)
+  │  Build deterministic legal reasoning context from _LEGAL_KNOWLEDGE
+  │  Detect jurisdiction from query text
+  │  Load document template if needed (RTI, consumer complaint, etc.)
+  │
+  ▼  Agent 7 — Response Composer (llama-3.3-70b-versatile)
+  │  System prompt assembled from 7 modular components (see below)
+  │  Synthesises one structured response
+  │
+  ▼  Post-response quality gates (Python, no LLM call)
+     Hallucination guardrails + quality checker (see below)
 ```
 
-**Agent 1 — Case Analyzer (llama-3.1-8b-instant)**
-Classifies the query with structured JSON output: `category`, `issue_type` (Civil/Criminal/Employment/Family/Property/Consumer/Cyber/Administrative), `employment_type`, `property_type`, `urgency`, `known_facts`, `missing_facts`, `follow_up`, `limitation_concern`.
+### Case Analyzer — 25 legal categories
 
-**Agents 2–6 — Preparation (Python)**
-Organises RAG chunks by type (rights / procedure / general), builds a deterministic legal reasoning context from `_LEGAL_KNOWLEDGE`, detects jurisdiction from the query, loads document templates if needed.
+```
+DomesticViolence | Divorce | Maintenance | FIR | Consumer | RTI | Tenant
+Employment | Property | Cybercrime | POSH | ChequeBounce | Bail | POCSO
+Constitutional | Criminal | Contract | Inheritance | MedicalNegligence
+LabourCodes | DPDP | MotorVehicles | ChildCustody | RTE | General
+```
 
-**Agent 7 — Response Composer (llama-3.3-70b-versatile)**
-Synthesises the final response with a system prompt assembled from modular components:
+Additional schema fields added to guide tailored responses:
+- `issue_type` — Civil | Criminal | Family | Consumer | Employment | Property | Cyber | Administrative | Constitutional | Mixed
+- `employment_type` — private_employee | government_employee | gig_worker | domestic_worker | intern | apprentice | factory_worker
+- `property_type` — rented_residential | pg_hostel | commercial_lease | agricultural | owned_property
+
+These fields determine which legal framework applies (ID Act for private workmen vs. service rules for government employees vs. Code on Social Security for gig workers, etc.).
+
+### Deterministic legal knowledge — `_LEGAL_KNOWLEDGE`
+
+24 categories have a deterministic knowledge dict that is always injected regardless of RAG confidence. Each entry has:
+
+| Field | Contents |
+|-------|----------|
+| `applicable_laws` | Exact act names + what each covers |
+| `dispute_classification` | Labour vs. civil vs. criminal vs. administrative |
+| `typical_remedies` | What the user can actually get |
+| `evidence_checklist` | Specific documents to preserve |
+| `procedure_steps` | Step-by-step correct escalation path |
+| `limitation_period` | Filing deadlines (critical — missing these kills the case) |
+| `authorities` | Which forum handles which sub-type |
+| `typical_timeline` | Realistic expectations |
+| `typical_costs` | Filing fees + lawyer estimate |
+| `common_mistakes` | What people do wrong |
+| `free_legal_aid` | NALSA / DLSA options |
+
+This means Umang always knows the correct escalation order before RAG results even arrive. It also means retrieval failures don't produce empty or hallucinated guidance.
+
+### FIR guard — three layers
+
+The single most common mistake in Indian legal chatbots is recommending a police complaint for salary disputes, rent disputes, or warranty claims. These are civil/labour matters; police cannot recover wages.
+
+Three independent layers block this:
+
+1. **Case Analyzer** classifies `Employment` salary queries as `issue_type: "Employment"` by default, not `"Criminal"`. The `dispute_classification` field explicitly distinguishes labour disputes from criminal offences.
+2. **`_LEGAL_KNOWLEDGE["Employment"]`** has a `WARNING` key: "DO NOT recommend FIR merely because salary is unpaid" — directly in the reasoning context the composer reads.
+3. **Quality checker** (`quality_checker.py`) pattern-matches the response for "FIR…salary" and "FIR…wages" and flags it as a warning.
+
+The correct escalation order for unpaid wages: written demand → Labour Commissioner (free) → legal notice → Labour Court → FIR **only if fraud/PF misappropriation/forgery**.
+
+### Response format — 9 sections
+
+Every substantive Umang response uses this structure (defined in `response_template.py`, injected into the composer system prompt):
+
+```
+## Summary           — 1–2 sentences, hedged language ("you may have the right to...")
+## Issue Type        — Civil | Criminal | Employment | etc. + sub-type
+## Applicable Law    — specific Act + Section + one sentence on what it says
+## Your Rights       — numbered list, concrete entitlements
+## What You Can Do   — numbered step-by-step, most accessible/free option first
+## Documents Needed  — specific evidence checklist including non-obvious items
+## When to Contact Police   — only if cognizable offence present; omitted for civil matters
+## When to Contact a Lawyer — trigger conditions; always mentions DLSA/15100 first
+## Important Notes   — caveats, state-specific variations, limitation periods
+```
+
+### BNS/BNSS/BSA 2023 — new Indian criminal codes
+
+From July 2024, India replaced:
+- IPC 1860 → Bharatiya Nyaya Sanhita (BNS) 2023
+- CrPC 1973 → Bharatiya Nagarik Suraksha Sanhita (BNSS) 2023
+- Evidence Act 1872 → Bharatiya Sakshya Adhiniyam (BSA) 2023
+
+Umang always cites the new code first for post-July-2024 matters: `"BNS Section 85 (formerly IPC 498A)"`. The `_LEGAL_KNOWLEDGE` dicts use the new section numbers throughout, and the hallucination guardrails know the correct section range for each code.
+
+### Modular prompt architecture — token budget
+
+The previous monolithic persona string grew to ~19,000 chars (~4,800 tokens) across iterations and started hitting Groq's 12,000 TPM limit. The system prompt is now assembled from separate modules:
 
 | Component | Module | ~Tokens |
 |-----------|--------|---------|
-| Persona (10 core rules) | `responder.py` → `PERSONA["Legal"]` | ~730 |
-| Language instruction | `language_engine.py` → `build_language_instruction()` | ~100 |
-| Response format (9 sections) | `response_template.py` → `RESPONSE_TEMPLATE_DESCRIPTION` | ~350 |
-| Few-shot example (1 relevant) | `few_shot_examples.py` → `get_few_shot_examples()` | ~400–600 |
+| Persona (10 core rules) | `responder.py → PERSONA["Legal"]` | ~730 |
+| Language instruction | `language_engine.py → build_language_instruction()` | ~100 |
+| Response format | `response_template.py → RESPONSE_TEMPLATE_DESCRIPTION` | ~350 |
+| Few-shot example (1 relevant) | `few_shot_examples.py → get_few_shot_examples()` | ~400–600 |
 | Case analysis block | `legal_agents.py` internal | ~100 |
-| Legal reasoning context | `_LEGAL_KNOWLEDGE` dict | ~400 |
-| Retrieved knowledge (5 chunks) | FAISS + BM25 hybrid | ~1,000 |
-| **Total** | | **~3,100–3,280 tokens** |
+| Legal reasoning context | `_LEGAL_KNOWLEDGE` dict for category | ~400 |
+| Retrieved knowledge (top 5 chunks) | FAISS + BM25 hybrid | ~1,000 |
+| Source format prompt | `responder.py → SOURCES_SECTION_PROMPT` | ~80 |
+| **Total** | | **~3,160–3,360 tokens** |
 
-**Post-response quality gates**
-Every response passes through two validators before being returned:
+Each component is independently editable and testable. Changing the response format means editing one file (`response_template.py`), not hunting through a 19,000-char string.
 
-- **Hallucination guardrails** (`hallucination_guardrails.py`) — checks section numbers against a 40-act whitelist (`KNOWN_ACTS`) with valid section ranges. Sections cited beyond the known maximum trigger a verification note.
-- **Quality checker** (`quality_checker.py`) — pattern-based checks for overpromise language ("you will definitely win"), German law bleed-in, FIR misuse for salary disputes, and unverified helpline numbers.
+### Post-response quality gates
 
-**FIR Guard**
-Umang never recommends filing a police complaint for unpaid salary or civil rent/warranty disputes. The Case Analyzer classifies these as `labour_dispute` or `civil_dispute` by default. Escalation order: written demand → Labour Commissioner (free) → Labour Court → FIR only if fraud/forgery/criminal offence.
+After every LLM response, two validators run before the text reaches the user:
+
+**Hallucination guardrails** (`hallucination_guardrails.py`):
+- Maintains `KNOWN_ACTS` — a whitelist of 39 Indian statutes with valid section ranges (e.g., IPC max section: 511, BNS max: 358, Consumer Protection Act max: 107)
+- Scans citations in the response; if a section number exceeds the known maximum, appends a verification note rather than silently passing
+
+**Quality checker** (`quality_checker.py`):
+- Detects overpromise language: "you will definitely win", "guaranteed", "you will receive"
+- Detects German law bleed-in: "BGB", "Arbeitsrecht", "deutsches Recht"
+- Detects FIR misuse for employment/salary disputes
+- Detects unverified toll-free helpline numbers not in the approved list
+- Errors append a disclaimer; warnings are logged for review
 
 ---
 
 ## RAG pipeline — hybrid retrieval
 
 ```
-query → normalise (Hinglish expansion + OCR cleanup) → legal query expansion (37+ regex patterns)
-      → FAISS dense (multilingual-e5-small) + BM25 sparse (rank-bm25)
-      → RRF fusion (k=60) → cross-encoder reranking → top-5 chunks
+query
+  │
+  ▼  _normalize_query()
+  │  Hinglish → English (80+ term map), OCR artifact cleanup
+  │
+  ▼  _expand_legal_query()  [Legal domain only]
+  │  37+ regex patterns append domain-specific terminology
+  │  e.g. "salary nahi mili" → + "Code on Wages 2019 Labour Commissioner unpaid salary..."
+  │
+  ├──────────────────────────────────────┐
+  │                                      │
+  ▼                                      ▼
+  FAISS dense retrieval           BM25 sparse retrieval
+  (multilingual-e5-small)         (rank-bm25, graceful fallback)
+  up to 25 candidates             up to 25 candidates
+  │                                      │
+  └──────────────────┬───────────────────┘
+                     │
+                     ▼  _rrf_fuse()
+                     │  Reciprocal Rank Fusion  score = Σ 1/(60 + rank)
+                     │
+                     ▼  cross-encoder reranker
+                     │  ms-marco-MiniLM-L-6-v2
+                     │
+                     ▼  _dedup()
+                     │  Remove near-duplicates by topic
+                     │
+                     ▼  top-5 chunks returned
 ```
 
-**Reciprocal Rank Fusion** combines dense semantic retrieval (FAISS) with lexical retrieval (BM25) without score normalisation issues. BM25 especially helps for exact law citations (`"Section 138 NI Act"`) that dense embeddings may not rank highly.
+**Why BM25 alongside FAISS**: Dense semantic retrieval misses exact matches. A query like `"Section 138 NI Act"` may not rank highly in embedding space because the embedding conflates `"138"` with numeric context. BM25 nails exact term matches. RRF fusion combines both signals without any score normalisation pain.
 
-BM25 degrades gracefully — if `rank-bm25` is not installed, the pipeline falls back to FAISS-only with no code changes needed.
+**BM25 graceful fallback**: If `rank-bm25` is not installed, the pipeline silently falls back to FAISS-only. No code changes needed.
 
-**Hinglish map** — 80+ Roman-script Hindi terms expanded to English equivalents before embedding:
-`"tankhwaah"` → `"salary wages"`, `"kirayedaar"` → `"tenant renter"`, `"vakeel"` → `"lawyer"`, `"f&f"` → `"full and final settlement dues"`.
+**Domain-aware confidence thresholds** (from `knowledge_meta.py`):
+- Legal: High ≥ 0.80, Medium ≥ 0.60, Low < 0.60
+- Other domains: High ≥ 0.75, Medium ≥ 0.55
+- Confidence is shown per-response and affects how cautiously the composer words its answer
 
-**Legal query expansion** — 37+ regex patterns append domain terminology to vague queries before embedding:
-`"salary nahi mili"` → `+ "Code on Wages 2019 Payment of Wages Act unpaid salary labour commissioner..."`
+**Domain-aware staleness penalties**:
+- Government scheme chunks: expire at 2 months (soft) / 6 months (hard) — budget allocations change every year
+- Legal statutes: expire at 6 months (soft) / 18 months (hard) — acts change rarely
+- Recent chunks get a staleness bonus so newer guidance is preferred when scores are similar
+
+**Overfetch multipliers** (before cross-encoder):
+- Legal: 25 candidates (dense chunks, exact wording matters)
+- Government Schemes: 20 candidates
+- Other: 15 candidates
 
 ---
 
 ## Multilingual support
 
-Language is detected heuristically at request time (no LLM needed):
-1. Devanagari unicode block → Hindi (`hi`)
-2. German markers/characters (ä, ö, ü, ß + keyword list) → German (`de`)
-3. Hinglish marker words (mujhe, kya, chahiye, nahi…) → Hinglish (`hi-roman`)
+Language is detected heuristically at request time — no extra LLM call:
+
+1. Devanagari unicode block (U+0900–U+097F) → Hindi (`hi`)
+2. German-specific characters (ä, ö, ü, ß) or ≥1 German marker words → German (`de`)
+3. ≥2 Hinglish marker words (mujhe, kya, chahiye, nahi, vakeel…) → Hinglish (`hi-roman`)
 4. Fallback → English (`en`)
 
-Each language gets a tailored instruction injected into the system prompt. German responses always cite Indian law — never German Mietrecht, BGB, or German courts. Indian legal terms are translated in parentheses: `"FIR (Strafanzeige bei der indischen Polizei)"`.
+Each detected language gets a different instruction string injected into the system prompt:
+
+| Language | Style |
+|----------|-------|
+| English | Plain professional; explain legal terms inline |
+| Devanagari Hindi | Natural modern Hindi; no archaic bureaucratic phrasing; legal terms stay English |
+| Hinglish (Roman) | Conversational mix; `"Labour Commissioner ke paas jaao"` not `"invoke the appropriate remedy"` |
+| German | Clear B2-level German; **always Indian law**; Indian terms translated in parentheses — `"FIR (Strafanzeige bei der indischen Polizei)"`, `"NALSA (Indiens kostenloser Rechtshilfedienst)"` — never German courts or agencies |
+
+The 10 few-shot examples include a Hinglish wrongful-termination example and a German tenant-rights example (Indian rent law, not German Mietrecht) to anchor the model's output style.
+
+---
+
+## Hinglish map and legal query expansion
+
+**Hinglish map** — 80+ Roman-script Hindi and mixed terms expanded before embedding:
+- `"tankhwaah"` → `"salary wages"` | `"f&f"` → `"full and final settlement dues payable"`
+- `"kirayedaar"` → `"tenant renter"` | `"vakeel"` → `"lawyer"` | `"talaq"` → `"divorce Muslim"`
+- `"bima"` → `"insurance claim"` | `"durghatna"` → `"accident motor vehicle"`
+- `"company bhaag gayi"` → `"employer absconded company closed wages unpaid"`
+
+**Legal query expansion** — 37+ regex patterns fire on vague natural-language queries to append technical terminology that maps onto knowledge chunks:
+- Salary withheld → `+ "Code on Wages 2019 Payment of Wages Act unpaid salary labour commissioner complaint..."`
+- Wrongful termination → `+ "Industrial Disputes Act 1947 Industrial Relations Code 2020 wrongful termination retrenchment workman reinstatement..."`
+- Data breach → `+ "Digital Personal Data Protection Act 2023 DPDP Act Data Protection Board Data Fiduciary consent..."`
 
 ---
 
 ## Other features
 
-- **Scheme eligibility checker**: rule-based, not LLM. The deterministic checker takes state, age, income, and category and returns exactly which schemes match.
-- **Legal document templates**: RTI, consumer complaint, rent notice — filled from form inputs, not AI-generated. Keeps them legally consistent.
-- **Automatic intent routing**: ask a legal question in the mental health tab and the agent detects it and reroutes. The UI shows the reasoning.
-- Mood tracker, breathing companion, session summaries, saved moments, conversation export, offline detection, error boundary.
-- **Auth**: JWT with JTI blacklisting on logout, bcrypt (12 rounds), timing-attack-resistant login. Account deletion wipes all messages, summaries, memory, and goals.
+- **Scheme eligibility checker** — rule-based (not LLM). Takes state, age, income, and category. Returns only schemes the user actually qualifies for with application steps. LLM eligibility was too vague and sometimes wrong; deterministic rules are more reliable for structured entitlement data.
+- **Legal document templates** — RTI application, consumer complaint, rent demand notice, legal notice for cheque bounce, affidavit. Filled from form inputs, not AI-generated. Keeps documents legally consistent and free of hallucinated clause numbers.
+- **Automatic intent routing** — ask a legal question in the mental health tab and the agent detects it and suggests switching. The UI shows the routing reason.
+- **Mood tracker** — tracks emotional arc across the session; shown in the Usha tab.
+- **Breathing companion** — animated guide for panic/anxiety moments; accessible from Raksha and Usha.
+- **Session summaries** — auto-generated 2–3 sentence memory after each conversation.
+- **Saved moments** — users can pin specific responses to revisit.
+- **Conversation export** — full session downloadable as text.
+- **Auth** — JWT with JTI blacklisting on logout, bcrypt (12 rounds), timing-attack-resistant login. Account deletion wipes all messages, summaries, memory, and goals from MongoDB.
+- **Offline detection** — UI shows a banner if the connection drops; queues the message and retries.
+- **Rate limiting** — `slowapi` per-endpoint limits prevent abuse.
 
 ---
 
@@ -142,14 +304,15 @@ Each language gets a tailored instruction injected into the system prompt. Germa
 |-------|-------------|
 | Frontend | React 18, Vite, Tailwind CSS, shadcn/ui, Radix UI |
 | Backend | Python 3.10, FastAPI, LangGraph |
-| LLMs | Groq API — Llama 3.3 70B (responses), Llama 3.1 8B (intent/emotion/goal/memory) |
-| Embeddings | `intfloat/multilingual-e5-small` |
-| Vector search | FAISS (CPU) + BM25 hybrid (rank-bm25, Reciprocal Rank Fusion) |
+| LLMs | Groq API — Llama 3.3 70B (response composer), Llama 3.1 8B (case analyzer, intent, emotion, goal, memory) |
+| Embeddings | `intfloat/multilingual-e5-small` (384-dim, 90+ languages) |
+| Vector search | FAISS (CPU) + BM25 sparse (rank-bm25) — Reciprocal Rank Fusion |
 | Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | Database | MongoDB Atlas (Motor async driver) |
 | Auth | PyJWT + bcrypt |
 | Rate limiting | slowapi |
 | Web search | DuckDuckGo + Wikipedia + Brave Search (concurrent, with retry backoff) |
+| LLM fallback chain | Groq → Ollama (local) → Anthropic (cloud) |
 | Deployment | Docker, Hugging Face Spaces |
 
 ---
@@ -159,28 +322,45 @@ Each language gets a tailored instruction injected into the system prompt. Germa
 ```
 server/
 ├── ai/
-│   ├── legal_agents.py          # 7-agent pipeline (Case Analyzer → Response Composer)
-│   ├── hallucination_guardrails.py  # Citation validation against KNOWN_ACTS whitelist
-│   ├── language_engine.py       # Language detection + per-language instructions
-│   ├── quality_checker.py       # Post-response pattern validation
-│   ├── few_shot_examples.py     # 10 curated Q&A examples for system prompt injection
-│   ├── response_template.py     # 9-section response format specification
-│   └── responder.py             # Persona definitions + non-Legal response pipeline
+│   ├── legal_agents.py               # 7-agent pipeline + _LEGAL_KNOWLEDGE (24 categories)
+│   ├── hallucination_guardrails.py   # 39-act KNOWN_ACTS whitelist, section range validation
+│   ├── language_engine.py            # Heuristic language detection (en/hi/hi-roman/de)
+│   ├── quality_checker.py            # Post-response pattern validation (overpromise, FIR misuse, etc.)
+│   ├── few_shot_examples.py          # 10 curated Q&A examples for system prompt injection
+│   ├── response_template.py          # 9-section response format (RESPONSE_TEMPLATE_DESCRIPTION)
+│   └── responder.py                  # Persona definitions + non-Legal response pipeline
 ├── rag/
-│   ├── retriever.py             # FAISS + BM25 hybrid retrieval with RRF fusion
-│   ├── knowledge_meta.py        # Domain-aware confidence scoring
-│   └── knowledge/               # RAG chunk files
-├── legal_graph.py               # LangGraph sub-graph for Umang
+│   ├── retriever.py                  # FAISS + BM25 hybrid retrieval, RRF fusion, Hinglish map
+│   ├── knowledge_meta.py             # Domain-aware confidence scoring + staleness penalties
+│   ├── store.py                      # FAISS vector store with soft-delete + compaction
+│   └── knowledge/                    # RAG chunk source files
+├── legal_graph.py                    # LangGraph sub-graph for Umang (3 nodes + quality gates)
+├── aarogya_graph.py                  # LangGraph sub-graph for Aarogya
+├── graph.py                          # Top-level domain routing graph
 ├── tests/
-│   └── test_legal_cases.py      # 91 test cases across all legal categories
+│   ├── test_legal_cases.py           # 91 test cases across all legal categories
+│   └── test_confidence.py            # Confidence scoring tests
 docs/
-├── system_prompt.md             # System prompt component architecture + token budget
-├── rag_architecture.md          # Full RAG pipeline diagram and configuration
-├── response_template.md         # Response section definitions
-├── few_shot_examples.md         # Example bank and selection logic
-├── knowledge_base_structure.md  # Static knowledge + dynamic RAG chunk structure
-└── developer_documentation.md   # Architecture overview, env vars, testing guide
+├── system_prompt.md                  # System prompt component architecture + token budget
+├── rag_architecture.md               # Full RAG pipeline diagram and configuration
+├── response_template.md              # 9-section response format with guidance per section
+├── few_shot_examples.md              # Example bank structure and selection logic
+├── knowledge_base_structure.md       # Static _LEGAL_KNOWLEDGE + dynamic RAG chunks
+└── developer_documentation.md       # Architecture overview, env vars, adding new knowledge
 ```
+
+---
+
+## Tests
+
+```bash
+cd server
+python -m pytest tests/test_legal_cases.py -v
+```
+
+91 test cases covering all legal categories: employment (salary withheld, wrongful termination, F&F settlement, POSH, PF disputes), property/tenant (illegal eviction, lockout, rent increase), family law (domestic violence, divorce, maintenance, POCSO, child custody), consumer (warranty, medical negligence), criminal (FIR refusal, bail, cheque bounce), cyber (UPI fraud, data breach, online blackmail), constitutional (RTI, fundamental rights writ), personal law routing (Hindu/Muslim/Christian), and multilingual queries (Hinglish, German).
+
+Tests validate the Case Analyzer's structured JSON output — categories, urgency, issue_type, employment_type, property_type, follow_up questions, and confidence thresholds — without making any LLM calls. They run in under a second.
 
 ---
 
@@ -231,7 +411,15 @@ npm --prefix client run dev
 
 Open `http://localhost:5173`. Backend runs on port 5000.
 
-First startup downloads the embedding model (`multilingual-e5-small`) and builds the FAISS + BM25 index — takes 1–2 minutes. Subsequent starts load from cache and are instant.
+First startup downloads `multilingual-e5-small` and `ms-marco-MiniLM-L-6-v2`, then builds the FAISS + BM25 index — takes 1–2 minutes. Subsequent starts load from cache and are instant.
+
+**Optional: install BM25 support**
+
+```bash
+pip install rank-bm25==0.2.2
+```
+
+Without it the pipeline falls back to FAISS-only retrieval with no other changes.
 
 ---
 
