@@ -23,7 +23,7 @@ export function LangToggle() {
             className="rounded-full h-9 px-3 text-[11px] gap-1 hover:bg-primary/10 hover:text-primary"
             aria-label="Language"
           >
-            <span className="font-mono uppercase">{current.code === "auto" ? "auto" : current.code}</span>
+            <span className="font-mono uppercase">{current.code === "hi-roman" ? "HIN" : current.code === "auto" ? "auto" : current.code}</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>Reply language</TooltipContent>
@@ -42,7 +42,7 @@ export function LangToggle() {
                     setOpen(false);
                   }}
                   className={cn(
-                    "w-full text-left px-3 py-2 text-xs hover:bg-primary/10 transition-colors",
+                    "w-full text-left px-3 py-2 text-xs hover:bg-primary/10 transition-colors whitespace-nowrap",
                     l.code === code && "bg-primary/15 text-primary font-medium"
                   )}
                 >
