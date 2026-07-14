@@ -23,7 +23,7 @@ export function LangToggle() {
             className="rounded-full h-9 px-3 text-[11px] gap-1 hover:bg-primary/10 hover:text-primary"
             aria-label="Language"
           >
-            <span className="font-mono uppercase">{current.code === "hi-roman" ? "HIN" : current.code === "auto" ? "auto" : current.code}</span>
+            <span className="font-mono uppercase">{current.code === "hi-roman" ? "HIN" : current.code}</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>Reply language</TooltipContent>
@@ -32,7 +32,7 @@ export function LangToggle() {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <ul className="absolute right-0 top-full mt-2 z-40 w-48 rounded-2xl bg-card/95 backdrop-blur-xl border border-border/40 petal-shadow py-1.5">
+          <ul className="absolute right-0 top-full mt-2 z-40 w-36 rounded-2xl bg-card/95 backdrop-blur-xl border border-border/40 petal-shadow py-1.5">
             {LANGS.map((l) => (
               <li key={l.code}>
                 <button

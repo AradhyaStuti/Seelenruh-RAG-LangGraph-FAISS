@@ -4,7 +4,6 @@
 const KEY = "seelenruh:lang:v1";
 
 export const LANGS = [
-  { code: "auto", label: "Auto" },
   { code: "en", label: "English" },
   { code: "hi", label: "हिंदी" },
   { code: "hi-roman", label: "Hinglish" },
