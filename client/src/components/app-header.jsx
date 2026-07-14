@@ -2,12 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import { BlossomLogo, BreathLungs, HeartBookmark } from "@/components/icons";
 import { LangToggle } from "@/components/lang-toggle";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BreathingCompanion } from "@/components/breathing-companion";
 import { SavedMomentsDrawer } from "@/components/saved-moments";
 import { SignOutDialog } from "@/components/sign-out-dialog";
 import { ChangePasswordDialog } from "@/components/change-password";
 import { getUser, subscribe } from "@/lib/auth";
+import { verifyAdminKey, setAdminKey } from "@/lib/adminApi";
 import { cn } from "@/lib/utils";
 
 function initialsOf(name, email) {
@@ -96,11 +98,78 @@ function AccountMenu({ user, onSignOut, onChangePassword }) {
   );
 }
 
-export function AppHeader() {
+function AdminKeyDialog({ open, onClose, onSuccess }) {
+  const [key, setKey] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!key.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const ok = await verifyAdminKey(key.trim());
+      if (ok) {
+        setAdminKey(key.trim());
+        onSuccess();
+        setKey("");
+      } else {
+        setError("Invalid admin key.");
+      }
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="w-full max-w-sm mx-4 rounded-3xl border border-border/40 bg-card/95 backdrop-blur-xl petal-shadow p-6 space-y-4">
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Admin Access</p>
+            <p className="text-[11px] text-muted-foreground">Enter your admin key to continue</p>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Input
+            type="password"
+            placeholder="Admin key"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            autoFocus
+            className="rounded-xl"
+          />
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" onClick={onClose} className="flex-1 rounded-xl" disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1 rounded-xl" disabled={loading || !key.trim()}>
+              {loading ? "Checking…" : "Enter"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export function AppHeader({ onAdminClick }) {
   const [breatheOpen, setBreatheOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
+  const [adminKeyOpen, setAdminKeyOpen] = useState(false);
   const [user, setUser] = useState(() => getUser());
 
   useEffect(() => subscribe(() => setUser(getUser())), []);
@@ -141,6 +210,23 @@ export function AppHeader() {
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAdminKeyOpen(true)}
+                aria-label="Admin panel"
+                className="rounded-full hover:bg-primary/10 hover:text-primary transition opacity-40 hover:opacity-100"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+                </svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Admin panel</TooltipContent>
+          </Tooltip>
           <LangToggle />
 
           <Tooltip>
@@ -187,6 +273,11 @@ export function AppHeader() {
       <SavedMomentsDrawer open={savedOpen} onOpenChange={setSavedOpen} />
       <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} user={user} />
       <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
+      <AdminKeyDialog
+        open={adminKeyOpen}
+        onClose={() => setAdminKeyOpen(false)}
+        onSuccess={() => { setAdminKeyOpen(false); onAdminClick?.(); }}
+      />
     </>
   );
 }

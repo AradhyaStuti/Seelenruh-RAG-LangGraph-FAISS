@@ -60,6 +60,10 @@ async def connect() -> bool:
         await _db["knowledge_gaps"].create_index("createdAt", expireAfterSeconds=180 * 24 * 3600)
         await _db["knowledge_gaps"].create_index("status")
         await _db["knowledge_gaps"].create_index("domain")
+        await _db["document_registry"].create_index("docId", unique=True)
+        await _db["document_registry"].create_index("domain")
+        await _db["document_registry"].create_index("status")
+        await _db["document_registry"].create_index("indexedAt")
         await _db["user_memory"].create_index("userId", unique=True)
         await _db["login_attempts"].create_index("email", unique=True)
         await _db["login_attempts"].create_index("updatedAt", expireAfterSeconds=15 * 60)
@@ -684,6 +688,125 @@ async def update_knowledge_gap(gap_id: str, status: str) -> bool:
         return bool(result.modified_count)
     except Exception as err:
         log.error("failed to update knowledge gap", error=str(err))
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Document registry (admin-uploaded knowledge documents)
+# ---------------------------------------------------------------------------
+
+async def save_document_registry(
+    *,
+    doc_id: str,
+    filename: str,
+    domain: str,
+    file_type: str,
+    chunk_ids: list[str],
+    size_bytes: int,
+    source: Optional[str] = None,
+    language: str = "en",
+    uploader_id: Optional[str] = None,
+    topic: Optional[str] = None,
+) -> bool:
+    if not is_connected():
+        return False
+    try:
+        await _db["document_registry"].update_one(
+            {"docId": doc_id},
+            {"$set": {
+                "docId": doc_id,
+                "filename": filename,
+                "domain": domain,
+                "fileType": file_type,
+                "chunkIds": chunk_ids,
+                "chunkCount": len(chunk_ids),
+                "embeddingCount": len(chunk_ids),
+                "sizeBytes": size_bytes,
+                "source": source,
+                "language": language,
+                "topic": topic,
+                "uploaderId": uploader_id,
+                "status": "active",
+                "indexedAt": datetime.utcnow(),
+                "updatedAt": datetime.utcnow(),
+            }},
+            upsert=True,
+        )
+        return True
+    except Exception as err:
+        log.error("failed to save document registry", error=str(err))
+        return False
+
+
+async def fetch_document_registry(
+    domain: Optional[str] = None,
+    file_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 200,
+) -> list[dict]:
+    if not is_connected():
+        return []
+    try:
+        q: dict = {}
+        if domain:
+            q["domain"] = domain
+        if file_type:
+            q["fileType"] = file_type
+        if status:
+            q["status"] = status
+        cursor = _db["document_registry"].find(q).sort("indexedAt", -1).limit(limit)
+        rows = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            for k in ("indexedAt", "updatedAt"):
+                if isinstance(doc.get(k), datetime):
+                    doc[k] = doc[k].isoformat()
+            rows.append(doc)
+        return rows
+    except Exception as err:
+        log.error("failed to fetch document registry", error=str(err))
+        return []
+
+
+async def fetch_document_by_id(doc_id: str) -> Optional[dict]:
+    if not is_connected():
+        return None
+    try:
+        doc = await _db["document_registry"].find_one({"docId": doc_id})
+        if not doc:
+            return None
+        doc["_id"] = str(doc["_id"])
+        for k in ("indexedAt", "updatedAt"):
+            if isinstance(doc.get(k), datetime):
+                doc[k] = doc[k].isoformat()
+        return doc
+    except Exception as err:
+        log.error("failed to fetch document by id", error=str(err))
+        return None
+
+
+async def update_document_status(doc_id: str, status: str) -> bool:
+    if not is_connected():
+        return False
+    try:
+        result = await _db["document_registry"].update_one(
+            {"docId": doc_id},
+            {"$set": {"status": status, "updatedAt": datetime.utcnow()}},
+        )
+        return bool(result.modified_count)
+    except Exception as err:
+        log.error("failed to update document status", error=str(err))
+        return False
+
+
+async def delete_document_from_registry(doc_id: str) -> bool:
+    if not is_connected():
+        return False
+    try:
+        result = await _db["document_registry"].delete_one({"docId": doc_id})
+        return bool(result.deleted_count)
+    except Exception as err:
+        log.error("failed to delete document from registry", error=str(err))
         return False
 
 

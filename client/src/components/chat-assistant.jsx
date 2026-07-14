@@ -51,8 +51,8 @@ import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
 import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument } from "@/lib/api";
 import { EligibilityChecker } from "@/components/eligibility-checker";
-import { RetrievalPanel } from "@/components/retrieval-panel";
-import { LegalTimeline } from "@/components/legal-timeline";
+import { ExplainabilityPanel } from "@/components/explainability-panel";
+import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -1128,14 +1128,21 @@ export default function ChatAssistant({ onDomainChange }) {
                                 confidence={message.confidence || "None"}
                               />
                             )}
-                            {/* Retrieval pipeline visualization */}
+                            {/* Explainability panel — "Why did I answer this?" */}
                             {message.role === "assistant" &&
                               !message.streaming &&
-                              !message.id?.startsWith("welcome-") &&
-                              message.sources?.length > 0 && (
-                              <RetrievalPanel
-                                sources={message.sources}
+                              !message.id?.startsWith("welcome-") && (
+                              <ExplainabilityPanel
+                                sources={message.sources || []}
                                 confidence={message.confidence || "None"}
+                                routing={message.routing || null}
+                                webSearched={!!message.webSearched}
+                                goal={message.goal || null}
+                                selectedDomain={selectedDomain}
+                                timelineUsed={
+                                  selectedDomain === "Legal" &&
+                                  !!detectTimelineKey(message.content || "")
+                                }
                               />
                             )}
                             {/* Legal timeline for Umang */}
