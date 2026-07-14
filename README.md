@@ -288,7 +288,7 @@ The 10 few-shot examples include a Hinglish wrongful-termination example and a G
 - **Legal document templates** — RTI application, consumer complaint, rent demand notice, legal notice for cheque bounce, affidavit. Filled from form inputs, not AI-generated. Keeps documents legally consistent and free of hallucinated clause numbers.
 - **Automatic intent routing** — ask a legal question in the mental health tab and the agent detects it and suggests switching. The UI shows the routing reason.
 - **Mood tracker** — tracks emotional arc across the session; shown in the Usha tab.
-- **Breathing companion** — animated guide for panic/anxiety moments; accessible from Raksha and Usha.
+- **Breathing companion** — animated guide for panic/anxiety moments; accessible from Raksha and Usha. Three scientifically validated patterns: Calm 4-6 (extended exhale activates the parasympathetic nervous system), Box 4-4-4-4 (used in clinical stress-regulation research and by the US military), and 4-7-8 (developed by Dr. Andrew Weil from pranayama; peer-reviewed for sleep onset and cortisol reduction). All three work by slowing breathing to ~5–6 breaths/min, which improves heart rate variability (HRV) and stimulates the vagus nerve.
 - **Session summaries** — auto-generated 2–3 sentence memory after each conversation.
 - **Saved moments** — users can pin specific responses to revisit.
 - **Conversation export** — full session downloadable as text.
