@@ -24,6 +24,7 @@ from routes.summary import router as summary_router
 from routes.tts import router as tts_router
 from routes.admin import router as admin_router
 from routes.upload import router as upload_router
+from routes.feedback import router as feedback_router
 import db
 from rag import retriever
 
@@ -134,6 +135,7 @@ app.include_router(summary_router)
 app.include_router(tts_router)
 app.include_router(admin_router)
 app.include_router(upload_router)
+app.include_router(feedback_router)
 
 
 _CLIENT_DIST = (Path(__file__).parent.parent / "client" / "dist").resolve()

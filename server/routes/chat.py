@@ -72,14 +72,30 @@ async def _handle(req: ChatRequest, user: dict, fast_mode: bool = False) -> Chat
         content=result["response"], is_emergency=result["isEmergency"],
     )
 
+    confidence = result.get("confidence", "None")
+    retrieved_ids = result.get("retrievedIds", [])
+
+    # Log knowledge gap when retrieval yields nothing useful
+    if confidence in ("Low", "None") and len(retrieved_ids) == 0:
+        try:
+            await db.save_knowledge_gap(
+                query=req.query,
+                domain=req.domain,
+                confidence=confidence,
+                session_id=session_id,
+                user_id=user["id"],
+            )
+        except Exception:
+            pass  # never block the response
+
     return ChatResponse(
         response=result["response"],
         isEmergency=result["isEmergency"],
         via=result.get("via"),
-        retrievedIds=result.get("retrievedIds", []),
+        retrievedIds=retrieved_ids,
         sources=result.get("sources", []),
         citedIndices=result.get("citedIndices", []),
-        confidence=result.get("confidence", "None"),
+        confidence=confidence,
         routing=result.get("routing"),
         goal=result.get("goal"),
         webSearched=bool(result.get("webSearched", False)),
@@ -146,6 +162,7 @@ async def chat_stream_endpoint(
         if _is_injection(req.query):
             yield f"data: {json.dumps({'error': 'Your message contains content that cannot be processed.'})}\n\n"
             return
+        done_event: dict = {}
         try:
             async for event in graph.stream_run(
                 query=req.query,
@@ -159,10 +176,26 @@ async def chat_stream_endpoint(
                     full_response = event.get("response", "")
                     emotion = event.get("emotion")
                     is_emergency = bool(event.get("isEmergency", False))
+                    done_event = event
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as err:
             yield f"data: {json.dumps({'error': str(err)})}\n\n"
             return
+
+        # Log knowledge gap when stream yields no retrieved docs
+        try:
+            gap_confidence = done_event.get("confidence", "None")
+            gap_ids = done_event.get("retrievedIds", [])
+            if gap_confidence in ("Low", "None") and len(gap_ids) == 0:
+                await db.save_knowledge_gap(
+                    query=req.query,
+                    domain=req.domain,
+                    confidence=gap_confidence,
+                    session_id=session_id,
+                    user_id=user["id"],
+                )
+        except Exception:
+            pass
 
         try:
             await db.save_message(

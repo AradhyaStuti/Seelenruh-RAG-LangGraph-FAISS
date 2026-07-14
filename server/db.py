@@ -53,6 +53,13 @@ async def connect() -> bool:
         await _db["feedback"].create_index(
             [("userId", 1), ("messageId", 1)], unique=True
         )
+        await _db["feedback_logs"].create_index("createdAt", expireAfterSeconds=365 * 24 * 3600)
+        await _db["feedback_logs"].create_index([("messageId", 1)], unique=True)
+        await _db["feedback_logs"].create_index("domain")
+        await _db["feedback_logs"].create_index("vote")
+        await _db["knowledge_gaps"].create_index("createdAt", expireAfterSeconds=180 * 24 * 3600)
+        await _db["knowledge_gaps"].create_index("status")
+        await _db["knowledge_gaps"].create_index("domain")
         await _db["user_memory"].create_index("userId", unique=True)
         await _db["login_attempts"].create_index("email", unique=True)
         await _db["login_attempts"].create_index("updatedAt", expireAfterSeconds=15 * 60)
@@ -518,6 +525,166 @@ async def clear_failed_logins(email: str) -> None:
         await _db["login_attempts"].delete_one({"email": email.lower().strip()})
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Feedback logs (rich per-message feedback with full context)
+# ---------------------------------------------------------------------------
+
+async def save_feedback_log(
+    *,
+    message_id: str,
+    vote: str,
+    domain: str = "",
+    query: Optional[str] = None,
+    response: Optional[str] = None,
+    confidence: Optional[str] = None,
+    persona: Optional[str] = None,
+    session_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> bool:
+    if not is_connected():
+        return False
+    try:
+        await _db["feedback_logs"].update_one(
+            {"messageId": message_id},
+            {"$set": {
+                "messageId": message_id,
+                "vote": vote,
+                "domain": domain,
+                "query": query,
+                "response": response,
+                "confidence": confidence,
+                "persona": persona,
+                "sessionId": session_id,
+                "userId": user_id,
+                "createdAt": datetime.utcnow(),
+            }},
+            upsert=True,
+        )
+        return True
+    except Exception as err:
+        log.error("failed to save feedback log", error=str(err))
+        return False
+
+
+async def fetch_feedback_stats() -> dict:
+    if not is_connected():
+        return {"total": 0, "upvotes": 0, "downvotes": 0, "by_domain": {}, "by_confidence": {}}
+    try:
+        pipeline = [
+            {"$group": {
+                "_id": None,
+                "total": {"$sum": 1},
+                "upvotes": {"$sum": {"$cond": [{"$eq": ["$vote", "up"]}, 1, 0]}},
+                "downvotes": {"$sum": {"$cond": [{"$eq": ["$vote", "down"]}, 1, 0]}},
+            }}
+        ]
+        agg = await _db["feedback_logs"].aggregate(pipeline).to_list(1)
+        totals = agg[0] if agg else {"total": 0, "upvotes": 0, "downvotes": 0}
+        del totals["_id"]
+
+        domain_pipeline = [
+            {"$group": {"_id": "$domain", "count": {"$sum": 1},
+                        "up": {"$sum": {"$cond": [{"$eq": ["$vote", "up"]}, 1, 0]}},
+                        "down": {"$sum": {"$cond": [{"$eq": ["$vote", "down"]}, 1, 0]}}}},
+        ]
+        domain_agg = await _db["feedback_logs"].aggregate(domain_pipeline).to_list(20)
+        by_domain = {r["_id"]: {"count": r["count"], "up": r["up"], "down": r["down"]}
+                     for r in domain_agg if r["_id"]}
+
+        conf_pipeline = [
+            {"$group": {"_id": "$confidence", "count": {"$sum": 1}}},
+        ]
+        conf_agg = await _db["feedback_logs"].aggregate(conf_pipeline).to_list(10)
+        by_confidence = {r["_id"]: r["count"] for r in conf_agg if r["_id"]}
+
+        return {**totals, "by_domain": by_domain, "by_confidence": by_confidence}
+    except Exception as err:
+        log.error("failed to fetch feedback stats", error=str(err))
+        return {"total": 0, "upvotes": 0, "downvotes": 0, "by_domain": {}, "by_confidence": {}}
+
+
+async def fetch_feedback_for_export(limit: int = 5000) -> list[dict]:
+    if not is_connected():
+        return []
+    try:
+        cursor = _db["feedback_logs"].find().sort("createdAt", -1).limit(limit)
+        rows = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            if isinstance(doc.get("createdAt"), datetime):
+                doc["createdAt"] = doc["createdAt"].isoformat()
+            rows.append(doc)
+        return rows
+    except Exception as err:
+        log.error("failed to fetch feedback for export", error=str(err))
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Knowledge gaps (low-confidence / no-retrieval queries)
+# ---------------------------------------------------------------------------
+
+async def save_knowledge_gap(
+    *,
+    query: str,
+    domain: str,
+    confidence: str,
+    session_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> bool:
+    if not is_connected():
+        return False
+    try:
+        await _db["knowledge_gaps"].insert_one({
+            "query": query,
+            "domain": domain,
+            "confidence": confidence,
+            "sessionId": session_id,
+            "userId": user_id,
+            "status": "open",          # open | solved | ignored
+            "createdAt": datetime.utcnow(),
+        })
+        return True
+    except Exception as err:
+        log.error("failed to save knowledge gap", error=str(err))
+        return False
+
+
+async def fetch_knowledge_gaps(status: Optional[str] = None, limit: int = 100) -> list[dict]:
+    if not is_connected():
+        return []
+    try:
+        q: dict = {}
+        if status:
+            q["status"] = status
+        cursor = _db["knowledge_gaps"].find(q).sort("createdAt", -1).limit(limit)
+        rows = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            if isinstance(doc.get("createdAt"), datetime):
+                doc["createdAt"] = doc["createdAt"].isoformat()
+            rows.append(doc)
+        return rows
+    except Exception as err:
+        log.error("failed to fetch knowledge gaps", error=str(err))
+        return []
+
+
+async def update_knowledge_gap(gap_id: str, status: str) -> bool:
+    if not is_connected():
+        return False
+    try:
+        from bson import ObjectId
+        result = await _db["knowledge_gaps"].update_one(
+            {"_id": ObjectId(gap_id)},
+            {"$set": {"status": status, "updatedAt": datetime.utcnow()}},
+        )
+        return bool(result.modified_count)
+    except Exception as err:
+        log.error("failed to update knowledge gap", error=str(err))
+        return False
 
 
 async def export_user_data(user_id: str) -> dict:

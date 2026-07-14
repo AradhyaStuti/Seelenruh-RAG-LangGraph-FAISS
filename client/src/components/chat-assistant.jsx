@@ -51,6 +51,8 @@ import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
 import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument } from "@/lib/api";
 import { EligibilityChecker } from "@/components/eligibility-checker";
+import { RetrievalPanel } from "@/components/retrieval-panel";
+import { LegalTimeline } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -469,18 +471,24 @@ export default function ChatAssistant({ onDomainChange }) {
     setSavedIds(next);
   };
 
-  const submitFeedback = (messageId, vote) => {
+  const submitFeedback = (messageId, vote, message) => {
     setFeedbackMap((prev) => {
       const next = { ...prev };
-      // Toggle off if clicking the same button
       if (next[messageId] === vote) {
         delete next[messageId];
-        // Remove from server too (send "remove" is not supported, but a re-vote
-        // with opposite polarity won't happen here — just clear locally)
       } else {
         next[messageId] = vote;
-        // Fire-and-forget to server; localStorage is the primary store
-        submitFeedbackToServer(messageId, vote, selectedDomain);
+        // Find the preceding user message to pass as query context
+        const msgs = visibleMessages;
+        const idx = msgs.findIndex((m) => m.id === messageId);
+        const prevUserMsg = idx > 0 ? msgs.slice(0, idx).reverse().find((m) => m.role === "user") : null;
+        submitFeedbackToServer(messageId, vote, selectedDomain, {
+          query: prevUserMsg?.content,
+          response: message?.content,
+          confidence: message?.confidence,
+          persona: domainConfig[selectedDomain]?.persona,
+          sessionId: activeSession?.id,
+        });
       }
       try { localStorage.setItem("seelenruh:feedback:v1", JSON.stringify(next)); } catch { /* ignore */ }
       return next;
@@ -1069,7 +1077,7 @@ export default function ChatAssistant({ onDomainChange }) {
                                               "h-7 w-7 rounded-full transition-all",
                                               feedbackMap[message.id] === "up" && "text-emerald-600 opacity-100 bg-emerald-50"
                                             )}
-                                            onClick={() => submitFeedback(message.id, "up")}
+                                            onClick={() => submitFeedback(message.id, "up", message)}
                                             aria-label="Helpful"
                                             aria-pressed={feedbackMap[message.id] === "up"}
                                           >
@@ -1091,7 +1099,7 @@ export default function ChatAssistant({ onDomainChange }) {
                                               "h-7 w-7 rounded-full transition-all",
                                               feedbackMap[message.id] === "down" && "text-red-500 opacity-100 bg-red-50"
                                             )}
-                                            onClick={() => submitFeedback(message.id, "down")}
+                                            onClick={() => submitFeedback(message.id, "down", message)}
                                             aria-label="Not helpful"
                                             aria-pressed={feedbackMap[message.id] === "down"}
                                           >
@@ -1119,6 +1127,23 @@ export default function ChatAssistant({ onDomainChange }) {
                                 citedIndices={message.citedIndices || []}
                                 confidence={message.confidence || "None"}
                               />
+                            )}
+                            {/* Retrieval pipeline visualization */}
+                            {message.role === "assistant" &&
+                              !message.streaming &&
+                              !message.id?.startsWith("welcome-") &&
+                              message.sources?.length > 0 && (
+                              <RetrievalPanel
+                                sources={message.sources}
+                                confidence={message.confidence || "None"}
+                              />
+                            )}
+                            {/* Legal timeline for Umang */}
+                            {message.role === "assistant" &&
+                              !message.streaming &&
+                              !message.id?.startsWith("welcome-") &&
+                              selectedDomain === "Legal" && (
+                              <LegalTimeline messageContent={message.content} />
                             )}
                             {/* Inline disclaimer for Legal / Government Schemes responses */}
                             {message.role === "assistant" &&

@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 Domain = Literal["Mental Health", "Legal", "Government Schemes", "Safety"]
 Role = Literal["user", "assistant"]
-Lang = Literal["auto", "en", "hi", "de"]
+Lang = Literal["auto", "en", "hi", "hi-roman", "de"]
 
 
 class HistoryMessage(BaseModel):

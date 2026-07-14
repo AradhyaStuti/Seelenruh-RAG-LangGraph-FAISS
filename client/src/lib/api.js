@@ -239,9 +239,9 @@ export async function parseDocument(file) {
 }
 
 /** Fire-and-forget feedback — never throws so localStorage stays as primary. */
-export async function submitFeedbackToServer(messageId, vote, domain) {
+export async function submitFeedbackToServer(messageId, vote, domain, extra = {}) {
   try {
-    await post("/api/feedback", { messageId, vote, domain });
+    await post("/api/feedback", { messageId, vote, domain, ...extra });
   } catch {
     // localStorage is the primary store; server sync is best-effort
   }

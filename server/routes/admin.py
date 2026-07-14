@@ -207,3 +207,65 @@ async def rollback_index(
         detail={"steps": steps, "chunksAfter": retriever._store.size()},
     )
     return {"ok": True, "steps": steps, "totalInIndex": retriever._store.size()}
+
+
+# ---------------------------------------------------------------------------
+# Knowledge gap endpoints
+# ---------------------------------------------------------------------------
+
+GapStatus = Literal["open", "solved", "ignored"]
+
+
+@router.get("/knowledge-gaps")
+async def list_knowledge_gaps(
+    x_admin_key: Optional[str] = Header(default=None),
+    status: Optional[str] = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict:
+    """List low-confidence queries that the RAG system couldn't answer well."""
+    _check_key(x_admin_key)
+    gaps = await db.fetch_knowledge_gaps(status=status, limit=limit)
+    return {"gaps": gaps, "count": len(gaps)}
+
+
+class GapUpdateRequest(BaseModel):
+    status: GapStatus
+
+
+@router.patch("/knowledge-gaps/{gap_id}")
+async def update_gap(
+    gap_id: str,
+    req: GapUpdateRequest,
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """Mark a knowledge gap as solved or ignored."""
+    _check_key(x_admin_key)
+    ok = await db.update_knowledge_gap(gap_id, req.status)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Gap not found or already updated.")
+    return {"ok": True, "status": req.status}
+
+
+# ---------------------------------------------------------------------------
+# Analytics dashboard
+# ---------------------------------------------------------------------------
+
+@router.get("/analytics")
+async def analytics_dashboard(
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """Return aggregate stats for the admin analytics dashboard."""
+    _check_key(x_admin_key)
+    feedback_stats = await db.fetch_feedback_stats()
+    knowledge_gaps = await db.fetch_knowledge_gaps(status="open", limit=500)
+    rag_status = {
+        "ragReady": retriever.is_ready(),
+        "chunksInIndex": retriever._store.size() if retriever.is_ready() else 0,
+    }
+    return {
+        "feedback": feedback_stats,
+        "knowledgeGaps": {
+            "open": len(knowledge_gaps),
+        },
+        "rag": rag_status,
+    }
