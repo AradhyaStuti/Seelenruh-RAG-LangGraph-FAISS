@@ -32,7 +32,7 @@ export function LangToggle() {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <ul className="absolute right-0 top-full mt-2 z-40 w-36 rounded-2xl bg-card/95 backdrop-blur-xl border border-border/40 petal-shadow py-1.5">
+          <ul className="absolute right-0 top-full mt-2 z-40 min-w-[8rem] w-max rounded-2xl bg-card/95 backdrop-blur-xl border border-border/40 petal-shadow py-1.5">
             {LANGS.map((l) => (
               <li key={l.code}>
                 <button
