@@ -188,8 +188,12 @@ export default function ChatAssistant({ onDomainChange }) {
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   const { toast } = useToast();
+
+  // Track mounted state to prevent setState after unmount
+  useEffect(() => () => { isMountedRef.current = false; }, []);
 
   // Keep lang in sync across tabs / components
   useEffect(() => {
@@ -372,6 +376,7 @@ export default function ChatAssistant({ onDomainChange }) {
         sessionId: activeSession.id,
       });
       if (!result.summary) throw new Error("Empty summary returned.");
+      if (!isMountedRef.current) return;
       const userMessageCount = realMessages.filter((m) => m.role === "user").length;
       setDomainSessions((prev) => {
         const ds = prev[selectedDomain];
@@ -387,9 +392,9 @@ export default function ChatAssistant({ onDomainChange }) {
         );
         return { ...prev, [selectedDomain]: { ...ds, sessions } };
       });
-      if (!silent) toast({ title: "Summary updated" });
+      if (!silent && isMountedRef.current) toast({ title: "Summary updated" });
     } catch (err) {
-      if (!silent) {
+      if (!silent && isMountedRef.current) {
         toast({
           title: "Couldn't summarise",
           description: err?.message || "Try again in a moment.",
@@ -397,7 +402,7 @@ export default function ChatAssistant({ onDomainChange }) {
         });
       }
     } finally {
-      setSummarizing(false);
+      if (isMountedRef.current) setSummarizing(false);
     }
   };
 

@@ -372,6 +372,15 @@ I built the evaluation tooling myself — `evaluate.py` and `evaluation/metrics.
 
 `evaluate.py` sends a fixed set of probes to the live `/api/chat` endpoint and scores each response using functions from `evaluation/metrics.py`. No external benchmark or scoring service. All pass/fail criteria are things I defined based on what I thought the system should and shouldn't do.
 
+The probe set has 60 probes across all four domains:
+
+| Domain | Probes | What they cover |
+|--------|--------|----------------|
+| Mental Health | 20 | Crisis/suicidal ideation, anxiety, depression, grief, therapy access, sleep, anger, self-harm, burnout, children's mental health, trauma/PTSD, multilingual (Hindi Devanagari, Hinglish, German), medication boundary, positive framing |
+| Legal | 20 | Unpaid wages, wrongful termination, PF, landlord/tenant, UPI fraud, RTI, consumer complaints, domestic violence (DV Act/498A), POSH, SC/ST Atrocities Act, FIR refusal, property disputes, cheque bounce, NRI property, free legal aid |
+| Government Schemes | 15 | PM-JAY, Mudra loan, PM-KISAN, eShram, MGNREGA, PM Awas Yojana, Sukanya Samriddhi, BPL ration card, disability schemes, SC/ST scholarships, Ujjwala Yojana, senior citizen pension, Startup India, Hindi-language probe, out-of-scope refusal guard |
+| Safety | 5 | Domestic violence emergency, cyber blackmail, stalking, child abuse reporting, road accident |
+
 Each probe specifies:
 - The query and which domain it should route to (`expected_category`)
 - Terms that must appear in the response (`must_contain`) — key legal acts, scheme names, helpline numbers
@@ -401,7 +410,7 @@ Each probe specifies:
 
 ### Benchmark results
 
-**Setup:** 18 probes run live against the server (Groq llama-3.3-70b, MongoDB Atlas, local machine, sequential requests with no warm-up). Run via `python evaluate.py --token <JWT> --verbose`.
+**Setup:** 18 probes from the full 60-probe set run live against the server (Groq llama-3.3-70b, MongoDB Atlas, local machine, sequential requests with no warm-up). Run via `python evaluate.py --token <JWT> --verbose`. The full set (`--domain all`) covers all 60 probes.
 
 **Before reading the numbers:** all percentages below are measured against the specific criteria defined in the metric definitions table above — not against some external standard. "0% hallucination" means zero responses triggered the hallucination patterns I defined; it doesn't mean the system is incapable of producing incorrect information. "100% classification" means all 18 clean-intent probes routed correctly; real user queries are often ambiguous. Read the numbers as what they are: results on a specific probe set under specific criteria, not general performance claims.
 
@@ -423,12 +432,12 @@ Each probe specifies:
 
 **By domain:**
 
-| Domain | Probes | Classification | Hallucination (defined criteria) | Avg latency |
-|--------|--------|---------------|----------------------------------|-------------|
-| Mental Health | 5 | 100% | 0% | 17.30s |
-| Legal | 5 | 100% | 0% | 29.25s |
-| Government Schemes | 5 | 100% | 0% | 23.98s |
-| Safety | 3 | 100% | 0% | 19.50s |
+| Domain | Probes run | Full set | Classification | Hallucination (defined criteria) | Avg latency |
+|--------|------------|----------|---------------|----------------------------------|-------------|
+| Mental Health | 5 | 20 | 100% | 0% | 17.30s |
+| Legal | 5 | 20 | 100% | 0% | 29.25s |
+| Government Schemes | 5 | 15 | 100% | 0% | 23.98s |
+| Safety | 3 | 5 | 100% | 0% | 19.50s |
 
 The latency numbers are high because legal and scheme queries produce long structured responses, and this was a cold sequential run. A warm server with parallel requests would look different. These are honest measurements, not cherry-picked.
 
