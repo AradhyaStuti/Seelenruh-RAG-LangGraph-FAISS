@@ -9,8 +9,9 @@ import { cn } from "@/lib/utils";
 import { fetchAdminAnalytics, fetchFeedbackStats } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
 
-const CHART_COLORS = ["#a78bfa", "#34d399", "#f59e0b", "#60a5fa", "#f87171", "#c084fc"];
-const CONFIDENCE_COLORS = { High: "#34d399", Medium: "#f59e0b", Low: "#f87171", None: "#94a3b8" };
+// Soft palette that reads well on light backgrounds
+const CHART_COLORS = ["#7C9EC9", "#7FC99A", "#C9A87C", "#E07A7A", "#A57CC9", "#7CBFC9"];
+const CONFIDENCE_COLORS = { High: "#7FC99A", Medium: "#C9A87C", Low: "#E07A7A", None: "#94a3b8" };
 
 function Skeleton({ className }) {
   return <div className={cn("animate-pulse rounded-lg bg-muted/50", className)} />;

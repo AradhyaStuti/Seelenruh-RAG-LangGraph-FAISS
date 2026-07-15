@@ -469,7 +469,7 @@ def get_few_shot_examples(
     """Return formatted few-shot examples for the given category/language, or '' if none match."""
     # Priority: category + lang match → category match → lang match → any
     def score(ex: FewShotExample) -> int:
-        cat_match = category == "*" or ex.category.lower() == category.lower() or ex.lang == "*"
+        cat_match = category == "*" or ex.category.lower() == category.lower() or ex.category == "*"
         lang_match = lang == "*" or ex.lang == lang or ex.lang == "*"
         if cat_match and lang_match:
             return 2

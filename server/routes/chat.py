@@ -1,6 +1,6 @@
 """Chat, audio, transcribe, history, and streaming endpoints."""
 import json
-import re as _re
+import re
 from typing import AsyncIterator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,16 +17,16 @@ from logger import get_logger
 log = get_logger("chat")
 
 _INJECTION_PATTERNS = [
-    _re.compile(r"ignore\s+(previous|above|all|your)\s+instructions", _re.I),
-    _re.compile(r"you\s+are\s+now\s+(a\s+)?(?!umang|usha|aarogya|raksha)", _re.I),
-    _re.compile(r"forget\s+(you\s+are|your\s+instructions|all\s+previous)", _re.I),
-    _re.compile(r"act\s+as\s+(a\s+)?(different|new|another|unrestricted|evil)", _re.I),
-    _re.compile(r"\bsystem\s+prompt\b", _re.I),
-    _re.compile(r"\bjailbreak\b", _re.I),
-    _re.compile(r"\bDAN\b"),  # "Do Anything Now" jailbreak
-    _re.compile(r"developer\s+mode", _re.I),
-    _re.compile(r"disable\s+(safety|filter|guard|restriction)", _re.I),
-    _re.compile(r"pretend\s+(you\s+are|to\s+be)\s+(not\s+an?\s+ai|human|unrestricted)", _re.I),
+    re.compile(r"ignore\s+(previous|above|all|your)\s+instructions", re.I),
+    re.compile(r"you\s+are\s+now\s+(a\s+)?(?!umang|usha|aarogya|raksha)", re.I),
+    re.compile(r"forget\s+(you\s+are|your\s+instructions|all\s+previous)", re.I),
+    re.compile(r"act\s+as\s+(a\s+)?(different|new|another|unrestricted|evil)", re.I),
+    re.compile(r"\bsystem\s+prompt\b", re.I),
+    re.compile(r"\bjailbreak\b", re.I),
+    re.compile(r"\bDAN\b"),  # "Do Anything Now" jailbreak
+    re.compile(r"developer\s+mode", re.I),
+    re.compile(r"disable\s+(safety|filter|guard|restriction)", re.I),
+    re.compile(r"pretend\s+(you\s+are|to\s+be)\s+(not\s+an?\s+ai|human|unrestricted)", re.I),
 ]
 
 
@@ -84,8 +84,8 @@ async def _handle(req: ChatRequest, user: dict, fast_mode: bool = False) -> Chat
                 session_id=session_id,
                 user_id=user["id"],
             )
-        except Exception:
-            pass  # never block the response
+        except Exception as err:
+            log.warning("knowledge gap logging failed", error=str(err))
 
     return ChatResponse(
         response=result["response"],

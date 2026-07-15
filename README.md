@@ -7,7 +7,7 @@ sdk: docker
 app_port: 7860
 pinned: false
 ---
-# Seelenruh — A LangGraph-Powered Agentic RAG System for Multi-Domain Civic and Mental Health Support
+# Seelenruh — Mental health, legal rights, government schemes, and safety support for Indian users
 
 Live demo: [Hugging Face Spaces](https://huggingface.co/spaces/aradhyastuti/seelenruh)
 
@@ -288,7 +288,7 @@ The 10 few-shot examples include a Hinglish wrongful-termination example and a G
 - **Legal document templates** — RTI application, consumer complaint, rent demand notice, legal notice for cheque bounce, affidavit. Filled from form inputs, not AI-generated. Keeping documents template-based rather than LLM-generated means clause numbers stay accurate and consistent.
 - **Automatic intent routing** — ask a legal question in the mental health tab and the agent detects it and suggests switching. The UI shows the routing reason.
 - **Mood tracker** — tracks emotional arc across the session; shown in the Usha tab.
-- **Breathing companion** — animated guide for panic/anxiety moments; accessible from Raksha and Usha. Three scientifically validated patterns: Calm 4-6 (extended exhale activates the parasympathetic nervous system), Box 4-4-4-4 (used in clinical stress-regulation research and by the US military), and 4-7-8 (developed by Dr. Andrew Weil from pranayama; peer-reviewed for sleep onset and cortisol reduction). All three work by slowing breathing to ~5–6 breaths/min, which improves heart rate variability (HRV) and stimulates the vagus nerve.
+- **Breathing companion** — animated breathing guide accessible from Usha and Raksha. Three patterns: Calm 4-6 (slow the exhale to ease tension), Box 4-4-4-4 (equal counts, good for focus), and 4-7-8 (long exhale, helpful for sleep). All three slow the breath down, which is the actual mechanism — the specific counts matter less than the slower rhythm.
 - **Session summaries** — auto-generated 2–3 sentence memory after each conversation.
 - **Saved moments** — users can pin specific responses to revisit.
 - **Conversation export** — full session downloadable as text.
@@ -366,13 +366,11 @@ Tests validate the Case Analyzer's structured JSON output — categories, urgenc
 
 ## Evaluation
 
-This project was implemented, integrated, tested, and evaluated by me. AI tools were used as a development aid — for code suggestions, debugging, and documentation — not as a substitute for design decisions, domain understanding, or evaluation judgement. Every metric definition, probe design, threshold choice, and result interpretation in this section is my own work.
-
----
+I built the evaluation tooling myself — `evaluate.py` and `evaluation/metrics.py`. I used AI tools during development (code suggestions, debugging), but the metric definitions, probe design, thresholds, and result interpretation are my own decisions. I'm noting this because it matters for how you read the numbers below.
 
 ### How evaluation works
 
-Evaluation is done offline using `evaluate.py`, which sends a fixed probe set to the live `/api/chat` endpoint and scores each response using functions defined in `evaluation/metrics.py`. No external benchmark or third-party scoring service is used — all criteria are defined and annotated by me.
+`evaluate.py` sends a fixed set of probes to the live `/api/chat` endpoint and scores each response using functions from `evaluation/metrics.py`. No external benchmark or scoring service. All pass/fail criteria are things I defined based on what I thought the system should and shouldn't do.
 
 Each probe specifies:
 - The query and which domain it should route to (`expected_category`)
@@ -403,51 +401,36 @@ Each probe specifies:
 
 ### Benchmark results
 
-**Setup:** 18 probes, run live against the server (Groq llama-3.3-70b primary LLM, MongoDB Atlas, local machine, sequential requests). Run via `python evaluate.py --token <JWT> --verbose`.
+**Setup:** 18 probes run live against the server (Groq llama-3.3-70b, MongoDB Atlas, local machine, sequential requests with no warm-up). Run via `python evaluate.py --token <JWT> --verbose`.
 
-| Metric | Score | What this means |
-|--------|-------|-----------------|
-| **Domain classification accuracy** | **100.0%** | Every query routed to the correct assistant (Usha / Umang / Aarogya / Raksha) across all 18 probes |
-| **Confidence accuracy** | **100.0%** | Self-reported confidence band matched expectation within ±1 band on all probes |
-| **Content pass rate** | **94.4%** (17/18) | 17 of 18 responses contained all required key terms; one miss explained below |
-| **Violation rate** | **0.0%** | No response contained any forbidden term |
-| **Timeline accuracy** | **100.0%** | All process queries (RTI, UPI fraud, Mudra loan) included step-by-step structure; non-process queries correctly did not |
-| **Language accuracy** | **88.9%** (16/18) | 16 of 18 responses were in the expected language; 2 Hindi-script queries returned transliterated responses |
-| **Safety pass rate** | **100.0%** | All 3 emergency probes (domestic violence, blackmail, stalking) included at least one valid Indian helpline |
-| **Hallucination rate** | **0.0%** | No response triggered any hallucination pattern — no foreign law, no fake helplines, no guarantee language |
-| **Avg RAG source count** | **4.8 chunks** | On average, 4–5 knowledge base chunks cited per response |
-| **Avg latency** | **22.84s** | Mean end-to-end response time across all 18 probes |
-| **p50 latency** | **23.29s** | Half of responses completed within 23.3 seconds |
-| **p90 latency** | **30.48s** | 90% of responses completed within 30.5 seconds |
-| **Max latency** | **31.35s** | Slowest response (RTI process query — long structured output) |
+**Before reading the numbers:** all percentages below are measured against the specific criteria defined in the metric definitions table above — not against some external standard. "0% hallucination" means zero responses triggered the hallucination patterns I defined; it doesn't mean the system is incapable of producing incorrect information. "100% classification" means all 18 clean-intent probes routed correctly; real user queries are often ambiguous. Read the numbers as what they are: results on a specific probe set under specific criteria, not general performance claims.
+
+| Metric | Score | Notes |
+|--------|-------|-------|
+| Domain classification accuracy | 100.0% | All 18 probes routed to correct assistant |
+| Confidence accuracy | 100.0% | Self-reported band within ±1 of expected on all probes |
+| Content pass rate | 94.4% (17/18) | One miss: PM-KISAN said "₹6,000" but check looked for "6000" |
+| Violation rate | 0.0% | No forbidden term in any response |
+| Timeline accuracy | 100.0% | Step-by-step present when expected, absent when not |
+| Language accuracy | 88.9% (16/18) | 2 Hindi-script queries got transliterated replies |
+| Safety pass rate | 100.0% | All 3 emergency probes included a valid helpline |
+| Hallucination rate | 0.0% (on defined criteria) | No foreign law, fake helplines, or guarantee language detected |
+| Avg RAG source count | 4.8 chunks | |
+| Avg latency | 22.84s | Sequential probes, cold server, local machine |
+| p50 latency | 23.29s | |
+| p90 latency | 30.48s | |
+| Max latency | 31.35s | RTI query — longest structured response |
 
 **By domain:**
 
-| Domain | Probes | Classification | Hallucination | Safety pass | Avg latency |
-|--------|--------|---------------|---------------|-------------|-------------|
-| Mental Health | 5 | 100% | 0% | 100% | 17.30s |
-| Legal | 5 | 100% | 0% | n/a | 29.25s |
-| Government Schemes | 5 | 100% | 0% | n/a | 23.98s |
-| Safety | 3 | 100% | 0% | 100% | 19.50s |
+| Domain | Probes | Classification | Hallucination (defined criteria) | Avg latency |
+|--------|--------|---------------|----------------------------------|-------------|
+| Mental Health | 5 | 100% | 0% | 17.30s |
+| Legal | 5 | 100% | 0% | 29.25s |
+| Government Schemes | 5 | 100% | 0% | 23.98s |
+| Safety | 3 | 100% | 0% | 19.50s |
 
----
-
-### Honest qualifications
-
-**On the 0% hallucination figure:**
-This is measured against a defined set of annotation criteria — regex patterns for foreign law references, non-existent Indian legal sections, fake helpline formats, and guarantee language. It means: on 18 probes, the system produced none of the hallucination patterns I defined and checked for. It is not a claim that the system never hallucinates in any sense or in any real-world query. LLMs can produce plausible-sounding but incorrect information in ways that no finite pattern set can catch. This figure should be read as "zero detected violations under these specific criteria," not as a guarantee.
-
-**On the 100% classification accuracy:**
-Routing accuracy is high because the system uses both keyword-based pre-classification and LangGraph conditional edges. However, the probe set is 18 queries designed to have clear domain intent. Real user queries are often ambiguous (e.g., domestic violence has both mental health and legal dimensions). The 100% figure reflects clean-probe accuracy, not ambiguous-query robustness.
-
-**On latency:**
-The 22.84s average is measured on a local machine running sequential probes with no warm-up. In this setup, each request waits for the previous one to complete, FAISS retrieval runs cold, and the LLM (llama-3.3-70b via Groq) generates long structured responses for legal and scheme queries. Production latency with a warm server and parallel handling would differ. The latency figures are real measurements — not benchmarked in favourable conditions.
-
-**On the one content miss:**
-The PM-KISAN probe checked for the literal string `"6000"` (the annual ₹6,000 transfer amount). The response correctly stated the amount as `"₹6,000"` — the comma-formatted version with currency symbol — which did not match the plain substring check. This is an annotation issue, not a factual error in the response.
-
-**On the evaluation scope:**
-18 probes cover representative cases across all four domains and three languages. They do not cover every legal category, every scheme, or every possible query pattern. A larger annotated dataset would give more statistically reliable numbers. What this evaluation does establish is that the core routing, retrieval, safety, and hallucination-prevention mechanisms work correctly on the cases tested.
+The latency numbers are high because legal and scheme queries produce long structured responses, and this was a cold sequential run. A warm server with parallel requests would look different. These are honest measurements, not cherry-picked.
 
 ---
 

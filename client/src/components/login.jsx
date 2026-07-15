@@ -107,7 +107,7 @@ export function LoginScreen() {
         await login({ email, password });
       } else if (mode === "forgot") {
         await forgotPassword(email);
-        setSuccess("Check your email — a reset link has been sent (or check the server console in dev mode).");
+        setSuccess("If that email is registered, you'll receive a reset link shortly.");
         setEmail("");
       } else if (mode === "reset") {
         const token = new URLSearchParams(window.location.search).get("token") || "";

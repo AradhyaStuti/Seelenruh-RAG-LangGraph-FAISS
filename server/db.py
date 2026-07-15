@@ -213,7 +213,8 @@ async def delete_summaries_for_user(user_id: str) -> int:
     try:
         result = await _db["summaries"].delete_many({"userId": user_id})
         return int(result.deleted_count or 0)
-    except Exception:
+    except Exception as err:
+        log.warning("delete_summaries_for_user failed", user_id=user_id, error=str(err))
         return 0
 
 
@@ -262,7 +263,8 @@ async def delete_session_memory_for_user(user_id: str) -> int:
     try:
         result = await _db["session_memory"].delete_many({"userId": user_id})
         return int(result.deleted_count or 0)
-    except Exception:
+    except Exception as err:
+        log.warning("delete_session_memory_for_user failed", user_id=user_id, error=str(err))
         return 0
 
 
@@ -357,7 +359,8 @@ async def fetch_user_memory(user_id: str) -> Optional[str]:
     try:
         doc = await _db["user_memory"].find_one({"userId": user_id})
         return doc.get("memory") if doc else None
-    except Exception:
+    except Exception as err:
+        log.warning("fetch_user_memory failed", user_id=user_id, error=str(err))
         return None
 
 
@@ -428,7 +431,8 @@ async def mark_email_verified(email: str) -> bool:
             {"$set": {"emailVerified": True, "verifiedAt": datetime.utcnow()}},
         )
         return bool(result.modified_count)
-    except Exception:
+    except Exception as err:
+        log.error("mark_email_verified failed", email=email, error=str(err))
         return False
 
 
@@ -464,7 +468,8 @@ async def delete_user_memory(user_id: str) -> int:
     try:
         result = await _db["user_memory"].delete_many({"userId": user_id})
         return int(result.deleted_count or 0)
-    except Exception:
+    except Exception as err:
+        log.warning("delete_user_memory failed", user_id=user_id, error=str(err))
         return 0
 
 
@@ -504,8 +509,8 @@ async def clear_failed_logins(email: str) -> None:
         return
     try:
         await _db["login_attempts"].delete_one({"email": email.lower().strip()})
-    except Exception:
-        pass
+    except Exception as err:
+        log.warning("failed to clear login attempts", email=email, error=str(err))
 
 
 async def save_feedback_log(
@@ -525,18 +530,20 @@ async def save_feedback_log(
     try:
         await _db["feedback_logs"].update_one(
             {"messageId": message_id},
-            {"$set": {
-                "messageId": message_id,
-                "vote": vote,
-                "domain": domain,
-                "query": query,
-                "response": response,
-                "confidence": confidence,
-                "persona": persona,
-                "sessionId": session_id,
-                "userId": user_id,
-                "createdAt": datetime.utcnow(),
-            }},
+            {
+                "$set": {
+                    "messageId": message_id,
+                    "vote": vote,
+                    "domain": domain,
+                    "query": query,
+                    "response": response,
+                    "confidence": confidence,
+                    "persona": persona,
+                    "sessionId": session_id,
+                    "userId": user_id,
+                },
+                "$setOnInsert": {"createdAt": datetime.utcnow()},
+            },
             upsert=True,
         )
         return True
@@ -799,7 +806,7 @@ async def export_user_data(user_id: str) -> dict:
         _collect("summaries",     {"userId": user_id}, {"userId": 0}),
         _collect("session_memory",{"userId": user_id}, {"userId": 0}),
         _collect("goals",         {"userId": user_id}, {"userId": 0}),
-        _collect("feedback",      {"userId": user_id}, {"userId": 0}),
+        _collect("feedback_logs", {"userId": user_id}, {"userId": 0}),
     )
 
     return {
