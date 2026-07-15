@@ -1,23 +1,7 @@
-"""
-quality_checker.py
-------------------
-Pattern-based post-response validation for Umang's legal assistant output.
+"""Pattern-based validation for Umang's legal responses.
 
-Checks for:
-  - Overpromising ("you will definitely win", "guaranteed")
-  - Fabricated helpline numbers
-  - German law bleed-in
-  - Empty section references ("Section X of [unknown act]")
-  - Missing disclaimer trigger words for high-stakes advice
-  - FIR misuse for civil salary disputes
-
-Usage
------
-    from server.ai.quality_checker import check_response, append_quality_note
-
-    result = check_response(response_text, category="Employment")
-    if not result.passed:
-        response_text = append_quality_note(response_text, result)
+Catches overpromising, German law bleed-in, FIR misuse for salary disputes,
+and hallucinated helpline numbers. Errors append a disclaimer; warnings are logged.
 """
 
 from __future__ import annotations
@@ -25,10 +9,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-# ---------------------------------------------------------------------------
-# Fail patterns — these indicate the response should be flagged
-# ---------------------------------------------------------------------------
-
+# error-level — these cause a disclaimer to be appended
 _FAIL_PATTERNS: list[tuple[re.Pattern, str]] = [
     # Overpromising outcomes
     (
@@ -73,10 +54,7 @@ _FAIL_PATTERNS: list[tuple[re.Pattern, str]] = [
     ),
 ]
 
-# ---------------------------------------------------------------------------
-# Warn patterns — advisory; do not prevent response but attach note
-# ---------------------------------------------------------------------------
-
+# warning-level — logged but not shown to users
 _WARN_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     # FIR misuse for employment salary disputes
     (
@@ -122,11 +100,6 @@ _WARN_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     ),
 ]
 
-# ---------------------------------------------------------------------------
-# Data classes
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class QualityIssue:
     pattern_desc: str
@@ -152,28 +125,10 @@ class QualityResult:
         return " | ".join(parts)
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
-
 def check_response(text: str, category: str = "*") -> QualityResult:
-    """
-    Run all quality checks on *text*.
-
-    Parameters
-    ----------
-    text     : The composed LLM response.
-    category : The legal category (e.g. "Employment", "Property").
-               Used to filter category-specific warn patterns.
-
-    Returns
-    -------
-    QualityResult — .passed is False only when an error-level pattern fires.
-    """
+    """Run all quality checks. .passed is False only on error-level hits; warnings are advisory."""
     issues: list[QualityIssue] = []
 
-    # Error-level checks (always run)
     for pattern, description in _FAIL_PATTERNS:
         if pattern.search(text):
             issues.append(QualityIssue(
@@ -182,7 +137,6 @@ def check_response(text: str, category: str = "*") -> QualityResult:
                 category="*",
             ))
 
-    # Warning-level checks (category-filtered)
     for pattern, description, pat_category in _WARN_PATTERNS:
         if pat_category != "*" and pat_category.lower() != category.lower():
             continue

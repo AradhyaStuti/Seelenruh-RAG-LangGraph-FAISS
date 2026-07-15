@@ -42,11 +42,7 @@ from ai.quality_checker import check_response  # noqa: E402
 RESULTS_DIR = Path(__file__).parent / "reports"
 RESULTS_DIR.mkdir(exist_ok=True)
 
-
-# ---------------------------------------------------------------------------
 # Extra hallucination detectors (beyond guardrails.py)
-# ---------------------------------------------------------------------------
-
 # Helplines known to be legitimate in India (partial list for sanity check)
 _VALID_HELPLINES: set[str] = {
     "112", "100", "101", "102", "104", "108", "181", "1091",
@@ -101,7 +97,6 @@ _KNOWN_1800: set[str] = {
     "18005990019",
 }
 
-
 @dataclass
 class HallucinationFinding:
     probe_id: str
@@ -112,7 +107,6 @@ class HallucinationFinding:
     finding_type: str
     detail: str
     severity: str = "warn"   # "fail" | "warn"
-
 
 @dataclass
 class ScanResult:
@@ -139,11 +133,7 @@ class ScanResult:
             counts[f.domain] += 1
         return dict(counts)
 
-
-# ---------------------------------------------------------------------------
 # Per-response scanner
-# ---------------------------------------------------------------------------
-
 def scan_response(
     probe_id: str,
     query: str,
@@ -204,11 +194,7 @@ def scan_response(
 
     return findings
 
-
-# ---------------------------------------------------------------------------
 # Built-in static probes
-# ---------------------------------------------------------------------------
-
 STATIC_PROBES: list[dict] = [
     # Legal — statute correctness
     {
@@ -347,7 +333,6 @@ STATIC_PROBES: list[dict] = [
     },
 ]
 
-
 def run_static_probes() -> ScanResult:
     """Evaluate static built-in probes without requiring live LLM calls."""
     result = ScanResult()
@@ -396,7 +381,6 @@ def run_static_probes() -> ScanResult:
 
     return result
 
-
 def scan_responses_file(path: Path) -> ScanResult:
     """Scan an external JSON file of response objects."""
     objects: list[dict] = json.loads(path.read_text(encoding="utf-8"))
@@ -420,11 +404,7 @@ def scan_responses_file(path: Path) -> ScanResult:
 
     return result
 
-
-# ---------------------------------------------------------------------------
 # Report writer
-# ---------------------------------------------------------------------------
-
 def write_hallucination_report(result: ScanResult, out_path: Path) -> None:
     n_pass = len(result.passed)
     n_fail = len(set(result.failed))
@@ -535,11 +515,7 @@ def write_hallucination_report(result: ScanResult, out_path: Path) -> None:
     out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  Hallucination report -> {out_path.relative_to(Path(__file__).parent.parent)}")
 
-
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
-
 def main() -> None:
     args = sys.argv[1:]
     mode = "probe"
@@ -574,7 +550,6 @@ def main() -> None:
 
     report_path = RESULTS_DIR / "hallucination_report.md"
     write_hallucination_report(result, report_path)
-
 
 if __name__ == "__main__":
     main()

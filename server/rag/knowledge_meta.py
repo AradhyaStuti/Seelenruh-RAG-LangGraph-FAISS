@@ -1,29 +1,13 @@
-"""
-Knowledge metadata enrichment and intelligent verification system.
+"""Chunk metadata enrichment and confidence scoring.
 
-PROBLEM SOLVED:
-  The old system penalised chunks purely by age (months since lastVerifiedOn).
-  A Constitution article from 1950 got the same "STALE" badge as a helpline
-  number not verified in 7 months. Age alone is the wrong signal.
-
-NEW APPROACH:
-  1. Classify every chunk by documentType (Act, Scheme, Helpline, Constitution, etc.)
-  2. Assign type-appropriate review windows (Constitution = never, Helpline = 30 days)
-  3. Compute reviewStatus from type + last verification date — not age alone
-  4. Score source authority from URL / source string (Authoritative → Low)
-  5. Compute weighted confidence: authority 30% + retrieval 20% + rerank 20%
-     + review status 10% + source quality 10% + cross-doc agreement 10%
-  6. Generate human-readable reviewNote for the frontend instead of bare "STALE"
-
-Existing chunks are enriched at runtime — no manual knowledge.py edits needed.
+I noticed the original system marked a 1950 Constitution article as "STALE" because
+it hadn't been re-verified in months — same treatment as an outdated helpline number.
+Fixed this by classifying each chunk by document type and applying per-type review windows
+(Constitution = never expires, Helpline = 30 days, Scheme = quarterly, etc.).
 """
 from datetime import date
 from enum import Enum
 from typing import Optional
-
-# ──────────────────────────────────────────────────────────────
-# TAXONOMY
-# ──────────────────────────────────────────────────────────────
 
 class DocumentType(str, Enum):
     CONSTITUTION   = "Constitution"     # Constitutional provisions — never expire
@@ -60,10 +44,6 @@ class SourceAuthority(str, Enum):
     UNKNOWN       = "Unknown"           # No source URL
 
 
-# ──────────────────────────────────────────────────────────────
-# REVIEW WINDOWS (days; None = no expiry)
-# ──────────────────────────────────────────────────────────────
-
 REVIEW_DAYS: dict[DocumentType, Optional[int]] = {
     DocumentType.CONSTITUTION:   None,   # Never expires
     DocumentType.ACT:            365,    # Annual — laws change rarely but need yearly check
@@ -91,10 +71,6 @@ _REVIEW_LABEL: dict[Optional[int], str] = {
     365:   "Annual",
     730:   "Biennial",
 }
-
-# ──────────────────────────────────────────────────────────────
-# DOCUMENT TYPE INFERENCE (keyword → type, applied to topic + source)
-# ──────────────────────────────────────────────────────────────
 
 _TYPE_RULES: list[tuple[list[str], DocumentType]] = [
     # Most specific first
@@ -158,10 +134,6 @@ _TYPE_RULES: list[tuple[list[str], DocumentType]] = [
      DocumentType.PORTAL),
 ]
 
-# ──────────────────────────────────────────────────────────────
-# SOURCE AUTHORITY INFERENCE
-# ──────────────────────────────────────────────────────────────
-
 _AUTHORITY_RULES: list[tuple[list[str], SourceAuthority]] = [
     # AUTHORITATIVE — primary law sources, apex courts, gazette
     (["legislative.gov.in", "indiacode.nic.in", "supremecourt.gov.in",
@@ -192,13 +164,8 @@ _AUTHORITY_RULES: list[tuple[list[str], SourceAuthority]] = [
      SourceAuthority.SECONDARY),
 ]
 
-# ──────────────────────────────────────────────────────────────
-# SOURCE URL RESOLVER
 # Maps known authority patterns → canonical official URLs.
-# Order matters: more specific patterns come first.
-# Never fabricates — returns None when no mapping exists.
-# ──────────────────────────────────────────────────────────────
-
+# More specific patterns come first; returns None when no mapping exists.
 _SOURCE_URL_MAP: list[tuple[str, str]] = [
     # ── Primary law / Judiciary ────────────────────────────────
     ("indiacode.nic.in",            "https://www.indiacode.nic.in/"),
@@ -380,16 +347,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
 
 
 def resolve_source_url(chunk: dict) -> Optional[str]:
-    """
-    Resolve the best known official URL for a chunk.
-
-    Priority order:
-      1. Explicit sourceUrl field already set on the chunk
-      2. Match against _SOURCE_URL_MAP using source + topic strings
-      3. None — never fabricates a URL
-
-    Safe to call with any chunk; returns None if no mapping exists.
-    """
+    """Return the best known official URL for a chunk, or None if no mapping exists."""
     if chunk.get("sourceUrl"):
         return chunk["sourceUrl"]
 
@@ -407,10 +365,6 @@ def resolve_source_url(chunk: dict) -> Optional[str]:
     return None
 
 
-# ──────────────────────────────────────────────────────────────
-# SCORES FOR WEIGHTED CONFIDENCE
-# ──────────────────────────────────────────────────────────────
-
 _AUTHORITY_SCORE: dict[SourceAuthority, float] = {
     SourceAuthority.AUTHORITATIVE: 1.00,
     SourceAuthority.OFFICIAL:      0.85,
@@ -426,10 +380,6 @@ _REVIEW_STATUS_SCORE: dict[ReviewStatus, float] = {
     ReviewStatus.SUPERSEDED:   0.15,
     ReviewStatus.DEPRECATED:   0.05,
 }
-
-# ──────────────────────────────────────────────────────────────
-# INFERENCE FUNCTIONS
-# ──────────────────────────────────────────────────────────────
 
 def infer_document_type(chunk: dict) -> DocumentType:
     """
@@ -475,16 +425,7 @@ def infer_source_authority(chunk: dict) -> SourceAuthority:
 
 
 def compute_review_status(chunk: dict, doc_type: DocumentType, today: Optional[date] = None) -> ReviewStatus:
-    """
-    Compute review status based on document type's review window.
-
-    NEVER marks a document as needing review based on age alone.
-    Instead: does the document type have a review frequency, and has that
-    window elapsed since the last verification?
-
-    Constitution articles → VERIFIED forever (no window).
-    Helpline numbers → NEEDS_REVIEW after 30 days.
-    """
+    """Check if the chunk's last-verified date is within the review window for its doc type."""
     # Explicit overrides from chunk metadata
     if chunk.get("currentStatus") == "Superseded" or chunk.get("supersededBy"):
         return ReviewStatus.SUPERSEDED
@@ -579,10 +520,6 @@ def enrich_chunk(chunk: dict, today: Optional[date] = None) -> dict:
     }
 
 
-# ──────────────────────────────────────────────────────────────
-# WEIGHTED CONFIDENCE SCORING
-# ──────────────────────────────────────────────────────────────
-
 def _normalise_faiss(score: float) -> float:
     """Normalise FAISS cosine similarity (typically 0.5–1.0) to 0–1."""
     return max(0.0, min(1.0, (score - 0.5) / 0.5))
@@ -594,17 +531,7 @@ def _normalise_rerank(score: float) -> float:
 
 
 def compute_weighted_score(chunk: dict) -> float:
-    """
-    Compute a weighted confidence score for a single retrieved chunk.
-
-    Weights:
-      Source authority:     30%
-      Retrieval similarity: 20%
-      Reranker score:       20%
-      Review status:        10%
-      Source present:       10%
-      (cross-doc handled separately)
-    """
+    """Weighted confidence score: authority 30%, retrieval 20%, rerank 20%, review 10%, source 10%."""
     authority_str = chunk.get("sourceAuthority", SourceAuthority.UNKNOWN.value)
     try:
         authority = SourceAuthority(authority_str)
@@ -628,15 +555,7 @@ def compute_weighted_score(chunk: dict) -> float:
 
 
 def compute_confidence(hits: list[dict]) -> str:
-    """
-    Multi-factor confidence calculation replacing the old pure retrieval-score approach.
-
-    Returns "High" | "Medium" | "Low" | "None".
-
-    Legal domain uses tighter thresholds (High ≥ 0.80, Medium ≥ 0.60) because legal
-    advice with Low confidence is actively risky — better to tell the user explicitly
-    that the information is uncertain than to present it as confidently as scheme info.
-    """
+    """Multi-factor confidence: "High" | "Medium" | "Low" | "None". Legal domain uses tighter thresholds."""
     rag_hits = [h for h in hits if not str(h.get("id", "")).startswith("web_")]
     if not rag_hits:
         return "None"

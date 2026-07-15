@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Pipeline — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>Hybrid RAG Pipeline</h1>
+<p class="subtitle">FAISS (dense) + BM25 (lexical) → Reciprocal Rank Fusion → Cross-Encoder Reranker → LLM</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="980" height="720" viewBox="0 0 980 720" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#555"/>
+    </marker>
+    <marker id="arr-g" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#16a34a"/>
+    </marker>
+    <filter id="sh" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#00000018"/>
+    </filter>
+  </defs>
+
+  <!-- STEP LABELS (left) -->
+  <text x="16" y="106" font-size="10" fill="#999" font-weight="600" letter-spacing="0.5">STEP 1</text>
+  <text x="16" y="226" font-size="10" fill="#999" font-weight="600" letter-spacing="0.5">STEP 2</text>
+  <text x="16" y="346" font-size="10" fill="#999" font-weight="600" letter-spacing="0.5">STEP 3</text>
+  <text x="16" y="466" font-size="10" fill="#999" font-weight="600" letter-spacing="0.5">STEP 4</text>
+  <text x="16" y="586" font-size="10" fill="#999" font-weight="600" letter-spacing="0.5">STEP 5</text>
+  <text x="16" y="670" font-size="10" fill="#999" font-weight="600" letter-spacing="0.5">STEP 6</text>
+
+  <!-- ── STEP 1: User Query ── -->
+  <rect x="60" y="70" width="860" height="80" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2"/>
+  <text x="490" y="102" text-anchor="middle" font-size="14" font-weight="700" fill="#1d4ed8">User Query</text>
+  <text x="490" y="120" text-anchor="middle" font-size="12" fill="#3b82f6">"What mental health support is available for women in Maharashtra?"</text>
+  <text x="490" y="138" text-anchor="middle" font-size="11" fill="#60a5fa">Language detected: English  ·  Domain: Mental Health (Usha)  ·  Session context attached</text>
+
+  <!-- Arrow down -->
+  <line x1="490" y1="150" x2="490" y2="188" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 2: Embedding + BM25 Tokenise ── -->
+  <rect x="60" y="190" width="860" height="80" rx="10" fill="#fdf4ff" stroke="#e9d5ff" stroke-width="2"/>
+  <text x="490" y="216" text-anchor="middle" font-size="13" font-weight="700" fill="#7e22ce">Query Encoding</text>
+
+  <!-- Dense box -->
+  <rect x="100" y="228" width="340" height="34" rx="6" fill="#a855f7"/>
+  <text x="270" y="251" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Dense: multilingual-e5-small → 384-dim vector</text>
+
+  <!-- Sparse box -->
+  <rect x="460" y="228" width="340" height="34" rx="6" fill="#8b5cf6"/>
+  <text x="630" y="251" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Sparse: BM25 tokenise (rank-bm25)</text>
+
+  <!-- Two arrows -->
+  <line x1="270" y1="270" x2="270" y2="308" stroke="#a855f7" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="630" y1="270" x2="630" y2="308" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 3: Parallel Retrieval ── -->
+  <rect x="60" y="310" width="860" height="100" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="2"/>
+  <text x="490" y="336" text-anchor="middle" font-size="13" font-weight="700" fill="#c2410c">Parallel Retrieval (domain-filtered)</text>
+
+  <!-- FAISS box -->
+  <rect x="100" y="350" width="340" height="50" rx="8" fill="#ea580c" filter="url(#sh)"/>
+  <text x="270" y="372" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">FAISS IndexFlatIP</text>
+  <text x="270" y="390" text-anchor="middle" font-size="10" fill="#fed7aa">cosine sim over L2-normalised embeddings · top-20</text>
+
+  <!-- BM25 box -->
+  <rect x="460" y="350" width="340" height="50" rx="8" fill="#dc2626" filter="url(#sh)"/>
+  <text x="630" y="372" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">BM25 Retriever</text>
+  <text x="630" y="390" text-anchor="middle" font-size="10" fill="#fecaca">keyword overlap · Okapi BM25 scoring · top-20</text>
+
+  <!-- Arrows converging -->
+  <line x1="270" y1="400" x2="400" y2="438" stroke="#ea580c" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="630" y1="400" x2="500" y2="438" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 4: RRF Fusion ── -->
+  <rect x="60" y="440" width="860" height="90" rx="10" fill="#fef9c3" stroke="#fde68a" stroke-width="2"/>
+  <text x="490" y="466" text-anchor="middle" font-size="13" font-weight="700" fill="#92400e">Reciprocal Rank Fusion (RRF)</text>
+  <text x="490" y="486" text-anchor="middle" font-size="12" fill="#78350f">score(d) = Σ  1 / (k + rank_i(d))   where k = 60</text>
+  <text x="490" y="508" text-anchor="middle" font-size="11" fill="#a16207">Dense results + Sparse results merged into a single ranked list · top-5 kept</text>
+
+  <!-- Arrow down -->
+  <line x1="490" y1="530" x2="490" y2="568" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 5: Cross-Encoder Reranker ── -->
+  <rect x="60" y="570" width="860" height="90" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2"/>
+  <text x="490" y="596" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Cross-Encoder Reranker</text>
+  <text x="490" y="616" text-anchor="middle" font-size="12" fill="#166534">ms-marco-MiniLM-L-6-v2 · (query, chunk) scored jointly</text>
+  <text x="490" y="636" text-anchor="middle" font-size="11" fill="#16a34a">Reorders top-5 chunks by relevance score · confidence band computed</text>
+
+  <!-- Arrow down -->
+  <line x1="490" y1="660" x2="490" y2="692" stroke="#16a34a" stroke-width="2" marker-end="url(#arr-g)"/>
+
+  <!-- ── STEP 6: LLM Generation ── -->
+  <rect x="60" y="694" width="860" height="20" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="490" y="708" text-anchor="middle" font-size="12" font-weight="600" fill="#15803d">Top chunks injected into LLM system prompt → streamed response</text>
+</svg>
+</body>
+</html>

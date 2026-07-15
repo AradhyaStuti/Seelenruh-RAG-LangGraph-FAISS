@@ -72,12 +72,6 @@ class TranscribeResponse(BaseModel):
     error: Optional[str] = None
 
 
-class ProviderStatus(BaseModel):
-    name: str
-    state: str   # "closed" | "open" | "half_open"
-    failures: int
-
-
 class HealthResponse(BaseModel):
     ok: bool
     ts: int

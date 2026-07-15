@@ -1,12 +1,6 @@
-"""Self-evolving memory system — runs autonomously after every response.
+"""Per-session memory: rolling summary + goal detection.
 
-Two capabilities:
-  1. Rolling summary   — compressed snapshot of the whole conversation so far,
-                          stored per (user, session) and fetched at the start of
-                          the next turn to give the LLM persistent cross-turn memory.
-  2. Goal detection    — detects if the user is working toward a concrete actionable
-                          goal (e.g. "file an RTI", "apply for PM-JAY") and tracks it
-                          so the agent can proactively guide progress across turns.
+Both run as background tasks after every response so they never block the user.
 """
 from typing import Optional
 
@@ -18,11 +12,7 @@ log = get_logger("memory")
 
 
 async def build_rolling_summary(messages: list[dict], persona: str) -> Optional[str]:
-    """Compress the last 20 exchanges into a concise memory note.
-
-    Called autonomously in the background after every assistant reply —
-    never blocks the user-facing response.
-    """
+    """Compress recent messages into a short memory note (≤130 words)."""
     if len(messages) < 2:
         return None
     recent = messages[-20:]
@@ -58,13 +48,7 @@ async def build_rolling_summary(messages: list[dict], persona: str) -> Optional[
 async def detect_goal(
     query: str, domain: str, history: list[dict], existing_goal: Optional[str] = None
 ) -> Optional[str]:
-    """Detect if the user is working toward a specific actionable goal.
-
-    Returns a short goal phrase (≤ 10 words) or None.
-    Runs as part of the classify step — fast model, low temperature.
-    If existing_goal is provided, only returns a result when a NEW or UPDATED goal
-    is detected — prevents writing the same goal to DB on every turn.
-    """
+    """Detect if the user has a concrete goal (e.g. 'file an RTI'). Returns ≤10 word phrase or None."""
     recent = history[-6:] if history else []
     history_text = "\n".join(f"{m['role']}: {m['content'][:150]}" for m in recent)
 

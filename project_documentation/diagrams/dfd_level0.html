@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFD Level 0 — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>Data Flow Diagram — Level 0 (Context)</h1>
+<p class="subtitle">The entire system as a single process, showing external actors and data flows</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="900" height="620" viewBox="0 0 900 620" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#555"/>
+    </marker>
+    <filter id="sh" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#00000020"/>
+    </filter>
+  </defs>
+
+  <!-- External Entities (rectangles, DFD convention) -->
+  <!-- User -->
+  <rect x="30" y="240" width="140" height="80" rx="4" fill="#1f2937" stroke="#374151" stroke-width="2" filter="url(#sh)"/>
+  <text x="100" y="276" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">End User</text>
+  <text x="100" y="294" text-anchor="middle" font-size="10" fill="#9ca3af">Browser / Mobile</text>
+  <text x="100" y="310" text-anchor="middle" font-size="9" fill="#6b7280">(anonymous or auth)</text>
+
+  <!-- Admin -->
+  <rect x="730" y="80" width="140" height="80" rx="4" fill="#374151" stroke="#4b5563" stroke-width="2" filter="url(#sh)"/>
+  <text x="800" y="116" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Admin</text>
+  <text x="800" y="134" text-anchor="middle" font-size="10" fill="#9ca3af">X-Admin-Key holder</text>
+
+  <!-- LLM Providers -->
+  <rect x="730" y="240" width="140" height="80" rx="4" fill="#d97706" stroke="#b45309" stroke-width="2" filter="url(#sh)"/>
+  <text x="800" y="272" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">LLM Providers</text>
+  <text x="800" y="290" text-anchor="middle" font-size="10" fill="#fef3c7">Groq · Ollama</text>
+  <text x="800" y="306" text-anchor="middle" font-size="9" fill="#fef3c7">Anthropic</text>
+
+  <!-- Web Search -->
+  <rect x="730" y="400" width="140" height="80" rx="4" fill="#475569" stroke="#64748b" stroke-width="2" filter="url(#sh)"/>
+  <text x="800" y="432" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Web Search</text>
+  <text x="800" y="450" text-anchor="middle" font-size="10" fill="#e2e8f0">DDG · Wikipedia</text>
+  <text x="800" y="466" text-anchor="middle" font-size="9" fill="#cbd5e1">Brave Search</text>
+
+  <!-- MongoDB -->
+  <rect x="360" y="490" width="180" height="80" rx="4" fill="#064e3b" stroke="#065f46" stroke-width="2" filter="url(#sh)"/>
+  <text x="450" y="526" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">MongoDB</text>
+  <text x="450" y="544" text-anchor="middle" font-size="10" fill="#6ee7b7">14 collections</text>
+  <text x="450" y="560" text-anchor="middle" font-size="9" fill="#a7f3d0">Atlas · Motor async</text>
+
+  <!-- CENTRAL PROCESS -->
+  <circle cx="450" cy="280" r="140" fill="#1e40af" stroke="#3b82f6" stroke-width="3" filter="url(#sh)"/>
+  <circle cx="450" cy="280" r="134" fill="#1e40af" stroke="#60a5fa" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="450" y="258" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Seelenruh</text>
+  <text x="450" y="278" text-anchor="middle" font-size="12" fill="#bfdbfe">AI Support Platform</text>
+  <text x="450" y="298" text-anchor="middle" font-size="10" fill="#93c5fd">Process 0</text>
+  <text x="450" y="316" text-anchor="middle" font-size="9" fill="#60a5fa">FastAPI + LangGraph</text>
+
+  <!-- ── DATA FLOWS ── -->
+  <!-- User → System: query -->
+  <line x1="170" y1="268" x2="308" y2="268" stroke="#3b82f6" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="240" y="258" text-anchor="middle" font-size="9" fill="#3b82f6">query + session_id</text>
+  <text x="240" y="271" text-anchor="middle" font-size="9" fill="#3b82f6">JWT token</text>
+
+  <!-- System → User: response -->
+  <line x1="308" y1="292" x2="170" y2="292" stroke="#22c55e" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="240" y="306" text-anchor="middle" font-size="9" fill="#22c55e">SSE streamed answer</text>
+  <text x="240" y="318" text-anchor="middle" font-size="9" fill="#22c55e">+ confidence band</text>
+
+  <!-- Admin → System: commands -->
+  <line x1="730" y1="120" x2="556" y2="220" stroke="#a78bfa" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="660" y="158" text-anchor="middle" font-size="9" fill="#7c3aed">admin commands</text>
+  <text x="660" y="170" text-anchor="middle" font-size="9" fill="#7c3aed">(manage KB, gaps, users)</text>
+
+  <!-- System → Admin: stats -->
+  <line x1="556" y1="200" x2="730" y2="140" stroke="#c4b5fd" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="645" y="196" text-anchor="middle" font-size="9" fill="#8b5cf6">analytics · feedback CSV</text>
+
+  <!-- System → LLM: prompts -->
+  <line x1="590" y1="268" x2="730" y2="268" stroke="#d97706" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="660" y="256" text-anchor="middle" font-size="9" fill="#d97706">system + user messages</text>
+
+  <!-- LLM → System: tokens -->
+  <line x1="730" y1="292" x2="590" y2="292" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="660" y="306" text-anchor="middle" font-size="9" fill="#d97706">token stream</text>
+
+  <!-- System → Web: search query -->
+  <line x1="580" y1="360" x2="730" y2="420" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="680" y="390" text-anchor="middle" font-size="9" fill="#64748b">search query</text>
+
+  <!-- Web → System: results -->
+  <line x1="730" y1="440" x2="580" y2="380" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="628" y="422" text-anchor="middle" font-size="9" fill="#94a3b8">web results</text>
+
+  <!-- System ↔ MongoDB -->
+  <line x1="450" y1="420" x2="450" y2="488" stroke="#22c55e" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="480" y="458" font-size="9" fill="#16a34a">save history</text>
+  <text x="480" y="470" font-size="9" fill="#16a34a">save gaps</text>
+
+  <line x1="430" y1="488" x2="430" y2="420" stroke="#16a34a" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="398" y="458" font-size="9" fill="#16a34a">load history</text>
+  <text x="398" y="470" font-size="9" fill="#16a34a">load users</text>
+
+  <!-- User → System: feedback -->
+  <line x1="140" y1="310" x2="308" y2="320" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <text x="220" y="336" text-anchor="middle" font-size="9" fill="#ea580c">feedback vote</text>
+</svg>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Pipeline — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>AI Pipeline Diagram</h1>
+<p class="subtitle">All AI components and how they interact during a single inference call</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="1060" height="740" viewBox="0 0 1060 740" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#555"/>
+    </marker>
+    <filter id="sh" x="-6%" y="-6%" width="112%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#00000018"/>
+    </filter>
+  </defs>
+
+  <!-- STAGE HEADERS -->
+  <rect x="10" y="10" width="160" height="720" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="90" y="370" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" transform="rotate(-90 90 370)">STAGE</text>
+
+  <!-- Stage labels -->
+  <text x="90" y="66" text-anchor="middle" font-size="9" fill="#9ca3af" letter-spacing="0.5">INPUT</text>
+  <text x="90" y="146" text-anchor="middle" font-size="9" fill="#9ca3af" letter-spacing="0.5">ENRICH</text>
+  <text x="90" y="246" text-anchor="middle" font-size="9" fill="#9ca3af" letter-spacing="0.5">ROUTE</text>
+  <text x="90" y="346" text-anchor="middle" font-size="9" fill="#9ca3af" letter-spacing="0.5">RETRIEVE</text>
+  <text x="90" y="466" text-anchor="middle" font-size="9" fill="#9ca3af" letter-spacing="0.5">GENERATE</text>
+  <text x="90" y="586" text-anchor="middle" font-size="9" fill="#9ca3af" letter-spacing="0.5">VERIFY</text>
+  <text x="90" y="680" text-anchor="middle" font-size="9" fill="#9ca3af" letter-spacing="0.5">OUTPUT</text>
+
+  <!-- Stage separators -->
+  <line x1="180" y1="108" x2="1050" y2="108" stroke="#f0f0f0" stroke-width="1"/>
+  <line x1="180" y1="208" x2="1050" y2="208" stroke="#f0f0f0" stroke-width="1"/>
+  <line x1="180" y1="308" x2="1050" y2="308" stroke="#f0f0f0" stroke-width="1"/>
+  <line x1="180" y1="428" x2="1050" y2="428" stroke="#f0f0f0" stroke-width="1"/>
+  <line x1="180" y1="548" x2="1050" y2="548" stroke="#f0f0f0" stroke-width="1"/>
+  <line x1="180" y1="648" x2="1050" y2="648" stroke="#f0f0f0" stroke-width="1"/>
+
+  <!-- ── STAGE 1: INPUT ── -->
+  <rect x="200" y="30" width="200" height="68" rx="8" fill="#1f2937" filter="url(#sh)"/>
+  <text x="300" y="58" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Raw Query</text>
+  <text x="300" y="76" text-anchor="middle" font-size="9" fill="#9ca3af">text + domain hint + session_id</text>
+
+  <rect x="430" y="30" width="200" height="68" rx="8" fill="#374151" filter="url(#sh)"/>
+  <text x="530" y="58" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Chat History</text>
+  <text x="530" y="76" text-anchor="middle" font-size="9" fill="#9ca3af">last 8 turns loaded from MongoDB</text>
+
+  <rect x="660" y="30" width="200" height="68" rx="8" fill="#374151" filter="url(#sh)"/>
+  <text x="760" y="58" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Auth Context</text>
+  <text x="760" y="76" text-anchor="middle" font-size="9" fill="#9ca3af">user_id, session_id from JWT</text>
+
+  <!-- Arrows to stage 2 -->
+  <line x1="300" y1="98" x2="350" y2="128" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="530" y1="98" x2="460" y2="128" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STAGE 2: ENRICH ── -->
+  <rect x="200" y="118" width="200" height="78" rx="8" fill="#0ea5e9" filter="url(#sh)"/>
+  <text x="300" y="144" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Language Engine</text>
+  <text x="300" y="162" text-anchor="middle" font-size="9" fill="#e0f2fe">detect_language(query)</text>
+  <text x="300" y="178" text-anchor="middle" font-size="9" fill="#e0f2fe">en / hi / hi-roman / de</text>
+
+  <rect x="430" y="118" width="200" height="78" rx="8" fill="#ec4899" filter="url(#sh)"/>
+  <text x="530" y="144" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Emotion Detector</text>
+  <text x="530" y="162" text-anchor="middle" font-size="9" fill="#fce7f3">keyword + tone analysis</text>
+  <text x="530" y="178" text-anchor="middle" font-size="9" fill="#fce7f3">logs emotion to MongoDB</text>
+
+  <rect x="660" y="118" width="200" height="78" rx="8" fill="#7c3aed" filter="url(#sh)"/>
+  <text x="760" y="144" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Context Builder</text>
+  <text x="760" y="162" text-anchor="middle" font-size="9" fill="#ede9fe">assemble ChatState</text>
+  <text x="760" y="178" text-anchor="middle" font-size="9" fill="#ede9fe">history + query + lang + emotion</text>
+
+  <!-- Arrows to stage 3 -->
+  <line x1="530" y1="196" x2="530" y2="218" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STAGE 3: ROUTE ── -->
+  <rect x="330" y="218" width="400" height="78" rx="8" fill="#6d28d9" filter="url(#sh)"/>
+  <text x="530" y="248" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Domain Router  (route_domain)</text>
+  <text x="530" y="268" text-anchor="middle" font-size="10" fill="#ede9fe">keyword heuristic → Mental Health / Legal / Govt Schemes / Safety</text>
+  <text x="530" y="286" text-anchor="middle" font-size="9" fill="#c4b5fd">Sets ChatState.routed_domain → dispatches to correct sub-graph</text>
+
+  <line x1="530" y1="296" x2="530" y2="318" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STAGE 4: RETRIEVE ── -->
+  <rect x="200" y="318" width="140" height="100" rx="8" fill="#ea580c" filter="url(#sh)"/>
+  <text x="270" y="346" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">FAISS Search</text>
+  <text x="270" y="364" text-anchor="middle" font-size="9" fill="#fed7aa">e5-small encode(query)</text>
+  <text x="270" y="380" text-anchor="middle" font-size="9" fill="#fed7aa">IndexFlatIP.search</text>
+  <text x="270" y="396" text-anchor="middle" font-size="9" fill="#fed7aa">top-20 dense</text>
+
+  <rect x="360" y="318" width="140" height="100" rx="8" fill="#dc2626" filter="url(#sh)"/>
+  <text x="430" y="346" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">BM25 Search</text>
+  <text x="430" y="364" text-anchor="middle" font-size="9" fill="#fecaca">tokenize query</text>
+  <text x="430" y="380" text-anchor="middle" font-size="9" fill="#fecaca">Okapi BM25 rank</text>
+  <text x="430" y="396" text-anchor="middle" font-size="9" fill="#fecaca">top-20 sparse</text>
+
+  <rect x="520" y="318" width="140" height="100" rx="8" fill="#b91c1c" filter="url(#sh)"/>
+  <text x="590" y="346" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">RRF Fusion</text>
+  <text x="590" y="364" text-anchor="middle" font-size="9" fill="#fecaca">score = Σ 1/(60+r)</text>
+  <text x="590" y="380" text-anchor="middle" font-size="9" fill="#fecaca">merge rankings</text>
+  <text x="590" y="396" text-anchor="middle" font-size="9" fill="#fecaca">top-5 unified</text>
+
+  <rect x="680" y="318" width="160" height="100" rx="8" fill="#7f1d1d" filter="url(#sh)"/>
+  <text x="760" y="342" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Cross-Encoder</text>
+  <text x="760" y="358" text-anchor="middle" font-size="9" fill="#fecaca">MiniLM-L-6-v2</text>
+  <text x="760" y="374" text-anchor="middle" font-size="9" fill="#fecaca">score(query, chunk)</text>
+  <text x="760" y="390" text-anchor="middle" font-size="9" fill="#fecaca">joint representation</text>
+  <text x="760" y="406" text-anchor="middle" font-size="9" fill="#fecaca">top-3 reranked</text>
+
+  <!-- Arrows in retrieve stage -->
+  <line x1="340" y1="368" x2="358" y2="368" stroke="#fed7aa" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="500" y1="368" x2="518" y2="368" stroke="#fecaca" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="660" y1="368" x2="678" y2="368" stroke="#fecaca" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <line x1="760" y1="418" x2="530" y2="448" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STAGE 5: GENERATE ── -->
+  <rect x="200" y="438" width="200" height="100" rx="8" fill="#0f766e" filter="url(#sh)"/>
+  <text x="300" y="466" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Prompt Builder</text>
+  <text x="300" y="484" text-anchor="middle" font-size="9" fill="#ccfbf1">persona system template</text>
+  <text x="300" y="500" text-anchor="middle" font-size="9" fill="#ccfbf1">+ history (HumanMessage)</text>
+  <text x="300" y="516" text-anchor="middle" font-size="9" fill="#ccfbf1">+ retrieved chunks</text>
+  <text x="300" y="530" text-anchor="middle" font-size="9" fill="#ccfbf1">+ few-shot examples</text>
+
+  <rect x="430" y="438" width="280" height="100" rx="8" fill="#d97706" filter="url(#sh)"/>
+  <text x="570" y="462" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">LLM Call (streaming)</text>
+  <text x="570" y="480" text-anchor="middle" font-size="9" fill="#fef3c7">1st: Groq (llama-3.3-70b)</text>
+  <text x="570" y="496" text-anchor="middle" font-size="9" fill="#fef3c7">2nd: Ollama (local, if configured)</text>
+  <text x="570" y="512" text-anchor="middle" font-size="9" fill="#fef3c7">3rd: Anthropic (claude-haiku-4-5)</text>
+  <text x="570" y="528" text-anchor="middle" font-size="9" fill="#fef3c7">CircuitBreaker per provider</text>
+
+  <rect x="740" y="438" width="160" height="100" rx="8" fill="#78350f" filter="url(#sh)"/>
+  <text x="820" y="466" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Web Search</text>
+  <text x="820" y="484" text-anchor="middle" font-size="9" fill="#fed7aa">(only if Low/None</text>
+  <text x="820" y="500" text-anchor="middle" font-size="9" fill="#fed7aa">confidence)</text>
+  <text x="820" y="516" text-anchor="middle" font-size="9" fill="#fed7aa">DDG+Wiki+Brave</text>
+
+  <line x1="400" y1="488" x2="428" y2="488" stroke="#ccfbf1" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="570" y1="538" x2="530" y2="558" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STAGE 6: VERIFY ── -->
+  <rect x="200" y="558" width="220" height="80" rx="8" fill="#1e40af" filter="url(#sh)"/>
+  <text x="310" y="584" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Hallucination Guardrails</text>
+  <text x="310" y="602" text-anchor="middle" font-size="9" fill="#bfdbfe">source grounding check</text>
+  <text x="310" y="618" text-anchor="middle" font-size="9" fill="#bfdbfe">confidence band compute</text>
+
+  <rect x="440" y="558" width="220" height="80" rx="8" fill="#0c4a6e" filter="url(#sh)"/>
+  <text x="550" y="584" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Quality Checker</text>
+  <text x="550" y="602" text-anchor="middle" font-size="9" fill="#bae6fd">length / coherence check</text>
+  <text x="550" y="618" text-anchor="middle" font-size="9" fill="#bae6fd">response_template format</text>
+
+  <rect x="680" y="558" width="220" height="80" rx="8" fill="#1e3a5f" filter="url(#sh)"/>
+  <text x="790" y="584" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Memory Save</text>
+  <text x="790" y="602" text-anchor="middle" font-size="9" fill="#bfdbfe">chat_history.insert_one</text>
+  <text x="790" y="618" text-anchor="middle" font-size="9" fill="#bfdbfe">knowledge_gaps if needed</text>
+
+  <line x1="530" y1="638" x2="530" y2="658" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STAGE 7: OUTPUT ── -->
+  <rect x="280" y="660" width="500" height="60" rx="8" fill="#16a34a" filter="url(#sh)"/>
+  <text x="530" y="688" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">SSE Stream → Browser</text>
+  <text x="530" y="706" text-anchor="middle" font-size="10" fill="#dcfce7">data: {"token": "…"} per chunk  →  data: [DONE]  →  ExplainabilityPanel updated</text>
+</svg>
+</body>
+</html>

@@ -33,17 +33,24 @@ __pycache__/
 *.pyd
 .venv/
 server/.venv/
-server/rag/.cache/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
 
-# Claude Code internal
-.claude/
+# generated FAISS index + BM25 cache (rebuilt on first startup)
+server/rag/.cache/
+
+# uploaded files
+server/uploads/
 
 # eval run snapshots — keep the canonical run only, ignore experiments
 server/results/*.json
 !server/results/canonical.json
+eval_results.json
+
+# Claude Code internal
+.claude/
 
 # genkit
 .genkit/

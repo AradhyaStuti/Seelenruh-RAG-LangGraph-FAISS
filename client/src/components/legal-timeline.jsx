@@ -1,22 +1,6 @@
-/**
- * LegalTimeline — deterministic visual timeline inside Umang responses.
- *
- * Detects case type from the assistant's message text and renders the
- * corresponding step-by-step legal process with estimated durations,
- * applicable acts, costs, and required documents.
- *
- * Case types detected:
- *   - Salary / wage recovery
- *   - Eviction / tenancy dispute
- *   - Consumer complaint
- *   - Domestic violence (PWDVA)
- *   - FIR / criminal complaint
- *   - RTI (Right to Information)
- */
+// LegalTimeline — visual step-by-step legal process timeline for Umang responses
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-
-// ─── Timeline data ────────────────────────────────────────────────────────────
 
 const TIMELINES = {
   salary: {
@@ -230,8 +214,6 @@ const TIMELINES = {
   },
 };
 
-// ─── Detection logic ──────────────────────────────────────────────────────────
-
 const PATTERNS = [
   { key: "salary",            re: /\b(salary|wage|dues|arrears?|unpaid\s+pay|payment\s+of\s+wages|labour\s+commissioner|section\s+33c)\b/i },
   { key: "eviction",         re: /\b(evict|eviction|tenant|landlord|rent\s+control|vacate\s+premises|notice\s+to\s+quit)\b/i },
@@ -247,8 +229,6 @@ export function detectTimelineKey(text) {
   }
   return null;
 }
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export function LegalTimeline({ messageContent }) {
   const [open, setOpen] = useState(false);

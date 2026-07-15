@@ -1,36 +1,16 @@
-"""
-Umang's specialized legal reasoning agents — internal only, invisible to the user.
-
-The user sees ONE assistant (Umang). Internally, specialized agents collaborate:
-
-  Agent 1 — Case Analyzer        (8B LLM, ~150 ms):  classify, extract known facts,
-                                                        detect missing facts, identify
-                                                        domains, flag limitation concerns
-  Agent 2 — Rights Organizer     (Python):             filter RAG chunks for rights
-  Agent 3 — Procedure Organizer  (Python):             filter RAG chunks for procedure
-  Agent 4 — Document Assistant   (Python):             load template if draft requested
-  Agent 5 — Legal Reasoner       (Python):             build deterministic reasoning
-                                                        context from _LEGAL_KNOWLEDGE
-  Agent 6 — Jurisdiction Detector(Python):             extract state / court from text
-  Agent 7 — Response Composer    (70B LLM):            synthesise the final response
-
-Total LLM calls: 2 (8B analyze + 70B compose).
-"""
+"""Internal pipeline for Umang's legal responses. 2 LLM calls: 8B case analyzer + 70B composer."""
 import json
 from typing import Optional
 
 from ai.context import trim_history
 from ai.provider import chat
+from ai.utils import _kw_score
 from config import GROQ_MODEL_FAST
 from logger import get_logger
 
 log = get_logger("legal_agents")
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 1 — CASE ANALYZER (8B)
-# ──────────────────────────────────────────────────────────────
-
 _CASE_ANALYZER_SYSTEM = """\
 You are a senior Indian legal case analyst for Umang, a legal information assistant.
 Analyse the user's query using this reasoning chain:
@@ -130,7 +110,6 @@ Rules:
 
 Output ONLY the JSON object. No markdown. No commentary."""
 
-
 async def analyze_case(query: str, history: list[dict], lang: str) -> dict:
     """
     Agent 1: Case Analyzer — fast 8B model.
@@ -191,14 +170,10 @@ async def analyze_case(query: str, history: list[dict], lang: str) -> dict:
         log.warning("case_analyzer failed — using defaults", error=str(err))
         return default
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 5 — LEGAL KNOWLEDGE BASE (Python, deterministic)
 # Maps every category to: laws, remedies, evidence, procedure,
 # limitation periods, costs, timelines, common mistakes, aid.
 # Never changes without a human review — not LLM-generated.
-# ──────────────────────────────────────────────────────────────
-
 _LEGAL_KNOWLEDGE: dict[str, dict] = {
     "DomesticViolence": {
         "applicable_laws": [
@@ -1430,7 +1405,6 @@ _LEGAL_KNOWLEDGE: dict[str, dict] = {
     },
 }
 
-
 def build_legal_reasoning_context(
     category: str,
     case_analysis: dict,
@@ -1561,11 +1535,7 @@ def build_legal_reasoning_context(
 
     return "\n\n".join(lines)
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENTS 2 & 3 — RIGHTS ORGANIZER + PROCEDURE ORGANIZER (Python)
-# ──────────────────────────────────────────────────────────────
-
 _RIGHTS_KW: dict[str, list[str]] = {
     "DomesticViolence":  ["domestic violence", "PWDVA", "protection order", "residence order", "498A", "BNS 85", "BNS 86", "maintenance", "shelter"],
     "Divorce":           ["divorce", "judicial separation", "HMA", "talaq", "khula", "restitution of conjugal rights", "marriage dissolution"],
@@ -1617,13 +1587,6 @@ _PROCEDURE_KW: dict[str, list[str]] = {
     "RTE":              ["Block Education Officer", "District Education Officer", "SCPCR complaint", "NCPCR", "ncpcr.gov.in", "EWS lottery", "school admission portal"],
 }
 
-
-def _kw_score(chunk: dict, keywords: list[str]) -> float:
-    text = (chunk.get("topic", "") + " " + chunk.get("text", "")).lower()
-    hits = sum(1 for kw in keywords if kw.lower() in text)
-    return hits / max(len(keywords), 1)
-
-
 def organize_chunks(retrieved: list[dict], category: str) -> dict:
     """
     Agents 2, 3 — Pure-Python chunk classifiers.
@@ -1648,11 +1611,7 @@ def organize_chunks(retrieved: list[dict], category: str) -> dict:
 
     return {"rights": rights, "procedure": procedure, "general": general}
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 6 — JURISDICTION DETECTOR (Python, no LLM)
-# ──────────────────────────────────────────────────────────────
-
 def detect_jurisdiction(query: str, history: list[dict]) -> Optional[str]:
     """
     Agent 6: Keyword-based jurisdiction detection — no LLM.
@@ -1680,11 +1639,7 @@ def detect_jurisdiction(query: str, history: list[dict]) -> Optional[str]:
             return name.title()
     return None
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 4 — DOCUMENT ASSISTANT (templates, no LLM)
-# ──────────────────────────────────────────────────────────────
-
 _TEMPLATES: dict[str, str] = {
     "RTI": """\
 RTI APPLICATION
@@ -1912,16 +1867,11 @@ How to execute:
 • False affidavit is an offence under BNS Section 229 (perjury) — punishable with up to 7 years imprisonment.""",
 }
 
-
 def get_document_template(doc_type: Optional[str]) -> Optional[str]:
     """Agent 4: Return a structured template for the requested document type, or None."""
     return _TEMPLATES.get(doc_type or "") if doc_type else None
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 7 — RESPONSE COMPOSER (message builder for 70B call)
-# ──────────────────────────────────────────────────────────────
-
 def build_composer_messages(
     *,
     query: str,

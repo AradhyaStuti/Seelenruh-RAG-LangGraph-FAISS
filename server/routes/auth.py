@@ -83,8 +83,7 @@ async def me(request: Request, user: dict = Depends(current_user)) -> dict:
 @router.delete("/me")
 @auth_limit("3/minute")
 async def delete_me(request: Request, payload: dict = Depends(current_token_payload)) -> dict:
-    """Permanently drop the caller's account and every chat message saved
-    under their default session id. Also revokes the current token."""
+    """Delete the caller's account and all associated data."""
     user_id = payload["sub"]
     email = payload["email"]
     # Wipe every message owned by this user, not just the default session.
@@ -107,10 +106,7 @@ async def delete_me(request: Request, payload: dict = Depends(current_token_payl
 @router.post("/change-password")
 @auth_limit("5/minute")
 async def change_password(request: Request, req: ChangePasswordRequest, user: dict = Depends(current_user)) -> dict:
-    """Verify the current password then replace it with the new one.
-    Sets passwordChangedAt so ALL existing refresh tokens issued before this
-    moment are immediately invalidated on next use — no other device stays logged in.
-    """
+    """Change password. Invalidates all existing refresh tokens issued before this moment."""
     full_user = await find_user_by_email(user["email"])
     if not full_user or not verify_password(req.currentPassword, full_user.get("password", "")):
         raise HTTPException(status_code=400, detail="Current password is incorrect.")
@@ -211,9 +207,7 @@ class RefreshRequest(BaseModel):
 @router.post("/refresh", response_model=AuthResponse)
 @auth_limit("20/minute")
 async def refresh_tokens(request: Request, req: RefreshRequest) -> AuthResponse:
-    """Consume a refresh token and return a new access + refresh token pair.
-    The old refresh token is immediately revoked (rotation on use).
-    """
+    """Issue new access + refresh tokens. Old refresh token is revoked on use."""
     payload = decode_token(req.refreshToken, expected_type="refresh")
     if await _is_revoked(payload.get("jti")):
         raise HTTPException(status_code=401, detail="Refresh token has been revoked. Please sign in again.")
@@ -249,9 +243,7 @@ async def refresh_tokens(request: Request, req: RefreshRequest) -> AuthResponse:
 @router.get("/export")
 @burst_limit("3/minute")
 async def export_user_data(request: Request, user: dict = Depends(current_user)):
-    """GDPR Article 20 — right to data portability.
-    Returns all data Seelenruh holds for the authenticated user as JSON.
-    """
+    """Download everything stored about the authenticated user as JSON."""
     from fastapi.responses import Response
     data = await db.export_user_data(user["id"])
     data["exportedAt"] = datetime.now(timezone.utc).isoformat()
@@ -267,9 +259,7 @@ async def export_user_data(request: Request, user: dict = Depends(current_user))
 @router.post("/logout")
 @auth_limit("20/minute")
 async def logout(request: Request, payload: dict = Depends(current_token_payload)) -> dict:
-    """Add the caller's JWT to the revocation list. The next request that
-    presents this token will get a 401, even if the JWT hasn't naturally
-    expired yet. Idempotent — calling twice is fine."""
+    """Revoke the caller's JWT. Idempotent — safe to call twice."""
     jti = payload.get("jti")
     exp_ts = payload.get("exp")
     if not jti or not exp_ts:

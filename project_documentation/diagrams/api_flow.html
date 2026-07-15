@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Flow — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+  .method { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: 700; }
+  .get { background: #dcfce7; color: #166534; }
+  .post { background: #dbeafe; color: #1e40af; }
+  .del { background: #fee2e2; color: #7f1d1d; }
+</style>
+</head>
+<body>
+<h1>API Flow Diagram</h1>
+<p class="subtitle">All FastAPI routes grouped by router · auth requirements · response types</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="1080" height="900" viewBox="0 0 1080 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sh" x="-6%" y="-6%" width="112%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/>
+    </filter>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#888"/>
+    </marker>
+  </defs>
+
+  <!-- CLIENT box -->
+  <rect x="460" y="20" width="160" height="50" rx="10" fill="#1f2937" filter="url(#sh)"/>
+  <text x="540" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Client Browser</text>
+
+  <!-- ── AUTH ROUTER ── -->
+  <rect x="20" y="110" width="220" height="310" rx="10" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="20" y="110" width="220" height="38" rx="10" fill="#dc2626"/>
+  <text x="130" y="135" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Auth  /api/auth/*</text>
+  <line x1="20" y1="148" x2="240" y2="148" stroke="#fecaca" stroke-width="1"/>
+  <text x="36" y="170" font-size="11" fill="#1f2937">POST  /register</text>
+  <text x="36" y="188" font-size="9" fill="#6b7280">body: {email, password, name}</text>
+  <text x="36" y="204" font-size="9" fill="#6b7280">→ {access_token, refresh_token}</text>
+  <line x1="36" y1="212" x2="220" y2="212" stroke="#fee2e2" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="36" y="230" font-size="11" fill="#1f2937">POST  /login</text>
+  <text x="36" y="248" font-size="9" fill="#6b7280">body: {email, password}</text>
+  <text x="36" y="264" font-size="9" fill="#6b7280">→ {access_token, refresh_token}</text>
+  <line x1="36" y1="272" x2="220" y2="272" stroke="#fee2e2" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="36" y="290" font-size="11" fill="#1f2937">POST  /refresh</text>
+  <text x="36" y="308" font-size="9" fill="#6b7280">body: {refresh_token}</text>
+  <text x="36" y="324" font-size="9" fill="#6b7280">→ {access_token}</text>
+  <line x1="36" y1="332" x2="220" y2="332" stroke="#fee2e2" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="36" y="350" font-size="11" fill="#1f2937">POST  /logout</text>
+  <text x="36" y="368" font-size="9" fill="#6b7280">Bearer required · JTI blacklisted</text>
+  <text x="36" y="384" font-size="9" fill="#6b7280">→ {ok: true}</text>
+  <text x="36" y="404" font-size="9" fill="#6b7280" font-style="italic">Rate: 10/minute</text>
+
+  <!-- ── CHAT ROUTER ── -->
+  <rect x="260" y="110" width="240" height="200" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="260" y="110" width="240" height="38" rx="10" fill="#3b82f6"/>
+  <text x="380" y="135" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Chat  /api/chat</text>
+  <line x1="260" y1="148" x2="500" y2="148" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="276" y="170" font-size="11" fill="#1f2937">POST  /</text>
+  <text x="276" y="188" font-size="9" fill="#6b7280">Bearer required (JWT auth)</text>
+  <text x="276" y="204" font-size="9" fill="#6b7280">body: {query, domain, session_id,</text>
+  <text x="276" y="220" font-size="9" fill="#6b7280">  lang?, history?}</text>
+  <text x="276" y="240" font-size="9" fill="#6b7280">→ SSE stream (text/event-stream)</text>
+  <text x="276" y="256" font-size="9" fill="#6b7280">data: {"token":"..."}</text>
+  <text x="276" y="272" font-size="9" fill="#6b7280">data: [DONE]</text>
+  <text x="276" y="292" font-size="9" fill="#6b7280" font-style="italic">Rate: 20/minute per user</text>
+
+  <!-- ── FEEDBACK ROUTER ── -->
+  <rect x="260" y="328" width="240" height="200" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="260" y="328" width="240" height="38" rx="10" fill="#22c55e"/>
+  <text x="380" y="353" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Feedback  /api/feedback</text>
+  <line x1="260" y1="366" x2="500" y2="366" stroke="#bbf7d0" stroke-width="1"/>
+  <text x="276" y="388" font-size="11" fill="#1f2937">POST  /</text>
+  <text x="276" y="406" font-size="9" fill="#6b7280">auth optional (Bearer)</text>
+  <text x="276" y="422" font-size="9" fill="#6b7280">body: {messageId, vote, domain,</text>
+  <text x="276" y="438" font-size="9" fill="#6b7280">  query, response, confidence,</text>
+  <text x="276" y="454" font-size="9" fill="#6b7280">  persona, sessionId}</text>
+  <text x="276" y="472" font-size="9" fill="#6b7280">GET  /stats  (X-Admin-Key)</text>
+  <text x="276" y="488" font-size="9" fill="#6b7280">GET  /export  (X-Admin-Key → CSV)</text>
+  <text x="276" y="508" font-size="9" fill="#6b7280" font-style="italic">Rate: 30/minute</text>
+
+  <!-- ── ADMIN ROUTER ── -->
+  <rect x="520" y="110" width="260" height="420" rx="10" fill="#fdf4ff" stroke="#e9d5ff" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="520" y="110" width="260" height="38" rx="10" fill="#a855f7"/>
+  <text x="650" y="135" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Admin  /api/admin/*</text>
+  <text x="536" y="160" font-size="9" fill="#6b7280" font-style="italic">All routes require X-Admin-Key header</text>
+  <line x1="520" y1="168" x2="780" y2="168" stroke="#e9d5ff" stroke-width="1"/>
+  <text x="536" y="186" font-size="11" fill="#1f2937">GET  /users</text>
+  <text x="536" y="204" font-size="9" fill="#6b7280">paginated user list</text>
+  <text x="536" y="222" font-size="11" fill="#1f2937">DELETE  /users/{id}</text>
+  <text x="536" y="240" font-size="9" fill="#6b7280">removes user + history + feedback</text>
+  <text x="536" y="258" font-size="11" fill="#1f2937">GET  /knowledge</text>
+  <text x="536" y="276" font-size="9" fill="#6b7280">list all chunks (domain filter)</text>
+  <text x="536" y="294" font-size="11" fill="#1f2937">POST  /knowledge</text>
+  <text x="536" y="312" font-size="9" fill="#6b7280">add chunk → FAISS + BM25 index</text>
+  <text x="536" y="330" font-size="11" fill="#1f2937">DELETE  /knowledge/{id}</text>
+  <text x="536" y="348" font-size="9" fill="#6b7280">soft-delete (or compact if threshold)</text>
+  <text x="536" y="366" font-size="11" fill="#1f2937">GET  /knowledge-gaps</text>
+  <text x="536" y="384" font-size="9" fill="#6b7280">unanswered queries grouped by domain</text>
+  <text x="536" y="402" font-size="11" fill="#1f2937">DELETE  /knowledge-gaps/{id}</text>
+  <text x="536" y="420" font-size="9" fill="#6b7280">dismiss resolved gap</text>
+  <text x="536" y="438" font-size="11" fill="#1f2937">GET  /analytics</text>
+  <text x="536" y="456" font-size="9" fill="#6b7280">aggregated stats: sessions, messages, gaps</text>
+  <text x="536" y="474" font-size="11" fill="#1f2937">POST  /knowledge/rollback</text>
+  <text x="536" y="492" font-size="9" fill="#6b7280">restore FAISS snapshot (steps=1..5)</text>
+  <text x="536" y="510" font-size="9" fill="#6b7280" font-style="italic">No rate limit (admin key is auth)</text>
+
+  <!-- ── SCHEMES ROUTER ── -->
+  <rect x="800" y="110" width="260" height="200" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="800" y="110" width="260" height="38" rx="10" fill="#f97316"/>
+  <text x="930" y="135" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Schemes  /api/schemes</text>
+  <line x1="800" y1="148" x2="1060" y2="148" stroke="#fed7aa" stroke-width="1"/>
+  <text x="816" y="170" font-size="11" fill="#1f2937">POST  /check</text>
+  <text x="816" y="188" font-size="9" fill="#6b7280">body: {state, age, income, gender,</text>
+  <text x="816" y="204" font-size="9" fill="#6b7280">  isStudent, isFarmer}</text>
+  <text x="816" y="222" font-size="9" fill="#6b7280">→ {matches: [...schemes]}</text>
+  <text x="816" y="240" font-size="9" fill="#6b7280">Rule-based (no LLM)</text>
+  <text x="816" y="258" font-size="9" fill="#6b7280">No auth required</text>
+  <text x="816" y="278" font-size="9" fill="#6b7280" font-style="italic">Rate: 20/minute</text>
+
+  <!-- ── TTS ROUTER ── -->
+  <rect x="800" y="328" width="260" height="160" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="800" y="328" width="260" height="38" rx="10" fill="#16a34a"/>
+  <text x="930" y="353" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">TTS  /api/tts</text>
+  <line x1="800" y1="366" x2="1060" y2="366" stroke="#bbf7d0" stroke-width="1"/>
+  <text x="816" y="388" font-size="11" fill="#1f2937">POST  /</text>
+  <text x="816" y="406" font-size="9" fill="#6b7280">body: {text, lang}</text>
+  <text x="816" y="422" font-size="9" fill="#6b7280">→ {audio: base64 mp3}</text>
+  <text x="816" y="440" font-size="9" fill="#6b7280">MongoDB cache (7-day TTL)</text>
+  <text x="816" y="458" font-size="9" fill="#6b7280">gTTS fallback if cache miss</text>
+  <text x="816" y="476" font-size="9" fill="#6b7280" font-style="italic">Rate: 15/minute</text>
+
+  <!-- ── UPLOAD ROUTER ── -->
+  <rect x="800" y="506" width="260" height="130" rx="10" fill="#fdf4ff" stroke="#e9d5ff" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="800" y="506" width="260" height="38" rx="10" fill="#7c3aed"/>
+  <text x="930" y="531" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Upload  /api/upload</text>
+  <line x1="800" y1="544" x2="1060" y2="544" stroke="#e9d5ff" stroke-width="1"/>
+  <text x="816" y="566" font-size="11" fill="#1f2937">POST  /</text>
+  <text x="816" y="584" font-size="9" fill="#6b7280">multipart/form-data · file + domain</text>
+  <text x="816" y="600" font-size="9" fill="#6b7280">X-Admin-Key required</text>
+  <text x="816" y="616" font-size="9" fill="#6b7280">→ chunk, embed, add to FAISS</text>
+
+  <!-- ── SUMMARY ROUTER ── -->
+  <rect x="20" y="550" width="220" height="130" rx="10" fill="#fef9c3" stroke="#fde68a" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="20" y="550" width="220" height="38" rx="10" fill="#d97706"/>
+  <text x="130" y="575" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Summary  /api/summary</text>
+  <line x1="20" y1="588" x2="240" y2="588" stroke="#fde68a" stroke-width="1"/>
+  <text x="36" y="610" font-size="11" fill="#1f2937">GET  /{session_id}</text>
+  <text x="36" y="628" font-size="9" fill="#6b7280">Bearer required</text>
+  <text x="36" y="644" font-size="9" fill="#6b7280">→ AI-generated session summary</text>
+  <text x="36" y="660" font-size="9" fill="#6b7280">→ key topics, emotions, actions</text>
+
+  <!-- Client connection arrows -->
+  <line x1="490" y1="70" x2="130" y2="108" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="510" y1="70" x2="380" y2="108" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="540" y1="70" x2="650" y2="108" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="570" y1="70" x2="930" y2="108" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Legend -->
+  <rect x="20" y="700" width="680" height="50" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="360" y="722" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">Auth levels</text>
+  <text x="36" y="740" font-size="10" fill="#6b7280">🔓 No auth  ·  </text>
+  <text x="130" y="740" font-size="10" fill="#6b7280">🔑 Bearer JWT  ·  </text>
+  <text x="250" y="740" font-size="10" fill="#6b7280">🛡️ X-Admin-Key header  ·  </text>
+  <text x="430" y="740" font-size="10" fill="#6b7280">🔑? Optional Bearer (feedback)</text>
+</svg>
+</body>
+</html>

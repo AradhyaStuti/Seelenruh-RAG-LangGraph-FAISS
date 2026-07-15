@@ -1,10 +1,4 @@
-"""Legal document templates the user can fill from the Umang persona.
-Each template is a function that takes a dict of fields and returns the
-finished text + a short notes list (what to double-check before sending).
-
-Keeping these as plain-Python builders rather than Jinja so a reader can
-see exactly what gets written into their document — no template engine
-surprises, no LLM-in-the-loop, no hallucination surface."""
+"""Legal document templates. Plain-Python builders — no Jinja, no LLM, no surprises."""
 from datetime import date
 from typing import Callable
 

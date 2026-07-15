@@ -54,110 +54,143 @@
 }
 
 @layer base {
+
+  /* ── Usha — Mental Health  ·  Calm, peaceful blue ──────────────────────── */
   :root,
   .theme-mental-health {
-    --background:        340 60% 98%;
-    --foreground:        330 22% 22%;
-    --card:              340 70% 99%;
-    --card-foreground:   330 22% 22%;
-    --popover:           340 70% 99%;
-    --popover-foreground:330 22% 22%;
-    --primary:           340 70% 78%;
-    --primary-foreground:340 40% 18%;
-    --secondary:         270 55% 92%;
-    --secondary-foreground: 270 28% 28%;
-    --muted:             340 40% 94%;
-    --muted-foreground:  330 14% 44%;
-    --accent:            155 45% 82%;
-    --accent-foreground: 155 35% 18%;
-    --destructive:       352 70% 68%;
+    --background:             210 100% 98%;   /* #F5FAFF */
+    --foreground:             215 28% 18%;
+    --card:                   0 0% 100%;
+    --card-foreground:        215 28% 18%;
+    --popover:                0 0% 100%;
+    --popover-foreground:     215 28% 18%;
+    --primary:                207 65% 70%;    /* #7CB9E8 */
+    --primary-foreground:     215 45% 12%;
+    --secondary:              210 100% 88%;   /* #BFDFFF */
+    --secondary-foreground:   215 28% 18%;
+    --muted:                  207 55% 94%;
+    --muted-foreground:       215 14% 44%;
+    --accent:                 212 70% 58%;    /* #4A90E2 */
+    --accent-foreground:      0 0% 100%;
+    --destructive:            352 70% 65%;
     --destructive-foreground: 0 0% 100%;
-    --border:            340 35% 88%;
-    --input:             340 40% 95%;
-    --ring:              340 65% 74%;
-    --radius:            1rem;
+    --border:                 206 60% 90%;    /* #D8EAF8 */
+    --input:                  207 80% 95%;    /* #EAF5FF */
+    --ring:                   207 65% 70%;
+    --radius:                 1rem;
 
-    --orb-a: 340 90% 92%;
-    --orb-b: 270 75% 93%;
-    --orb-c: 155 55% 92%;
+    --orb-a: 210 100% 94%;
+    --orb-b: 212 72% 92%;
+    --orb-c: 195 55% 93%;
   }
 
+  /* ── Umang — Legal  ·  Warm beige, professional elegance ───────────────── */
   .theme-legal {
-    --background:        35 60% 98%;
-    --foreground:        265 22% 22%;
-    --card:              35 70% 99%;
-    --card-foreground:   265 22% 22%;
-    --popover:           35 70% 99%;
-    --popover-foreground:265 22% 22%;
-    --primary:           265 40% 70%;
-    --primary-foreground:35 70% 98%;
-    --secondary:         35 70% 90%;
-    --secondary-foreground: 265 22% 22%;
-    --muted:             35 50% 94%;
-    --muted-foreground:  265 14% 44%;
-    --accent:            32 75% 82%;
-    --accent-foreground: 32 30% 22%;
-    --destructive:       352 70% 68%;
+    --background:             42 54% 97%;     /* #FCFAF5 */
+    --foreground:             35 25% 18%;
+    --card:                   0 0% 100%;
+    --card-foreground:        35 25% 18%;
+    --popover:                0 0% 100%;
+    --popover-foreground:     35 25% 18%;
+    --primary:                39 37% 66%;     /* #C9B38A */
+    --primary-foreground:     35 50% 12%;
+    --secondary:              40 44% 85%;     /* #EADFC9 */
+    --secondary-foreground:   35 25% 18%;
+    --muted:                  38 40% 93%;
+    --muted-foreground:       35 14% 44%;
+    --accent:                 38 30% 51%;     /* #A88C5D */
+    --accent-foreground:      0 0% 100%;
+    --destructive:            352 70% 65%;
     --destructive-foreground: 0 0% 100%;
-    --border:            35 35% 86%;
-    --input:             35 45% 94%;
-    --ring:              265 40% 70%;
+    --border:                 37 32% 87%;     /* #E8E0D3 */
+    --input:                  38 50% 94%;     /* #F6F1E7 */
+    --ring:                   39 37% 66%;
 
-    --orb-a: 265 60% 92%;
-    --orb-b: 35 85% 92%;
-    --orb-c: 32 75% 90%;
+    --orb-a: 42 60% 94%;
+    --orb-b: 38 50% 92%;
+    --orb-c: 30 45% 93%;
   }
 
+  /* ── Aarogya — Government Schemes  ·  Fresh, healthy green ─────────────── */
   .theme-government {
-    --background:        80 50% 98%;
-    --foreground:        145 22% 22%;
-    --card:              80 65% 99%;
-    --card-foreground:   145 22% 22%;
-    --popover:           80 65% 99%;
-    --popover-foreground:145 22% 22%;
-    --primary:           150 45% 65%;
-    --primary-foreground:80 60% 98%;
-    --secondary:         32 80% 90%;
-    --secondary-foreground: 145 22% 22%;
-    --muted:             80 40% 94%;
-    --muted-foreground:  145 12% 44%;
-    --accent:            40 80% 82%;
-    --accent-foreground: 40 30% 22%;
-    --destructive:       352 70% 68%;
+    --background:             120 38% 98%;    /* #F8FCF8 */
+    --foreground:             140 22% 18%;
+    --card:                   0 0% 100%;
+    --card-foreground:        140 22% 18%;
+    --popover:                0 0% 100%;
+    --popover-foreground:     140 22% 18%;
+    --primary:                141 35% 68%;    /* #8FC9A3 */
+    --primary-foreground:     140 45% 12%;
+    --secondary:              135 45% 89%;    /* #D7F0DD */
+    --secondary-foreground:   140 22% 18%;
+    --muted:                  130 35% 94%;
+    --muted-foreground:       140 12% 44%;
+    --accent:                 135 33% 56%;    /* #69B37B */
+    --accent-foreground:      0 0% 100%;
+    --destructive:            352 70% 65%;
     --destructive-foreground: 0 0% 100%;
-    --border:            80 30% 86%;
-    --input:             80 40% 94%;
-    --ring:              150 45% 65%;
+    --border:                 133 38% 90%;    /* #D9EEDD */
+    --input:                  130 52% 95%;    /* #EEF9F0 */
+    --ring:                   141 35% 68%;
 
-    --orb-a: 150 60% 92%;
-    --orb-b: 32 85% 92%;
-    --orb-c: 40 85% 92%;
+    --orb-a: 135 45% 94%;
+    --orb-b: 120 38% 93%;
+    --orb-c: 150 40% 92%;
   }
 
+  /* ── Raksha — Safety  ·  Urgent red (preserved identity) ───────────────── */
   .theme-safety {
-    --background:        18 65% 98%;
-    --foreground:        352 22% 22%;
-    --card:              18 70% 99%;
-    --card-foreground:   352 22% 22%;
-    --popover:           18 70% 99%;
-    --popover-foreground:352 22% 22%;
-    --primary:           352 70% 78%;
-    --primary-foreground:18 70% 98%;
-    --secondary:         42 85% 90%;
-    --secondary-foreground: 352 22% 22%;
-    --muted:             18 50% 94%;
-    --muted-foreground:  352 12% 44%;
-    --accent:            12 70% 84%;
-    --accent-foreground: 12 30% 22%;
-    --destructive:       352 75% 64%;
+    --background:             0 65% 98%;
+    --foreground:             352 22% 18%;
+    --card:                   0 0% 100%;
+    --card-foreground:        352 22% 18%;
+    --popover:                0 0% 100%;
+    --popover-foreground:     352 22% 18%;
+    --primary:                352 72% 72%;
+    --primary-foreground:     352 50% 12%;
+    --secondary:              15 80% 91%;
+    --secondary-foreground:   352 22% 18%;
+    --muted:                  0 45% 94%;
+    --muted-foreground:       352 12% 44%;
+    --accent:                 352 68% 62%;
+    --accent-foreground:      0 0% 100%;
+    --destructive:            352 75% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border:            18 35% 88%;
-    --input:             18 50% 94%;
-    --ring:              352 70% 78%;
+    --border:                 352 35% 90%;
+    --input:                  0 50% 95%;
+    --ring:                   352 72% 72%;
 
-    --orb-a: 352 90% 93%;
-    --orb-b: 18 90% 92%;
-    --orb-c: 42 90% 92%;
+    --orb-a: 352 90% 94%;
+    --orb-b: 15 90% 93%;
+    --orb-c: 0 70% 95%;
+  }
+
+  /* ── Admin Panel  ·  Clean neutral-slate ───────────────────────────────── */
+  .theme-admin {
+    --background:             220 20% 98%;    /* #FAFAFA */
+    --foreground:             215 25% 17%;    /* #1F2937 */
+    --card:                   0 0% 100%;
+    --card-foreground:        215 25% 17%;
+    --popover:                0 0% 100%;
+    --popover-foreground:     215 25% 17%;
+    --primary:                231 48% 60%;
+    --primary-foreground:     0 0% 100%;
+    --secondary:              220 20% 93%;    /* #F7F8FA */
+    --secondary-foreground:   215 25% 17%;
+    --muted:                  220 15% 94%;
+    --muted-foreground:       220 9% 46%;     /* #6B7280 */
+    --accent:                 231 48% 62%;
+    --accent-foreground:      0 0% 100%;
+    --destructive:            352 70% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --border:                 220 13% 91%;    /* #E5E7EB */
+    --input:                  220 15% 95%;
+    --ring:                   231 48% 60%;
+    --radius:                 0.75rem;
+
+    --orb-a: 220 30% 96%;
+    --orb-b: 231 40% 95%;
+    --orb-c: 210 25% 97%;
   }
 
 }

@@ -35,8 +35,7 @@ Examples:
 
 
 async def detect(query: str) -> dict:
-    """Returns {emotion, fallback_used}. `fallback_used` is True when the
-    LLM call failed and the function returned the default "neutral"."""
+    """Returns {emotion, fallback_used}. Falls back to 'neutral' if the LLM call fails."""
     try:
         result = await chat_json(
             model=GROQ_MODEL_FAST,

@@ -1,9 +1,4 @@
-"""Anthropic API client via httpx — no anthropic SDK needed.
-
-Used as a third LLM fallback when both Groq and Ollama are unavailable.
-Supports the same interface as groq_client.chat() so provider.py can call it
-transparently.
-"""
+"""Anthropic API client (httpx, no SDK). Third fallback after Groq and Ollama."""
 import json
 from typing import AsyncIterator
 
@@ -21,11 +16,7 @@ def is_enabled() -> bool:
 
 
 def _groq_to_anthropic(messages: list[dict]) -> tuple[str, list[dict]]:
-    """Convert OpenAI-style messages (with system) to Anthropic format.
-
-    Anthropic expects `system` as a top-level string and `messages` without
-    system entries. Multiple consecutive system messages are merged.
-    """
+    """Convert OpenAI-style messages to Anthropic format (system as top-level string)."""
     system_parts: list[str] = []
     converted: list[dict] = []
     for m in messages:

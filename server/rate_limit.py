@@ -1,11 +1,4 @@
-"""Per-IP rate limiting via slowapi. Wraps the limiter setup so route
-files only need to import the decorator and a request param.
-
-The key function prefers the JWT subject when the user is authenticated
-(so one user can't bypass by rotating IPs) and falls back to the remote
-address otherwise. The Authorization header is parsed best-effort — if
-it isn't a valid JWT we just key on IP, no auth check here (that's the
-route's job)."""
+"""slowapi rate limiting. Keys on JWT subject when authenticated, falls back to IP."""
 import jwt
 from fastapi import Request
 from slowapi import Limiter

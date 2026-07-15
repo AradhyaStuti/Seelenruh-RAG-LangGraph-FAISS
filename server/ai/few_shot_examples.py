@@ -1,25 +1,8 @@
-"""
-few_shot_examples.py
---------------------
-Curated few-shot demonstrations injected into the composer system prompt.
-Each example shows the ideal Umang response style: structured, honest,
-action-oriented, no overpromising.
-
-Usage
------
-    from server.ai.few_shot_examples import get_few_shot_examples
-
-    shots = get_few_shot_examples(category="Employment", lang="hi-roman", max_examples=2)
-    # Returns a formatted string to inject into the system prompt.
-"""
+"""Few-shot examples injected into Umang's composer prompt to show the ideal response style."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-# ---------------------------------------------------------------------------
-# Example schema
-# ---------------------------------------------------------------------------
 
 @dataclass
 class FewShotExample:
@@ -29,10 +12,6 @@ class FewShotExample:
     user_query: str
     ideal_response: str
 
-
-# ---------------------------------------------------------------------------
-# Example bank
-# ---------------------------------------------------------------------------
 
 EXAMPLES: list[FewShotExample] = [
 
@@ -482,29 +461,12 @@ Mietrecht — unzulässige Mieterhöhung (Property / Tenant Rights)
     ),
 ]
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
 def get_few_shot_examples(
     category: str = "*",
     lang: str = "*",
     max_examples: int = 2,
 ) -> str:
-    """
-    Return a formatted string containing few-shot examples for injection
-    into the system prompt.
-
-    Parameters
-    ----------
-    category     : Legal category (e.g. "Employment", "Property", "*" for any)
-    lang         : Language code ("en", "hi", "hi-roman", "de", "*" for any)
-    max_examples : Maximum number of examples to include (default 2)
-
-    Returns
-    -------
-    Formatted string with Q&A pairs, or "" if no relevant examples found.
-    """
+    """Return formatted few-shot examples for the given category/language, or '' if none match."""
     # Priority: category + lang match → category match → lang match → any
     def score(ex: FewShotExample) -> int:
         cat_match = category == "*" or ex.category.lower() == category.lower() or ex.lang == "*"

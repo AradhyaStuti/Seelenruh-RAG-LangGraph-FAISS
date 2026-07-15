@@ -1,14 +1,4 @@
-"""Admin endpoints — guarded by ADMIN_KEY env var.
-
-POST   /api/admin/ingest          — add new knowledge chunks to the live RAG index
-DELETE /api/admin/ingest          — soft-delete chunks by ID
-GET    /api/admin/status          — index size + readiness check
-GET    /api/admin/chunks          — list all live chunks (paginated)
-GET    /api/admin/audit           — last 100 admin actions
-
-All mutating operations are written to the audit_log collection in MongoDB.
-Set ADMIN_KEY to a strong random string in .env to enable these endpoints.
-"""
+"""Admin endpoints — all guarded by X-Admin-Key header."""
 import asyncio
 import io
 import re
@@ -16,10 +6,11 @@ import uuid
 from datetime import date
 from typing import Literal, Optional
 
-from fastapi import APIRouter, File, Header, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from config import ADMIN_KEY
+from rate_limit import limiter
 from rag import retriever
 import db
 
@@ -55,25 +46,13 @@ class IngestResponse(BaseModel):
 
 
 @router.post("/ingest", response_model=IngestResponse)
+@limiter.limit("20/minute")
 async def ingest_chunks(
+    request: Request,
     req: IngestRequest,
     x_admin_key: Optional[str] = Header(default=None),
 ) -> IngestResponse:
-    """Add new knowledge chunks to the live FAISS index.
-
-    Example request body:
-    {
-      "chunks": [
-        {
-          "domain": "Legal",
-          "topic": "Digital Personal Data Protection Act 2023",
-          "text": "The DPDP Act 2023 gives citizens the right to...",
-          "source": "https://meity.gov.in/dpdp",
-          "lastVerifiedOn": "2025-01-15"
-        }
-      ]
-    }
-    """
+    """Add new knowledge chunks to the live FAISS index."""
     _check_key(x_admin_key)
 
     today = date.today().isoformat()
@@ -108,15 +87,13 @@ class DeleteRequest(BaseModel):
 
 
 @router.delete("/ingest", response_model=dict)
+@limiter.limit("20/minute")
 async def delete_chunks(
+    request: Request,
     req: DeleteRequest,
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:
-    """Soft-delete knowledge chunks by their ID.
-
-    Deleted chunks are hidden from search immediately. Background compaction
-    rebuilds the index when deleted waste exceeds 30%.
-    """
+    """Soft-delete chunks. Background compaction runs when deleted waste exceeds 30%."""
     _check_key(x_admin_key)
     removed = await retriever.delete(req.ids)
 
@@ -129,7 +106,9 @@ async def delete_chunks(
 
 
 @router.get("/status")
+@limiter.limit("60/minute")
 async def admin_status(
+    request: Request,
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:
     """Return current index size, readiness, and compaction stats."""
@@ -145,7 +124,9 @@ async def admin_status(
 
 
 @router.get("/chunks")
+@limiter.limit("60/minute")
 async def list_chunks(
+    request: Request,
     x_admin_key: Optional[str] = Header(default=None),
     domain: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -168,7 +149,9 @@ async def list_chunks(
 
 
 @router.get("/audit")
+@limiter.limit("60/minute")
 async def audit_log(
+    request: Request,
     x_admin_key: Optional[str] = Header(default=None),
     limit: int = Query(default=100, ge=1, le=500),
 ) -> dict:
@@ -179,7 +162,9 @@ async def audit_log(
 
 
 @router.get("/snapshots")
+@limiter.limit("60/minute")
 async def list_snapshots(
+    request: Request,
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:
     """List available FAISS index snapshots (up to 5 most recent saves)."""
@@ -189,16 +174,13 @@ async def list_snapshots(
 
 
 @router.post("/rollback")
+@limiter.limit("10/minute")
 async def rollback_index(
+    request: Request,
     steps: int = Query(default=1, ge=1, le=5),
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:
-    """Roll back the FAISS index to a previous snapshot.
-
-    `steps=1` (default) restores the most recent snapshot (the state just
-    before the last save). `steps=2` goes one further back, and so on.
-    Returns 409 if the requested snapshot does not exist.
-    """
+    """Roll back the FAISS index. steps=1 is the most recent snapshot."""
     _check_key(x_admin_key)
     async with retriever._write_lock:
         ok = retriever._store.rollback(steps=steps)
@@ -212,15 +194,13 @@ async def rollback_index(
     return {"ok": True, "steps": steps, "totalInIndex": retriever._store.size()}
 
 
-# ---------------------------------------------------------------------------
-# Knowledge gap endpoints
-# ---------------------------------------------------------------------------
-
 GapStatus = Literal["open", "solved", "ignored"]
 
 
 @router.get("/knowledge-gaps")
+@limiter.limit("60/minute")
 async def list_knowledge_gaps(
+    request: Request,
     x_admin_key: Optional[str] = Header(default=None),
     status: Optional[str] = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
@@ -236,7 +216,9 @@ class GapUpdateRequest(BaseModel):
 
 
 @router.patch("/knowledge-gaps/{gap_id}")
+@limiter.limit("30/minute")
 async def update_gap(
+    request: Request,
     gap_id: str,
     req: GapUpdateRequest,
     x_admin_key: Optional[str] = Header(default=None),
@@ -249,12 +231,10 @@ async def update_gap(
     return {"ok": True, "status": req.status}
 
 
-# ---------------------------------------------------------------------------
-# Analytics dashboard
-# ---------------------------------------------------------------------------
-
 @router.get("/analytics")
+@limiter.limit("30/minute")
 async def analytics_dashboard(
+    request: Request,
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:
     """Return aggregate stats for the admin analytics dashboard."""
@@ -278,10 +258,6 @@ async def analytics_dashboard(
         },
     }
 
-
-# ---------------------------------------------------------------------------
-# Document management helpers
-# ---------------------------------------------------------------------------
 
 _CHUNK_SIZE = 480
 _CHUNK_OVERLAP = 60
@@ -354,12 +330,10 @@ def _extract_text_from_bytes(data: bytes, suffix: str) -> str:
     return data.decode("utf-8", errors="replace")
 
 
-# ---------------------------------------------------------------------------
-# Document management endpoints
-# ---------------------------------------------------------------------------
-
 @router.post("/ingest-document")
+@limiter.limit("10/minute")
 async def ingest_document(
+    request: Request,
     file: UploadFile = File(...),
     domain: str = Query(...),
     topic: str = Query(default=""),
@@ -367,11 +341,7 @@ async def ingest_document(
     language: str = Query(default="en"),
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:
-    """Upload a document, auto-chunk, embed, and add to the live RAG index.
-
-    Returns the document ID, chunk count, and a list of chunk IDs on success.
-    Does NOT restart the server — index update is live immediately.
-    """
+    """Upload a document, auto-chunk, embed, and add to the live RAG index."""
     _check_key(x_admin_key)
 
     filename = file.filename or "upload"
@@ -460,7 +430,9 @@ async def ingest_document(
 
 
 @router.get("/documents")
+@limiter.limit("60/minute")
 async def list_documents(
+    request: Request,
     x_admin_key: Optional[str] = Header(default=None),
     domain: Optional[str] = Query(default=None),
     file_type: Optional[str] = Query(default=None),
@@ -476,7 +448,9 @@ async def list_documents(
 
 
 @router.get("/documents/{doc_id}")
+@limiter.limit("60/minute")
 async def get_document(
+    request: Request,
     doc_id: str,
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:
@@ -497,7 +471,9 @@ async def get_document(
 
 
 @router.delete("/documents/{doc_id}")
+@limiter.limit("20/minute")
 async def delete_document(
+    request: Request,
     doc_id: str,
     hard: bool = Query(default=False, description="If true, permanently remove chunks from FAISS"),
     x_admin_key: Optional[str] = Header(default=None),
@@ -527,7 +503,9 @@ async def delete_document(
 
 
 @router.post("/documents/{doc_id}/restore")
+@limiter.limit("20/minute")
 async def restore_document(
+    request: Request,
     doc_id: str,
     x_admin_key: Optional[str] = Header(default=None),
 ) -> dict:

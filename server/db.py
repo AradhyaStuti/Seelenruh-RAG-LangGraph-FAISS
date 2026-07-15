@@ -50,9 +50,6 @@ async def connect() -> bool:
         await _db["email_verifications"].create_index("createdAt", expireAfterSeconds=86400)
         await _db["email_verifications"].create_index("email", unique=True)
         await _db["audit_log"].create_index("createdAt", expireAfterSeconds=365 * 24 * 3600)
-        await _db["feedback"].create_index(
-            [("userId", 1), ("messageId", 1)], unique=True
-        )
         await _db["feedback_logs"].create_index("createdAt", expireAfterSeconds=365 * 24 * 3600)
         await _db["feedback_logs"].create_index([("messageId", 1)], unique=True)
         await _db["feedback_logs"].create_index("domain")
@@ -312,32 +309,12 @@ async def delete_goals_for_user(user_id: str) -> int:
         return 0
 
 
-async def upsert_feedback(*, user_id: str, message_id: str, vote: str, domain: str) -> bool:
-    if not is_connected() or not user_id:
-        return False
-    try:
-        await _db["feedback"].update_one(
-            {"userId": user_id, "messageId": message_id},
-            {"$set": {
-                "userId": user_id,
-                "messageId": message_id,
-                "vote": vote,
-                "domain": domain,
-                "updatedAt": datetime.utcnow(),
-            }},
-            upsert=True,
-        )
-        return True
-    except Exception as err:
-        log.error("failed to upsert feedback", error=str(err))
-        return False
-
-
 async def delete_feedback_for_user(user_id: str) -> int:
     if not is_connected():
         return 0
     try:
-        result = await _db["feedback"].delete_many({"userId": user_id})
+        # Delete from feedback_logs (new collection, keyed by userId)
+        result = await _db["feedback_logs"].delete_many({"userId": user_id})
         return int(result.deleted_count or 0)
     except Exception as err:
         log.error("failed to delete feedback for user", user_id=user_id, error=str(err))
@@ -531,10 +508,6 @@ async def clear_failed_logins(email: str) -> None:
         pass
 
 
-# ---------------------------------------------------------------------------
-# Feedback logs (rich per-message feedback with full context)
-# ---------------------------------------------------------------------------
-
 async def save_feedback_log(
     *,
     message_id: str,
@@ -626,10 +599,6 @@ async def fetch_feedback_for_export(limit: int = 5000) -> list[dict]:
         return []
 
 
-# ---------------------------------------------------------------------------
-# Knowledge gaps (low-confidence / no-retrieval queries)
-# ---------------------------------------------------------------------------
-
 async def save_knowledge_gap(
     *,
     query: str,
@@ -690,10 +659,6 @@ async def update_knowledge_gap(gap_id: str, status: str) -> bool:
         log.error("failed to update knowledge gap", error=str(err))
         return False
 
-
-# ---------------------------------------------------------------------------
-# Document registry (admin-uploaded knowledge documents)
-# ---------------------------------------------------------------------------
 
 async def save_document_registry(
     *,

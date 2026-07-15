@@ -47,11 +47,7 @@ from bench.bench_data import (  # noqa: E402
 RESULTS_DIR = Path(__file__).parent / "reports"
 RESULTS_DIR.mkdir(exist_ok=True)
 
-
-# ---------------------------------------------------------------------------
 # Scoring
-# ---------------------------------------------------------------------------
-
 @dataclass
 class CaseScore:
     case_id: str
@@ -67,7 +63,6 @@ class CaseScore:
     @property
     def keyword_coverage(self) -> float:
         return self.keyword_hits / self.keyword_total if self.keyword_total else 0.0
-
 
 def _score_case(case: dict, response: Optional[str] = None) -> CaseScore:
     """
@@ -124,7 +119,6 @@ def _score_case(case: dict, response: Optional[str] = None) -> CaseScore:
         notes=notes,
     )
 
-
 def evaluate_persona(
     cases: list[dict],
     responses: Optional[dict[str, str]] = None,
@@ -169,14 +163,9 @@ def evaluate_persona(
         "n_failures": len(failures),
     }
 
-
-# ---------------------------------------------------------------------------
 # Report writer
-# ---------------------------------------------------------------------------
-
 def _fmt_pct(v: float) -> str:
     return f"{v * 100:.1f}%"
-
 
 def write_benchmark_report(results: dict, mode: str, out_path: Path) -> None:
     lines: list[str] = []
@@ -290,11 +279,7 @@ def write_benchmark_report(results: dict, mode: str, out_path: Path) -> None:
     out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  Benchmark report -> {out_path.relative_to(Path(__file__).parent.parent)}")
 
-
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
-
 def main() -> None:
     args = sys.argv[1:]
     responses_file: Optional[Path] = None
@@ -332,10 +317,8 @@ def main() -> None:
     report_path = RESULTS_DIR / "benchmark_report.md"
     write_benchmark_report(results, mode=mode, out_path=report_path)
 
-
 def _fmt_pct(v: float) -> str:
     return f"{v * 100:.1f}%"
-
 
 if __name__ == "__main__":
     main()

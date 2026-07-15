@@ -1,20 +1,6 @@
-/**
- * ExplainabilityPanel — "Why did I answer this?" expandable panel.
- *
- * Provides transparent retrieval information without exposing chain-of-thought,
- * prompts, or internal reasoning. Everything shown here is derived from the
- * already-public ChatResponse fields: sources, confidence, routing, webSearched, goal.
- *
- * Features
- *  • Animated RAG pipeline (Embed → FAISS → BM25 → Fusion → Rerank → LLM)
- *  • Deterministic reasoning summary
- *  • Quality indicators (confidence, freshness, hallucination guard, web search, etc.)
- *  • Document cards with scores and freshness
- */
+// "Why did I answer this?" panel — shows RAG pipeline, confidence, and source docs
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-
-// ─── Pipeline stages ──────────────────────────────────────────────────────────
 
 const PIPELINE_STAGES = [
   { id: "embed",  label: "Embed",       icon: "⚡", desc: "Query vectorised" },
@@ -25,16 +11,12 @@ const PIPELINE_STAGES = [
   { id: "llm",    label: "LLM",         icon: "✨", desc: "Answer generation" },
 ];
 
-// ─── Confidence colours ───────────────────────────────────────────────────────
-
 const CONF = {
   High:   { ring: "ring-emerald-500/30", bg: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" },
   Medium: { ring: "ring-amber-500/30",   bg: "bg-amber-500/10",   text: "text-amber-700 dark:text-amber-300",   dot: "bg-amber-400"   },
   Low:    { ring: "ring-red-500/30",     bg: "bg-red-500/10",     text: "text-red-700 dark:text-red-300",       dot: "bg-red-500"     },
   None:   { ring: "ring-border/40",      bg: "bg-muted/30",       text: "text-muted-foreground",                dot: "bg-muted-foreground/40" },
 };
-
-// ─── Deterministic reasoning summary ─────────────────────────────────────────
 
 function buildReasoningSummary({ sources, confidence, routing, webSearched, goal, selectedDomain }) {
   const n = sources?.length ?? 0;
@@ -59,8 +41,6 @@ function buildReasoningSummary({ sources, confidence, routing, webSearched, goal
   return summary;
 }
 
-// ─── Quality indicators ───────────────────────────────────────────────────────
-
 function QualityBadge({ label, value, ok = null }) {
   const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1";
   const cls = ok === true
@@ -75,8 +55,6 @@ function QualityBadge({ label, value, ok = null }) {
     </span>
   );
 }
-
-// ─── Animated pipeline ────────────────────────────────────────────────────────
 
 function AnimatedPipeline({ active, hasRetrieval }) {
   const [step, setStep] = useState(-1);
@@ -142,8 +120,6 @@ function AnimatedPipeline({ active, hasRetrieval }) {
   );
 }
 
-// ─── Score bar ────────────────────────────────────────────────────────────────
-
 function ScoreBar({ value = 0, max = 1 }) {
   const pct = Math.min(100, Math.round((value / (max || 1)) * 100));
   return (
@@ -160,8 +136,6 @@ function ScoreBar({ value = 0, max = 1 }) {
     </div>
   );
 }
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 export function ExplainabilityPanel({
   sources = [],

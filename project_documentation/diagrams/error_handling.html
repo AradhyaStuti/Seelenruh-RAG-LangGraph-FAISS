@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Error Handling Flow — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>Error Handling & Resilience Flow</h1>
+<p class="subtitle">Circuit breaker, LLM fallback chain, rate limiting, validation, and graceful degradation</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="1060" height="860" viewBox="0 0 1060 860" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#555"/>
+    </marker>
+    <marker id="arr-r" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#dc2626"/>
+    </marker>
+    <marker id="arr-g" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#16a34a"/>
+    </marker>
+    <filter id="sh" x="-6%" y="-6%" width="112%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/>
+    </filter>
+  </defs>
+
+  <!-- ── SECTION 1: Request Validation ── -->
+  <rect x="10" y="10" width="500" height="260" rx="10" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="260" y="36" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d" letter-spacing="1">REQUEST VALIDATION ERRORS</text>
+
+  <!-- 422 Validation -->
+  <rect x="30" y="50" width="220" height="70" rx="8" fill="#dc2626" filter="url(#sh)"/>
+  <text x="140" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">422 Unprocessable Entity</text>
+  <text x="140" y="94" text-anchor="middle" font-size="9" fill="#fee2e2">Pydantic schema validation fails</text>
+  <text x="140" y="108" text-anchor="middle" font-size="9" fill="#fee2e2">e.g. messageId too long, vote invalid</text>
+
+  <!-- 400 Bad Request -->
+  <rect x="270" y="50" width="220" height="70" rx="8" fill="#b91c1c" filter="url(#sh)"/>
+  <text x="380" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">400 Bad Request</text>
+  <text x="380" y="94" text-anchor="middle" font-size="9" fill="#fee2e2">missing required fields</text>
+  <text x="380" y="108" text-anchor="middle" font-size="9" fill="#fee2e2">malformed JSON body</text>
+
+  <!-- 401 Auth -->
+  <rect x="30" y="140" width="220" height="70" rx="8" fill="#991b1b" filter="url(#sh)"/>
+  <text x="140" y="166" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">401 Unauthorized</text>
+  <text x="140" y="184" text-anchor="middle" font-size="9" fill="#fecaca">bad sig / expired JWT / JTI blacklisted</text>
+  <text x="140" y="198" text-anchor="middle" font-size="9" fill="#fecaca">missing Authorization header</text>
+
+  <!-- 429 Rate Limit -->
+  <rect x="270" y="140" width="220" height="70" rx="8" fill="#f97316" filter="url(#sh)"/>
+  <text x="380" y="166" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">429 Too Many Requests</text>
+  <text x="380" y="184" text-anchor="middle" font-size="9" fill="#ffedd5">slowapi burst_limit exceeded</text>
+  <text x="380" y="198" text-anchor="middle" font-size="9" fill="#ffedd5">Retry-After header returned</text>
+
+  <!-- 503 Admin disabled -->
+  <rect x="150" y="230" width="220" height="30" rx="6" fill="#7f1d1d" filter="url(#sh)"/>
+  <text x="260" y="250" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">503 — Admin endpoints disabled (ADMIN_KEY unset)</text>
+
+  <!-- ── SECTION 2: LLM Fallback Chain ── -->
+  <rect x="530" y="10" width="520" height="260" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="790" y="36" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e" letter-spacing="1">LLM PROVIDER FALLBACK CHAIN</text>
+
+  <!-- Groq -->
+  <rect x="550" y="50" width="140" height="80" rx="8" fill="#d97706" filter="url(#sh)"/>
+  <text x="620" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Groq</text>
+  <text x="620" y="94" text-anchor="middle" font-size="9" fill="#fef3c7">Primary · llama-3.3-70b</text>
+  <text x="620" y="108" text-anchor="middle" font-size="9" fill="#fef3c7">fast inference</text>
+
+  <!-- CB check -->
+  <polygon points="700,90 740,112 700,134 660,112" fill="#fef9c3" stroke="#d97706" stroke-width="1.5"/>
+  <text x="700" y="108" text-anchor="middle" font-size="9" fill="#92400e">CB</text>
+  <text x="700" y="120" text-anchor="middle" font-size="9" fill="#92400e">open?</text>
+
+  <line x1="740" y1="112" x2="770" y2="112" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arr-r)"/>
+  <text x="755" y="106" text-anchor="middle" font-size="9" fill="#dc2626">YES</text>
+
+  <!-- Ollama -->
+  <rect x="770" y="50" width="140" height="80" rx="8" fill="#7c3aed" filter="url(#sh)"/>
+  <text x="840" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Ollama</text>
+  <text x="840" y="94" text-anchor="middle" font-size="9" fill="#ede9fe">Fallback 1 · local</text>
+  <text x="840" y="108" text-anchor="middle" font-size="9" fill="#ede9fe">skipped if no URL</text>
+
+  <!-- 2nd CB -->
+  <polygon points="920,90 960,112 920,134 880,112" fill="#fef9c3" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="920" y="108" text-anchor="middle" font-size="9" fill="#6b21a8">CB</text>
+  <text x="920" y="120" text-anchor="middle" font-size="9" fill="#6b21a8">open?</text>
+
+  <line x1="960" y1="112" x2="990" y2="112" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+  <!-- Anthropic -->
+  <rect x="550" y="160" width="200" height="80" rx="8" fill="#1e40af" filter="url(#sh)"/>
+  <text x="650" y="186" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Anthropic</text>
+  <text x="650" y="204" text-anchor="middle" font-size="9" fill="#bfdbfe">Fallback 2 · claude-haiku-4-5</text>
+  <text x="650" y="218" text-anchor="middle" font-size="9" fill="#bfdbfe">last resort provider</text>
+
+  <!-- All failed -->
+  <rect x="790" y="160" width="230" height="60" rx="8" fill="#374151" filter="url(#sh)"/>
+  <text x="905" y="186" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">All providers failed</text>
+  <text x="905" y="204" text-anchor="middle" font-size="9" fill="#d1d5db">→ 503 Service Unavailable</text>
+  <line x1="990" y1="128" x2="920" y2="160" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-r)"/>
+  <line x1="870" y1="160" x2="820" y2="160" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-r)"/>
+
+  <!-- Success paths -->
+  <line x1="660" y1="112" x2="660" y2="130" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-g)"/>
+  <text x="668" y="126" font-size="9" fill="#16a34a">OK</text>
+  <line x1="880" y1="112" x2="880" y2="130" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-g)"/>
+  <text x="888" y="126" font-size="9" fill="#16a34a">OK</text>
+
+  <!-- ── SECTION 3: Circuit Breaker States ── -->
+  <rect x="10" y="290" width="500" height="240" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="260" y="316" text-anchor="middle" font-size="12" font-weight="700" fill="#14532d" letter-spacing="1">CIRCUIT BREAKER (per LLM provider)</text>
+
+  <rect x="30" y="330" width="140" height="70" rx="8" fill="#16a34a" filter="url(#sh)"/>
+  <text x="100" y="358" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">CLOSED</text>
+  <text x="100" y="376" text-anchor="middle" font-size="9" fill="#dcfce7">normal operation</text>
+  <text x="100" y="390" text-anchor="middle" font-size="9" fill="#dcfce7">requests pass through</text>
+
+  <rect x="200" y="330" width="140" height="70" rx="8" fill="#dc2626" filter="url(#sh)"/>
+  <text x="270" y="358" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">OPEN</text>
+  <text x="270" y="376" text-anchor="middle" font-size="9" fill="#fee2e2">provider failed &gt; threshold</text>
+  <text x="270" y="390" text-anchor="middle" font-size="9" fill="#fee2e2">all calls → next fallback</text>
+
+  <rect x="370" y="330" width="120" height="70" rx="8" fill="#f59e0b" filter="url(#sh)"/>
+  <text x="430" y="354" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">HALF-OPEN</text>
+  <text x="430" y="372" text-anchor="middle" font-size="9" fill="#fef3c7">cooldown expired</text>
+  <text x="430" y="388" text-anchor="middle" font-size="9" fill="#fef3c7">test call allowed</text>
+
+  <!-- CB transitions -->
+  <line x1="170" y1="365" x2="198" y2="365" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arr-r)"/>
+  <text x="184" y="358" text-anchor="middle" font-size="8" fill="#dc2626">fail &gt; N</text>
+  <line x1="340" y1="375" x2="372" y2="375" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="356" y="368" text-anchor="middle" font-size="8" fill="#f59e0b">timeout</text>
+  <line x1="430" y1="330" x2="270" y2="330" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+  <text x="350" y="320" text-anchor="middle" font-size="8" fill="#16a34a">success</text>
+  <line x1="430" y1="400" x2="270" y2="400" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-r)"/>
+  <text x="350" y="414" text-anchor="middle" font-size="8" fill="#dc2626">fail again → reopen</text>
+
+  <!-- CB notes -->
+  <text x="30" y="432" font-size="10" fill="#14532d" font-weight="600">Failure threshold:</text>
+  <text x="30" y="448" font-size="9" fill="#166534">5 consecutive failures → OPEN</text>
+  <text x="30" y="464" font-size="9" fill="#166534">Recovery timeout: 30 seconds</text>
+  <text x="30" y="480" font-size="9" fill="#166534">One probe call in HALF-OPEN state</text>
+  <text x="30" y="496" font-size="9" fill="#166534">State persisted in-memory per process</text>
+  <text x="30" y="512" font-size="9" fill="#166534">Each of 3 providers has independent CB</text>
+
+  <!-- ── SECTION 4: RAG / Knowledge Gaps ── -->
+  <rect x="530" y="290" width="520" height="240" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="790" y="316" text-anchor="middle" font-size="12" font-weight="700" fill="#c2410c" letter-spacing="1">RAG DEGRADATION MODES</text>
+
+  <rect x="550" y="330" width="220" height="70" rx="8" fill="#16a34a" filter="url(#sh)"/>
+  <text x="660" y="354" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">High Confidence</text>
+  <text x="660" y="370" text-anchor="middle" font-size="9" fill="#dcfce7">reranker &gt; 0.6 · ≥2 chunks</text>
+  <text x="660" y="385" text-anchor="middle" font-size="9" fill="#dcfce7">→ normal LLM call</text>
+
+  <rect x="790" y="330" width="240" height="70" rx="8" fill="#f59e0b" filter="url(#sh)"/>
+  <text x="910" y="354" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Low Confidence</text>
+  <text x="910" y="370" text-anchor="middle" font-size="9" fill="#fef3c7">0.3–0.6 or 1 chunk</text>
+  <text x="910" y="385" text-anchor="middle" font-size="9" fill="#fef3c7">→ web search + log gap</text>
+
+  <rect x="660" y="420" width="260" height="70" rx="8" fill="#dc2626" filter="url(#sh)"/>
+  <text x="790" y="444" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">None Confidence</text>
+  <text x="790" y="462" text-anchor="middle" font-size="9" fill="#fee2e2">score &lt; 0.3 · 0 chunks</text>
+  <text x="790" y="476" text-anchor="middle" font-size="9" fill="#fee2e2">→ web search mandatory + log gap</text>
+  <text x="790" y="490" text-anchor="middle" font-size="9" fill="#fee2e2">→ LLM told to disclaim uncertainty</text>
+
+  <!-- ── SECTION 5: Logging & Monitoring ── -->
+  <rect x="10" y="550" width="1040" height="160" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="530" y="576" text-anchor="middle" font-size="12" font-weight="700" fill="#374151" letter-spacing="1">LOGGING & MONITORING</text>
+
+  <rect x="30" y="590" width="240" height="100" rx="8" fill="#1e40af" filter="url(#sh)"/>
+  <text x="150" y="614" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">structlog (JSON)</text>
+  <text x="150" y="632" text-anchor="middle" font-size="9" fill="#bfdbfe">every LLM call logged</text>
+  <text x="150" y="648" text-anchor="middle" font-size="9" fill="#bfdbfe">retrieval scores logged</text>
+  <text x="150" y="664" text-anchor="middle" font-size="9" fill="#bfdbfe">circuit breaker transitions</text>
+  <text x="150" y="680" text-anchor="middle" font-size="9" fill="#bfdbfe">knowledge gap events</text>
+
+  <rect x="290" y="590" width="240" height="100" rx="8" fill="#7c3aed" filter="url(#sh)"/>
+  <text x="410" y="614" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Sentry (optional)</text>
+  <text x="410" y="632" text-anchor="middle" font-size="9" fill="#ede9fe">SENTRY_DSN env var</text>
+  <text x="410" y="648" text-anchor="middle" font-size="9" fill="#ede9fe">unhandled exceptions</text>
+  <text x="410" y="664" text-anchor="middle" font-size="9" fill="#ede9fe">performance monitoring</text>
+  <text x="410" y="680" text-anchor="middle" font-size="9" fill="#ede9fe">error grouping</text>
+
+  <rect x="550" y="590" width="240" height="100" rx="8" fill="#0f766e" filter="url(#sh)"/>
+  <text x="670" y="614" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">MongoDB audit_logs</text>
+  <text x="670" y="632" text-anchor="middle" font-size="9" fill="#ccfbf1">admin actions logged</text>
+  <text x="670" y="648" text-anchor="middle" font-size="9" fill="#ccfbf1">knowledge base changes</text>
+  <text x="670" y="664" text-anchor="middle" font-size="9" fill="#ccfbf1">user deletions</text>
+
+  <rect x="810" y="590" width="230" height="100" rx="8" fill="#374151" filter="url(#sh)"/>
+  <text x="925" y="614" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Graceful Shutdown</text>
+  <text x="925" y="632" text-anchor="middle" font-size="9" fill="#d1d5db">asynccontextmanager lifespan</text>
+  <text x="925" y="648" text-anchor="middle" font-size="9" fill="#d1d5db">FAISS index saved on exit</text>
+  <text x="925" y="664" text-anchor="middle" font-size="9" fill="#d1d5db">MongoDB connection closed</text>
+  <text x="925" y="680" text-anchor="middle" font-size="9" fill="#d1d5db">in-flight requests complete</text>
+
+  <!-- Section 6: Input Validation -->
+  <rect x="10" y="730" width="1040" height="110" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="530" y="754" text-anchor="middle" font-size="12" font-weight="700" fill="#374151" letter-spacing="1">INPUT SANITIZATION (Pydantic models)</text>
+  <text x="530" y="774" text-anchor="middle" font-size="10" fill="#6b7280">FeedbackRequest: messageId max_length=200 · vote Literal["up","down"] · domain max_length=60 · query max_length=2000</text>
+  <text x="530" y="794" text-anchor="middle" font-size="10" fill="#6b7280">ChatRequest: query stripped + trimmed · domain validated against known domains · session_id max_length=200</text>
+  <text x="530" y="814" text-anchor="middle" font-size="10" fill="#6b7280">AuthRequest: email normalized + validated · password min_length=8 · no HTML injection (FastAPI/Starlette default escaping)</text>
+</svg>
+</body>
+</html>

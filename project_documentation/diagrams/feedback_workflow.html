@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback Workflow — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>Feedback Learning Workflow</h1>
+<p class="subtitle">How thumbs-up/down votes flow from user to admin analytics and knowledge improvement</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="960" height="760" viewBox="0 0 960 760" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#555"/>
+    </marker>
+    <marker id="arr-g" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arr-r" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#dc2626"/>
+    </marker>
+    <filter id="sh" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#00000018"/>
+    </filter>
+  </defs>
+
+  <!-- ── STEP 1: Chat response rendered ── -->
+  <rect x="330" y="20" width="300" height="60" rx="10" fill="#1f2937" filter="url(#sh)"/>
+  <text x="480" y="48" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Chat Response Rendered</text>
+  <text x="480" y="66" text-anchor="middle" font-size="10" fill="#9ca3af">SSE stream complete · message_id assigned</text>
+
+  <line x1="480" y1="80" x2="480" y2="120" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 2: Thumbs UI ── -->
+  <rect x="330" y="122" width="300" height="60" rx="10" fill="#3b82f6" filter="url(#sh)"/>
+  <text x="480" y="148" text-anchor="middle" font-size="13" font-weight="600" fill="#fff">Thumbs Up / Down UI</text>
+  <text x="480" y="166" text-anchor="middle" font-size="10" fill="#bfdbfe">ExplainabilityPanel · optional auth (Bearer)</text>
+
+  <!-- Split arrows -->
+  <line x1="410" y1="182" x2="200" y2="240" stroke="#16a34a" stroke-width="2" marker-end="url(#arr-g)"/>
+  <line x1="550" y1="182" x2="760" y2="240" stroke="#dc2626" stroke-width="2" marker-end="url(#arr-r)"/>
+  <text x="265" y="222" text-anchor="middle" font-size="11" fill="#16a34a" font-weight="600">👍 vote: "up"</text>
+  <text x="700" y="222" text-anchor="middle" font-size="11" fill="#dc2626" font-weight="600">👎 vote: "down"</text>
+
+  <!-- ── STEP 3: POST /api/feedback ── -->
+  <rect x="50" y="242" width="300" height="80" rx="10" fill="#16a34a" filter="url(#sh)"/>
+  <text x="200" y="268" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">POST /api/feedback</text>
+  <text x="200" y="286" text-anchor="middle" font-size="10" fill="#d1fae5">{ messageId, vote: "up"</text>
+  <text x="200" y="302" text-anchor="middle" font-size="10" fill="#d1fae5">domain, persona, confidence, query, response }</text>
+
+  <rect x="610" y="242" width="300" height="80" rx="10" fill="#dc2626" filter="url(#sh)"/>
+  <text x="760" y="268" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">POST /api/feedback</text>
+  <text x="760" y="286" text-anchor="middle" font-size="10" fill="#fee2e2">{ messageId, vote: "down"</text>
+  <text x="760" y="302" text-anchor="middle" font-size="10" fill="#fee2e2">domain, persona, confidence, query, response }</text>
+
+  <!-- ── rate limit check ── -->
+  <line x1="200" y1="322" x2="200" y2="360" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+  <line x1="760" y1="322" x2="760" y2="360" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <rect x="50" y="362" width="300" height="50" rx="8" fill="#0f766e" filter="url(#sh)"/>
+  <text x="200" y="384" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Rate limit: 30/minute</text>
+  <text x="200" y="400" text-anchor="middle" font-size="9" fill="#ccfbf1">optional JWT → extract user_id</text>
+
+  <rect x="610" y="362" width="300" height="50" rx="8" fill="#0f766e" filter="url(#sh)"/>
+  <text x="760" y="384" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Rate limit: 30/minute</text>
+  <text x="760" y="400" text-anchor="middle" font-size="9" fill="#ccfbf1">optional JWT → extract user_id</text>
+
+  <!-- Merge to DB -->
+  <line x1="200" y1="412" x2="420" y2="470" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+  <line x1="760" y1="412" x2="540" y2="470" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 4: MongoDB ── -->
+  <rect x="280" y="472" width="400" height="70" rx="10" fill="#475569" filter="url(#sh)"/>
+  <text x="480" y="498" text-anchor="middle" font-size="13" font-weight="600" fill="#fff">feedback_logs.insert_one()</text>
+  <text x="480" y="516" text-anchor="middle" font-size="10" fill="#e2e8f0">message_id · vote · user_id (nullable)</text>
+  <text x="480" y="530" text-anchor="middle" font-size="9" fill="#cbd5e1">domain · persona · confidence · query · response · session_id · created_at</text>
+
+  <line x1="480" y1="542" x2="480" y2="582" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 5: Admin reads stats ── -->
+  <rect x="180" y="584" width="600" height="70" rx="10" fill="#1e40af" filter="url(#sh)"/>
+  <text x="480" y="610" text-anchor="middle" font-size="13" font-weight="600" fill="#fff">Admin Analytics (GET /api/feedback/stats)</text>
+  <text x="480" y="628" text-anchor="middle" font-size="10" fill="#bfdbfe">Requires X-Admin-Key header</text>
+  <text x="480" y="644" text-anchor="middle" font-size="9" fill="#93c5fd">aggregate by domain · upvote% · downvote% · confidence distribution</text>
+
+  <line x1="480" y1="654" x2="480" y2="694" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 6: Admin decisions ── -->
+  <rect x="80" y="696" width="820" height="50" rx="10" fill="#0f172a" filter="url(#sh)"/>
+  <text x="480" y="720" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Admin Actions: review flagged responses · add missing chunks to knowledge base · delete bad chunks</text>
+  <text x="480" y="736" text-anchor="middle" font-size="9" fill="#94a3b8">Knowledge gaps detected by negative feedback + low confidence → bubble up in KnowledgeGaps admin page</text>
+
+  <!-- CSV export note -->
+  <rect x="700" y="540" width="250" height="70" rx="8" fill="#fef9c3" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="825" y="564" text-anchor="middle" font-size="11" font-weight="700" fill="#92400e">CSV Export</text>
+  <text x="825" y="582" text-anchor="middle" font-size="10" fill="#78350f">GET /api/feedback/export</text>
+  <text x="825" y="598" text-anchor="middle" font-size="9" fill="#92400e">X-Admin-Key required</text>
+  <text x="825" y="612" text-anchor="middle" font-size="9" fill="#92400e">all rows as feedback_export.csv</text>
+  <line x1="680" y1="582" x2="700" y2="582" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+</svg>
+</body>
+</html>

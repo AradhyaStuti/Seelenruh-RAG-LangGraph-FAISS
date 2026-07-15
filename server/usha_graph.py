@@ -1,19 +1,4 @@
-"""
-Usha's multi-agent mental health reasoning sub-graph.
-
-User sees: one warm, present assistant named Usha.
-Internally: specialized agents collaborate via LangGraph.
-
-Graph:
-  START
-    → analyze     [Agent 1: 8B LLM — classify emotion, detect crisis]
-    → prepare     [Agents 2-3: Python — organize chunks, check crisis override]
-    → compose     [Agent 4: 70B LLM — synthesize final Usha response]
-    → END
-
-Crisis detection is Python-hardcoded (Agent 3) — never delegated to LLM alone.
-Invoked from graph.py when routed_domain == "Mental Health".
-"""
+"""Usha's LangGraph sub-graph: analyze → prepare → compose. Invoked for Mental Health domain."""
 from typing import Optional, TypedDict
 
 from langgraph.graph import StateGraph, START, END

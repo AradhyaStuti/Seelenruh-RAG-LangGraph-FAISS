@@ -129,11 +129,7 @@ class VectorStore:
         self.save()
 
     def delete_chunks(self, ids: list[str]) -> int:
-        """Soft-delete chunks by ID. Deleted chunks are excluded from search
-        results immediately and on every subsequent load. FAISS does not support
-        true removal, so vectors stay in memory but are masked at query time.
-        Persists the deleted-ID set to disk.
-        """
+        """Soft-delete chunks by ID — masked at query time, persisted across loads."""
         before = len(self._deleted_ids)
         self._deleted_ids.update(ids)
         added = len(self._deleted_ids) - before
@@ -158,12 +154,7 @@ class VectorStore:
         return len(self._deleted_ids) / self.index.ntotal >= threshold
 
     def rebuild(self, embedder_fn) -> int:
-        """Compact the index in-place: re-embed only live chunks and build a
-        fresh IndexFlatIP so deleted vectors are physically removed from RAM.
-        `embedder_fn` is a synchronous function list[str] → np.ndarray
-        (pass `embedder.embed_many`). Called inside asyncio.to_thread.
-        Returns the number of live chunks in the rebuilt index.
-        """
+        """Re-embed live chunks into a fresh index, physically evicting deleted vectors."""
         if self.index is None or not self.meta:
             return 0
         live_items = [m for m in self.meta if m["id"] not in self._deleted_ids]
@@ -182,11 +173,7 @@ class VectorStore:
         return self.index.ntotal
 
     def rollback(self, steps: int = 1) -> bool:
-        """Restore the index from snapshot `steps` versions back (1 = most recent snapshot).
-
-        Returns True if the rollback succeeded and the index was reloaded,
-        False if the requested snapshot does not exist.
-        """
+        """Restore from a snapshot. `steps=1` is the most recent. Returns False if snapshot missing."""
         snap = SNAPSHOT_DIR / str(steps)
         snap_index = snap / "faiss.index"
         snap_meta = snap / "meta.json"
@@ -224,8 +211,8 @@ class VectorStore:
     def search(self, query_vec: np.ndarray, k: int = 3, domain: Optional[str] = None) -> list[dict]:
         if self.index is None:
             return []
-        # Overfetch to account for deleted items
-        n_fetch = min(self.index.ntotal, (k + len(self._deleted_ids) + 10) if domain is None else self.index.ntotal)
+        # Overfetch to account for deleted items and domain filtering
+        n_fetch = min(self.index.ntotal, k + len(self._deleted_ids) + 10)
         q = query_vec.reshape(1, -1).astype("float32")
         scores, idxs = self.index.search(q, n_fetch)
         out: list[dict] = []

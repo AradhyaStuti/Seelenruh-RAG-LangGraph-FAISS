@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Diagram — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>Class Diagram</h1>
+<p class="subtitle">Key Python classes, Pydantic models, and TypedDict state schemas</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="1060" height="860" viewBox="0 0 1060 860" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#888"/>
+    </marker>
+    <marker id="arr-h" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="none" stroke="#888" stroke-width="1.5"/>
+    </marker>
+    <filter id="sh" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000015"/>
+    </filter>
+  </defs>
+
+  <!-- ── VectorStore class ── -->
+  <rect x="10" y="10" width="260" height="250" rx="8" fill="#fff7ed" stroke="#fb923c" stroke-width="2" filter="url(#sh)"/>
+  <rect x="10" y="10" width="260" height="36" rx="8" fill="#ea580c"/>
+  <text x="140" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">«class» VectorStore</text>
+  <text x="140" y="52" text-anchor="middle" font-size="9" fill="#6b7280">rag/store.py</text>
+  <line x1="10" y1="58" x2="270" y2="58" stroke="#fb923c" stroke-width="1"/>
+  <text x="20" y="76" font-size="10" fill="#374151">- index: faiss.Index</text>
+  <text x="20" y="92" font-size="10" fill="#374151">- meta: list[dict]</text>
+  <text x="20" y="108" font-size="10" fill="#374151">- _deleted_ids: set[str]</text>
+  <line x1="10" y1="118" x2="270" y2="118" stroke="#fed7aa" stroke-width="1"/>
+  <text x="20" y="136" font-size="10" fill="#374151">+ build(items, vectors)</text>
+  <text x="20" y="152" font-size="10" fill="#374151">+ add_items(items, vectors)</text>
+  <text x="20" y="168" font-size="10" fill="#374151">+ delete_chunks(ids) → int</text>
+  <text x="20" y="184" font-size="10" fill="#374151">+ search(vec, k, domain?) → list</text>
+  <text x="20" y="200" font-size="10" fill="#374151">+ rebuild(embedder_fn) → int</text>
+  <text x="20" y="216" font-size="10" fill="#374151">+ rollback(steps) → bool</text>
+  <text x="20" y="232" font-size="10" fill="#374151">+ save() / load() → bool</text>
+  <text x="20" y="248" font-size="10" fill="#374151">+ should_compact(threshold) → bool</text>
+
+  <!-- ── CircuitBreaker class ── -->
+  <rect x="290" y="10" width="240" height="210" rx="8" fill="#fef2f2" stroke="#f87171" stroke-width="2" filter="url(#sh)"/>
+  <rect x="290" y="10" width="240" height="36" rx="8" fill="#dc2626"/>
+  <text x="410" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">«class» CircuitBreaker</text>
+  <text x="410" y="52" text-anchor="middle" font-size="9" fill="#6b7280">ai/circuit_breaker.py</text>
+  <line x1="290" y1="58" x2="530" y2="58" stroke="#f87171" stroke-width="1"/>
+  <text x="300" y="76" font-size="10" fill="#374151">- state: "CLOSED"|"OPEN"|"HALF_OPEN"</text>
+  <text x="300" y="92" font-size="10" fill="#374151">- failure_count: int</text>
+  <text x="300" y="108" font-size="10" fill="#374151">- last_failure: float</text>
+  <text x="300" y="124" font-size="10" fill="#374151">- threshold: int = 5</text>
+  <text x="300" y="140" font-size="10" fill="#374151">- cooldown: float = 30.0</text>
+  <line x1="290" y1="150" x2="530" y2="150" stroke="#fecaca" stroke-width="1"/>
+  <text x="300" y="168" font-size="10" fill="#374151">+ is_available() → bool</text>
+  <text x="300" y="184" font-size="10" fill="#374151">+ record_success()</text>
+  <text x="300" y="200" font-size="10" fill="#374151">+ record_failure()</text>
+
+  <!-- ── ChatState TypedDict ── -->
+  <rect x="550" y="10" width="290" height="270" rx="8" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="2" filter="url(#sh)"/>
+  <rect x="550" y="10" width="290" height="36" rx="8" fill="#7c3aed"/>
+  <text x="695" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">«TypedDict» ChatState</text>
+  <text x="695" y="44" text-anchor="middle" font-size="9" fill="#ede9fe">graph.py</text>
+  <line x1="550" y1="52" x2="840" y2="52" stroke="#d8b4fe" stroke-width="1"/>
+  <text x="560" y="70" font-size="10" fill="#374151">query: str</text>
+  <text x="560" y="86" font-size="10" fill="#374151">domain: str</text>
+  <text x="560" y="102" font-size="10" fill="#374151">history: list[dict]</text>
+  <text x="560" y="118" font-size="10" fill="#374151">lang: str</text>
+  <text x="560" y="134" font-size="10" fill="#374151">user_id: str</text>
+  <text x="560" y="150" font-size="10" fill="#374151">session_id: str</text>
+  <text x="560" y="166" font-size="10" fill="#374151">fast_mode: bool</text>
+  <text x="560" y="182" font-size="10" fill="#374151">routed_domain: str</text>
+  <text x="560" y="198" font-size="10" fill="#374151">emotion: str | None</text>
+  <text x="560" y="214" font-size="10" fill="#374151">retrieved_chunks: list[dict]</text>
+  <text x="560" y="230" font-size="10" fill="#374151">confidence: str</text>
+  <text x="560" y="246" font-size="10" fill="#374151">response: str</text>
+  <text x="560" y="262" font-size="10" fill="#374151">web_used: bool  ·  knowledge_gap: bool</text>
+
+  <!-- ── Pydantic Request Models ── -->
+  <rect x="850" y="10" width="200" height="200" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="2" filter="url(#sh)"/>
+  <rect x="850" y="10" width="200" height="36" rx="8" fill="#16a34a"/>
+  <text x="950" y="28" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">«Pydantic» Request</text>
+  <text x="950" y="44" text-anchor="middle" font-size="9" fill="#dcfce7">Models (schemas.py)</text>
+  <line x1="850" y1="52" x2="1050" y2="52" stroke="#86efac" stroke-width="1"/>
+  <text x="860" y="70" font-size="10" fill="#374151">FeedbackRequest</text>
+  <text x="860" y="86" font-size="9" fill="#6b7280">  messageId · vote · domain</text>
+  <text x="860" y="102" font-size="9" fill="#6b7280">  query · response · confidence</text>
+  <line x1="850" y1="112" x2="1050" y2="112" stroke="#dcfce7" stroke-width="1"/>
+  <text x="860" y="130" font-size="10" fill="#374151">ChatRequest</text>
+  <text x="860" y="146" font-size="9" fill="#6b7280">  query · domain · session_id</text>
+  <text x="860" y="162" font-size="9" fill="#6b7280">  lang · history</text>
+  <line x1="850" y1="172" x2="1050" y2="172" stroke="#dcfce7" stroke-width="1"/>
+  <text x="860" y="190" font-size="10" fill="#374151">AuthRequest, KnowledgeChunk…</text>
+
+  <!-- ── LLMProvider abstract ── -->
+  <rect x="10" y="280" width="260" height="160" rx="8" fill="#fffbeb" stroke="#fde68a" stroke-width="2" filter="url(#sh)"/>
+  <rect x="10" y="280" width="260" height="36" rx="8" fill="#d97706"/>
+  <text x="140" y="298" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">«abstract» LLMProvider</text>
+  <text x="140" y="314" text-anchor="middle" font-size="9" fill="#fef3c7">ai/provider.py</text>
+  <line x1="10" y1="320" x2="270" y2="320" stroke="#fde68a" stroke-width="1"/>
+  <text x="20" y="338" font-size="10" fill="#374151">+ name: str</text>
+  <text x="20" y="354" font-size="10" fill="#374151">+ circuit_breaker: CircuitBreaker</text>
+  <line x1="10" y1="364" x2="270" y2="364" stroke="#fde68a" stroke-width="1"/>
+  <text x="20" y="382" font-size="10" fill="#374151">+ stream(messages) → AsyncGen</text>
+  <text x="20" y="398" font-size="10" fill="#374151">+ is_available() → bool</text>
+  <text x="20" y="420" font-size="10" fill="#374151" font-style="italic">Implementors: GroqProvider,</text>
+  <text x="20" y="434" font-size="10" fill="#374151" font-style="italic">OllamaProvider, AnthropicProvider</text>
+
+  <!-- ── LangGraph StateGraph ── -->
+  <rect x="290" y="240" width="240" height="200" rx="8" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2" filter="url(#sh)"/>
+  <rect x="290" y="240" width="240" height="36" rx="8" fill="#5b21b6"/>
+  <text x="410" y="258" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">LangGraph StateGraph</text>
+  <text x="410" y="274" text-anchor="middle" font-size="9" fill="#ede9fe">graph.py · *_graph.py</text>
+  <line x1="290" y1="280" x2="530" y2="280" stroke="#a78bfa" stroke-width="1"/>
+  <text x="300" y="298" font-size="10" fill="#374151">+ add_node(name, fn)</text>
+  <text x="300" y="314" font-size="10" fill="#374151">+ add_edge(from, to)</text>
+  <text x="300" y="330" font-size="10" fill="#374151">+ add_conditional_edges(from, fn)</text>
+  <text x="300" y="346" font-size="10" fill="#374151">+ set_entry_point(name)</text>
+  <text x="300" y="362" font-size="10" fill="#374151">+ compile() → CompiledGraph</text>
+  <text x="300" y="378" font-size="10" fill="#374151">+ stream(state) → AsyncGen</text>
+  <line x1="290" y1="390" x2="530" y2="390" stroke="#a78bfa" stroke-width="1"/>
+  <text x="300" y="408" font-size="9" fill="#6b7280">ChatState: query,domain,lang,…</text>
+  <text x="300" y="424" font-size="9" fill="#6b7280">Nodes: N1…N7</text>
+
+  <!-- ── Mongo collections (simplified) ── -->
+  <rect x="550" y="300" width="500" height="290" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="2" filter="url(#sh)"/>
+  <rect x="550" y="300" width="500" height="36" rx="8" fill="#065f46"/>
+  <text x="800" y="318" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">MongoDB Collections (document schemas)</text>
+  <text x="800" y="334" text-anchor="middle" font-size="9" fill="#6ee7b7">db.py  ·  Motor async</text>
+  <line x1="550" y1="340" x2="1050" y2="340" stroke="#86efac" stroke-width="1"/>
+
+  <!-- Two columns -->
+  <text x="570" y="360" font-size="10" font-weight="600" fill="#065f46">users</text>
+  <text x="570" y="376" font-size="9" fill="#374151">_id, email, password_hash, name, role</text>
+  <text x="570" y="392" font-size="9" fill="#374151">lang, created_at</text>
+
+  <text x="810" y="360" font-size="10" font-weight="600" fill="#065f46">chat_sessions</text>
+  <text x="810" y="376" font-size="9" fill="#374151">session_id, user_id→users, domain</text>
+  <text x="810" y="392" font-size="9" fill="#374151">started_at, last_active</text>
+
+  <line x1="550" y1="400" x2="1050" y2="400" stroke="#dcfce7" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <text x="570" y="420" font-size="10" font-weight="600" fill="#065f46">chat_history</text>
+  <text x="570" y="436" font-size="9" fill="#374151">session_id, user_id, role, content</text>
+  <text x="570" y="452" font-size="9" fill="#374151">domain, lang, created_at</text>
+
+  <text x="810" y="420" font-size="10" font-weight="600" fill="#065f46">feedback_logs</text>
+  <text x="810" y="436" font-size="9" fill="#374151">message_id, vote, user_id?, query</text>
+  <text x="810" y="452" font-size="9" fill="#374151">response, domain, confidence</text>
+
+  <line x1="550" y1="460" x2="1050" y2="460" stroke="#dcfce7" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <text x="570" y="480" font-size="10" font-weight="600" fill="#065f46">refresh_tokens / jti_blacklist</text>
+  <text x="570" y="496" font-size="9" fill="#374151">token/jti, user_id, expires_at</text>
+  <text x="570" y="512" font-size="9" fill="#374151">TTL indexed</text>
+
+  <text x="810" y="480" font-size="10" font-weight="600" fill="#065f46">knowledge_gaps</text>
+  <text x="810" y="496" font-size="9" fill="#374151">query, domain, confidence</text>
+  <text x="810" y="512" font-size="9" fill="#374151">session_id, created_at</text>
+
+  <line x1="550" y1="520" x2="1050" y2="520" stroke="#dcfce7" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <text x="570" y="540" font-size="9" fill="#6b7280">Also: admin_logs · knowledge_reviews · tts_cache</text>
+  <text x="570" y="556" font-size="9" fill="#6b7280">upload_meta · rate_limit_log</text>
+
+  <!-- ── RELATIONSHIPS ── -->
+  <!-- CircuitBreaker ← LLMProvider -->
+  <line x1="290" y1="340" x2="270" y2="340" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="280" y="332" text-anchor="middle" font-size="8" fill="#6b7280">uses</text>
+
+  <!-- VectorStore ← graph -->
+  <line x1="140" y1="260" x2="290" y2="320" stroke="#888" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- StateGraph uses ChatState -->
+  <line x1="530" y1="340" x2="550" y2="180" stroke="#888" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <text x="540" y="260" font-size="8" fill="#6b7280">state type</text>
+</svg>
+</body>
+</html>

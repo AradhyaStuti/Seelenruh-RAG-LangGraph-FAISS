@@ -1,15 +1,4 @@
-"""Provider abstraction: Groq → Ollama → Anthropic fallback chain.
-
-Each provider is wrapped by a CircuitBreaker that:
-  - enforces a hard per-call timeout (prevents a slow provider from hanging everything)
-  - tracks consecutive failures and opens the circuit after `failure_threshold` hits
-  - automatically re-probes after `reset_timeout` seconds (HALF_OPEN state)
-
-Priority:
-  1. Groq      — fastest, primary
-  2. Ollama    — local, used on rate-limit / Groq outage (30s availability cache)
-  3. Anthropic — cloud fallback (only when ANTHROPIC_API_KEY is set)
-"""
+"""Groq → Ollama → Anthropic fallback chain, each wrapped by a circuit breaker."""
 import json
 import time
 

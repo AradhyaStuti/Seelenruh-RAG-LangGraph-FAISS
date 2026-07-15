@@ -1,13 +1,7 @@
-"""Token-aware context window management.
+"""Trim chat history to fit within a token budget before sending to the LLM.
 
-Uses tiktoken (cl100k_base) as a conservative token counter — the actual
-Llama tokeniser is slightly different but cl100k tends to overcount, which
-means we leave a safe headroom before the model's context limit.
-
-The budget defaults to 6000 tokens for the history block. Groq's
-llama-3.3-70b has a 128k context window but adding retrieved chunks,
-the system prompt, and the current query on top of history can easily
-push past 8k. 6000 for history leaves comfortable room for everything else.
+cl100k tends to slightly overcount vs. Llama's tokeniser, which is fine —
+gives us a small safety margin. Default budget is 6000 tokens for history.
 """
 import os
 from logger import get_logger
@@ -47,19 +41,7 @@ def trim_history(
     budget: int = MAX_HISTORY_TOKENS,
     keep_last: int = 2,
 ) -> list[dict]:
-    """Remove the oldest messages until the history fits within `budget` tokens.
-
-    Always preserves the last `keep_last` messages so the model always has
-    immediate context for the current exchange.
-
-    Args:
-        history:   list of {"role": ..., "content": ...} dicts, oldest first.
-        budget:    maximum tokens for the history block.
-        keep_last: minimum number of tail messages to always keep.
-
-    Returns:
-        Possibly-shorter list (oldest entries dropped first).
-    """
+    """Drop oldest messages until history fits in `budget` tokens. Always keeps the last `keep_last`."""
     if not history:
         return history
 

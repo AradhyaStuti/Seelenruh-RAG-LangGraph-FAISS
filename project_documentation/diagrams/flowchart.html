@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Request Flowchart — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>End-to-End Request Flowchart</h1>
+<p class="subtitle">Every decision point from user message to final streamed answer</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="860" height="1060" viewBox="0 0 860 1060" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#555"/>
+    </marker>
+    <marker id="arr-r" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#dc2626"/>
+    </marker>
+    <marker id="arr-g" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#16a34a"/>
+    </marker>
+    <filter id="sh" x="-6%" y="-6%" width="112%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/>
+    </filter>
+  </defs>
+
+  <!-- START -->
+  <ellipse cx="430" cy="36" rx="80" ry="24" fill="#1f2937" filter="url(#sh)"/>
+  <text x="430" y="41" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">START</text>
+
+  <line x1="430" y1="60" x2="430" y2="88" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- 1. User sends message -->
+  <rect x="280" y="90" width="300" height="46" rx="8" fill="#3b82f6" filter="url(#sh)"/>
+  <text x="430" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">User sends chat message</text>
+  <text x="430" y="128" text-anchor="middle" font-size="9" fill="#bfdbfe">EventSource POST /api/chat</text>
+
+  <line x1="430" y1="136" x2="430" y2="164" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- Decision: Rate limited? -->
+  <polygon points="430,166 560,196 430,226 300,196" fill="#fef9c3" stroke="#d97706" stroke-width="2"/>
+  <text x="430" y="193" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">Rate limit</text>
+  <text x="430" y="208" text-anchor="middle" font-size="10" fill="#92400e">exceeded?</text>
+
+  <!-- YES → 429 -->
+  <line x1="560" y1="196" x2="700" y2="196" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arr-r)"/>
+  <text x="630" y="190" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="600">YES</text>
+  <rect x="700" y="176" width="120" height="40" rx="7" fill="#dc2626" filter="url(#sh)"/>
+  <text x="760" y="200" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">429 Too Many</text>
+
+  <!-- NO → continue -->
+  <line x1="430" y1="226" x2="430" y2="254" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="445" y="244" font-size="10" fill="#555">NO</text>
+
+  <!-- Decision: Auth valid? -->
+  <polygon points="430,256 560,286 430,316 300,286" fill="#fef9c3" stroke="#d97706" stroke-width="2"/>
+  <text x="430" y="283" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">JWT valid?</text>
+  <text x="430" y="298" text-anchor="middle" font-size="10" fill="#92400e">(sig + exp + blacklist)</text>
+
+  <!-- NO → 401 -->
+  <line x1="560" y1="286" x2="700" y2="286" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arr-r)"/>
+  <text x="630" y="280" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="600">NO</text>
+  <rect x="700" y="266" width="120" height="40" rx="7" fill="#dc2626" filter="url(#sh)"/>
+  <text x="760" y="290" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">401 Unauthorized</text>
+
+  <!-- YES → continue -->
+  <line x1="430" y1="316" x2="430" y2="344" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="445" y="334" font-size="10" fill="#555">YES</text>
+
+  <!-- Detect language -->
+  <rect x="280" y="346" width="300" height="46" rx="8" fill="#0ea5e9" filter="url(#sh)"/>
+  <text x="430" y="366" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Detect Language</text>
+  <text x="430" y="382" text-anchor="middle" font-size="9" fill="#e0f2fe">Devanagari→hi · Hinglish→hi-roman · else en/de</text>
+
+  <line x1="430" y1="392" x2="430" y2="420" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- Load memory -->
+  <rect x="280" y="422" width="300" height="46" rx="8" fill="#0284c7" filter="url(#sh)"/>
+  <text x="430" y="442" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Load Conversation Memory</text>
+  <text x="430" y="458" text-anchor="middle" font-size="9" fill="#e0f2fe">last 8 turns from chat_history</text>
+
+  <line x1="430" y1="468" x2="430" y2="496" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- Route domain -->
+  <rect x="280" y="498" width="300" height="46" rx="8" fill="#7c3aed" filter="url(#sh)"/>
+  <text x="430" y="518" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Route Domain</text>
+  <text x="430" y="534" text-anchor="middle" font-size="9" fill="#ede9fe">keyword heuristic → Usha / Umang / Aarogya / Raksha</text>
+
+  <line x1="430" y1="544" x2="430" y2="572" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- RAG Retrieve -->
+  <rect x="280" y="574" width="300" height="46" rx="8" fill="#ea580c" filter="url(#sh)"/>
+  <text x="430" y="594" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">RAG Retrieve</text>
+  <text x="430" y="610" text-anchor="middle" font-size="9" fill="#fed7aa">FAISS+BM25→RRF→reranker → top-3 chunks</text>
+
+  <line x1="430" y1="620" x2="430" y2="648" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- Decision: Confidence sufficient? -->
+  <polygon points="430,650 580,686 430,722 280,686" fill="#fef9c3" stroke="#d97706" stroke-width="2"/>
+  <text x="430" y="682" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">Confidence</text>
+  <text x="430" y="698" text-anchor="middle" font-size="10" fill="#92400e">High?</text>
+
+  <!-- NO → web search -->
+  <line x1="580" y1="686" x2="700" y2="686" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="640" y="680" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="600">LOW/NONE</text>
+  <rect x="700" y="666" width="140" height="40" rx="7" fill="#991b1b" filter="url(#sh)"/>
+  <text x="770" y="682" text-anchor="middle" font-size="10" font-weight="600" fill="#fff">Web Search Fallback</text>
+  <text x="770" y="696" text-anchor="middle" font-size="9" fill="#fecaca">+ log knowledge_gap</text>
+  <!-- Arrow back to merge -->
+  <line x1="770" y1="706" x2="770" y2="760" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="770" y1="760" x2="580" y2="760" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- YES → build prompt -->
+  <line x1="430" y1="722" x2="430" y2="750" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="445" y="740" font-size="10" fill="#555">HIGH</text>
+
+  <!-- Build prompt -->
+  <rect x="280" y="752" width="300" height="46" rx="8" fill="#0f766e" filter="url(#sh)"/>
+  <text x="430" y="772" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Build System Prompt</text>
+  <text x="430" y="788" text-anchor="middle" font-size="9" fill="#ccfbf1">persona template + memory + chunks + lang</text>
+
+  <line x1="430" y1="798" x2="430" y2="826" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- Call LLM -->
+  <rect x="280" y="828" width="300" height="50" rx="8" fill="#d97706" filter="url(#sh)"/>
+  <text x="430" y="850" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Call LLM (stream)</text>
+  <text x="430" y="866" text-anchor="middle" font-size="9" fill="#fef3c7">Groq → Ollama → Anthropic fallback chain</text>
+
+  <line x1="430" y1="878" x2="430" y2="906" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- Quality check -->
+  <rect x="280" y="908" width="300" height="46" rx="8" fill="#374151" filter="url(#sh)"/>
+  <text x="430" y="928" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Quality Check + Save Memory</text>
+  <text x="430" y="944" text-anchor="middle" font-size="9" fill="#d1d5db">hallucination guardrails · chat_history.insert</text>
+
+  <line x1="430" y1="954" x2="430" y2="982" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- SSE Stream -->
+  <rect x="280" y="984" width="300" height="46" rx="8" fill="#16a34a" filter="url(#sh)"/>
+  <text x="430" y="1004" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">Stream Tokens → Browser</text>
+  <text x="430" y="1020" text-anchor="middle" font-size="9" fill="#dcfce7">SSE data: {"token":"..."} … data: [DONE]</text>
+
+  <line x1="430" y1="1030" x2="430" y2="1048" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- END -->
+  <ellipse cx="430" cy="1052" rx="80" ry="20" fill="#1f2937" filter="url(#sh)"/>
+  <text x="430" y="1057" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">END</text>
+</svg>
+</body>
+</html>

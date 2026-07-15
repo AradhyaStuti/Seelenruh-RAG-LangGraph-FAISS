@@ -7,7 +7,7 @@ sdk: docker
 app_port: 7860
 pinned: false
 ---
-# Seelenruh: A LangGraph-Powered Agentic RAG System for Multi-Domain Civic and Mental Health Support
+# Seelenruh — A LangGraph-Powered Agentic RAG System for Multi-Domain Civic and Mental Health Support
 
 Live demo: [Hugging Face Spaces](https://huggingface.co/spaces/aradhyastuti/seelenruh)
 
@@ -27,7 +27,7 @@ What started as a simple RAG chatbot turned into something more interesting once
 
 **Umang** — Indian legal rights. Covers criminal law (BNS/BNSS/BSA 2023, the new codes that replaced IPC/CrPC from July 2024), civil rights, family law, consumer protection, labour law (including the four Labour Codes 2020), property/tenant rights, cybercrime, RTI, and more. Every response is structured, cites specific acts and section numbers, distinguishes civil from criminal remedies, and never recommends a police complaint where a Labour Commissioner or consumer forum is the correct first step.
 
-**Aarogya** — government schemes and entitlements. PM-JAY, PM-KISAN, MGNREGA, scholarships, ration cards, Mudra loans, eShram, and state-level schemes for Delhi, Gujarat, Rajasthan, Bihar, Punjab, Kerala, Himachal Pradesh, and Goa. Includes a deterministic eligibility checker (rule-based, not LLM) that matches the user's state, age, income, and category against scheme criteria.
+**Aarogya** — government schemes and entitlements. PM-JAY, PM-KISAN, MGNREGA, scholarships, ration cards, Mudra loans, eShram, and state-level schemes for Delhi, Gujarat, Rajasthan, Bihar, Punjab, Kerala, Himachal Pradesh, and Goa. Includes a rule-based eligibility checker (more on why I chose rule-based over LLM below) that matches the user's state, age, income, and category against scheme criteria.
 
 **Raksha** — safety and emergencies. Domestic violence (immediate danger → safety plan; legal procedure → Umang), cybercrime, stalking, online fraud. Active emergencies get the Step 1/2/3 format with helpline numbers upfront; post-incident queries get acknowledgment then concrete reporting steps.
 
@@ -46,10 +46,10 @@ START → load_memory → classify → route → retrieve → maybe_search → g
 Three things make this genuinely agentic rather than just a chatbot with a knowledge base:
 
 **1. Autonomous web search**
-The agent decides on its own whether to run a web search. It triggers when the query has real-time signals (`latest`, `current`, `2025`, helpline numbers, `abhi`, `naya`…), when RAG returns too few or low-confidence results, or always for Legal and Government Schemes domains. DuckDuckGo, Wikipedia, and optionally Brave Search run concurrently with retry backoff.
+I added a web search step that only runs when the bot doesn't have a confident answer from its own knowledge. It triggers on real-time signals (`latest`, `current`, `2025`, helpline numbers, `abhi`, `naya`…), when RAG returns too few or low-confidence results, or always for Legal and Government Schemes domains where outdated information is especially harmful. DuckDuckGo, Wikipedia, and optionally Brave Search run concurrently with retry backoff.
 
 **2. Self-evolving memory**
-After every response, a background task compresses the conversation into a 2–3 sentence summary and extends an emotion arc (`neutral → anxious → calm → …`). Both go into MongoDB. Next turn, `load_memory` fetches them and injects them into the system prompt as a `CONVERSATION CONTEXT` block — correctly in the system prompt, not mixed into the user message.
+After every response, a background task compresses the conversation into a 2–3 sentence summary and extends an emotion arc (`neutral → anxious → calm → …`). Both go into MongoDB. Next turn, `load_memory` fetches them and injects them into the system prompt as a `CONVERSATION CONTEXT` block — in the system prompt, not mixed into the user message, which is the correct placement.
 
 **3. Goal tracking**
 Every turn, `detect_goal` runs in parallel with intent and emotion detection. If it finds something actionable — `"file an RTI"`, `"apply for PM-JAY"`, `"find a therapist"` — it stores that goal and surfaces it on every subsequent turn. A live goal badge appears in the UI so the user can see what the agent is tracking.
@@ -158,7 +158,7 @@ Umang always cites the new code first for post-July-2024 matters: `"BNS Section 
 
 ### Modular prompt architecture — token budget
 
-The previous monolithic persona string grew to ~19,000 chars (~4,800 tokens) across iterations and started hitting Groq's 12,000 TPM limit. The system prompt is now assembled from separate modules:
+The previous monolithic persona string grew to ~19,000 chars (~4,800 tokens) across iterations and started hitting Groq's 12,000 TPM limit. That was the point where I had to refactor. The system prompt is now assembled from separate modules:
 
 | Component | Module | ~Tokens |
 |-----------|--------|---------|
@@ -284,8 +284,8 @@ The 10 few-shot examples include a Hinglish wrongful-termination example and a G
 
 ## Other features
 
-- **Scheme eligibility checker** — rule-based (not LLM). Takes state, age, income, and category. Returns only schemes the user actually qualifies for with application steps. LLM eligibility was too vague and sometimes wrong; deterministic rules are more reliable for structured entitlement data.
-- **Legal document templates** — RTI application, consumer complaint, rent demand notice, legal notice for cheque bounce, affidavit. Filled from form inputs, not AI-generated. Keeps documents legally consistent and free of hallucinated clause numbers.
+- **Scheme eligibility checker** — rule-based, not LLM. I first tried using the LLM for eligibility checks but it was too vague and sometimes just wrong — it would hedge or hallucinate income thresholds. Switching to deterministic rules (state, age, income, category matched against fixed criteria) made the checker much more reliable. Returns only schemes the user actually qualifies for, with application steps.
+- **Legal document templates** — RTI application, consumer complaint, rent demand notice, legal notice for cheque bounce, affidavit. Filled from form inputs, not AI-generated. Keeping documents template-based rather than LLM-generated means clause numbers stay accurate and consistent.
 - **Automatic intent routing** — ask a legal question in the mental health tab and the agent detects it and suggests switching. The UI shows the routing reason.
 - **Mood tracker** — tracks emotional arc across the session; shown in the Usha tab.
 - **Breathing companion** — animated guide for panic/anxiety moments; accessible from Raksha and Usha. Three scientifically validated patterns: Calm 4-6 (extended exhale activates the parasympathetic nervous system), Box 4-4-4-4 (used in clinical stress-regulation research and by the US military), and 4-7-8 (developed by Dr. Andrew Weil from pranayama; peer-reviewed for sleep onset and cortisol reduction). All three work by slowing breathing to ~5–6 breaths/min, which improves heart rate variability (HRV) and stimulates the vagus nerve.
@@ -361,6 +361,93 @@ python -m pytest tests/test_legal_cases.py -v
 91 test cases covering all legal categories: employment (salary withheld, wrongful termination, F&F settlement, POSH, PF disputes), property/tenant (illegal eviction, lockout, rent increase), family law (domestic violence, divorce, maintenance, POCSO, child custody), consumer (warranty, medical negligence), criminal (FIR refusal, bail, cheque bounce), cyber (UPI fraud, data breach, online blackmail), constitutional (RTI, fundamental rights writ), personal law routing (Hindu/Muslim/Christian), and multilingual queries (Hinglish, German).
 
 Tests validate the Case Analyzer's structured JSON output — categories, urgency, issue_type, employment_type, property_type, follow_up questions, and confidence thresholds — without making any LLM calls. They run in under a second.
+
+---
+
+## Evaluation
+
+This project was implemented, integrated, tested, and evaluated by me. AI tools were used as a development aid — for code suggestions, debugging, and documentation — not as a substitute for design decisions, domain understanding, or evaluation judgement. Every metric definition, probe design, threshold choice, and result interpretation in this section is my own work.
+
+---
+
+### How evaluation works
+
+Evaluation is done offline using `evaluate.py`, which sends a fixed probe set to the live `/api/chat` endpoint and scores each response using functions defined in `evaluation/metrics.py`. No external benchmark or third-party scoring service is used — all criteria are defined and annotated by me.
+
+Each probe specifies:
+- The query and which domain it should route to (`expected_category`)
+- Terms that must appear in the response (`must_contain`) — key legal acts, scheme names, helpline numbers
+- Terms that must never appear (`must_not_contain`) — foreign law references, hallucination markers
+- Whether a timeline is expected (`expected_timeline`) — step-by-step process responses
+- Whether safety helplines are required (`safety_required`, `expected_helplines`) — for emergency queries
+- The expected language of the response (`language`)
+
+---
+
+### Metric definitions
+
+| Metric | What it measures | How it is checked |
+|--------|-----------------|-------------------|
+| **Classification accuracy** | Does the system route the query to the correct domain? | `routedDomain` from API response vs `expected_category` in probe — case-insensitive exact match after alias normalisation |
+| **Confidence accuracy** | Is the system's self-reported confidence band correct? | Actual band (High / Medium / Low / None) vs expected — passes if within ±1 band |
+| **Content pass rate** | Does the response contain the key information it should? | All strings in `must_contain` checked as case-insensitive substrings of the response |
+| **Violation rate** | Does the response contain anything it should not? | Any string in `must_not_contain` found in the response is a violation |
+| **Timeline accuracy** | Does a process response include step-by-step structure when expected? | Presence of keywords: "step", "day", "week", "phase", "duration", "पहला", "चरण" etc. matched against `expected_timeline` flag |
+| **Language accuracy** | Does the response reply in the same language as the query? | Devanagari Unicode range for Hindi, German function-word regex for German, English common-word regex for English |
+| **Safety pass rate** | For emergency queries, does the response include at least one real helpline? | Checks for 181, 100, 1098, 108, 112, 1091, 155260, 14416, iCall, NIMHANS, Vandrevala — and any helplines listed in `expected_helplines` |
+| **Hallucination rate** | Does the response fabricate jurisdiction, law, or contact details? | Regex patterns: US federal law (18 USC, Federal Court, Supreme Court of the United States), European law (GDPR, EU law, European Court), non-existent IPC sections (>5000), fake 1800-xxx-xxxx helplines, guarantee language ("we guarantee you will win") |
+| **Avg source count** | How many RAG chunks does the system cite per response? | Count of objects in `sources` array returned by the API |
+| **Latency** | How long does the system take to respond? | Wall-clock time from HTTP request sent to full JSON response received |
+
+---
+
+### Benchmark results
+
+**Setup:** 18 probes, run live against the server (Groq llama-3.3-70b primary LLM, MongoDB Atlas, local machine, sequential requests). Run via `python evaluate.py --token <JWT> --verbose`.
+
+| Metric | Score | What this means |
+|--------|-------|-----------------|
+| **Domain classification accuracy** | **100.0%** | Every query routed to the correct assistant (Usha / Umang / Aarogya / Raksha) across all 18 probes |
+| **Confidence accuracy** | **100.0%** | Self-reported confidence band matched expectation within ±1 band on all probes |
+| **Content pass rate** | **94.4%** (17/18) | 17 of 18 responses contained all required key terms; one miss explained below |
+| **Violation rate** | **0.0%** | No response contained any forbidden term |
+| **Timeline accuracy** | **100.0%** | All process queries (RTI, UPI fraud, Mudra loan) included step-by-step structure; non-process queries correctly did not |
+| **Language accuracy** | **88.9%** (16/18) | 16 of 18 responses were in the expected language; 2 Hindi-script queries returned transliterated responses |
+| **Safety pass rate** | **100.0%** | All 3 emergency probes (domestic violence, blackmail, stalking) included at least one valid Indian helpline |
+| **Hallucination rate** | **0.0%** | No response triggered any hallucination pattern — no foreign law, no fake helplines, no guarantee language |
+| **Avg RAG source count** | **4.8 chunks** | On average, 4–5 knowledge base chunks cited per response |
+| **Avg latency** | **22.84s** | Mean end-to-end response time across all 18 probes |
+| **p50 latency** | **23.29s** | Half of responses completed within 23.3 seconds |
+| **p90 latency** | **30.48s** | 90% of responses completed within 30.5 seconds |
+| **Max latency** | **31.35s** | Slowest response (RTI process query — long structured output) |
+
+**By domain:**
+
+| Domain | Probes | Classification | Hallucination | Safety pass | Avg latency |
+|--------|--------|---------------|---------------|-------------|-------------|
+| Mental Health | 5 | 100% | 0% | 100% | 17.30s |
+| Legal | 5 | 100% | 0% | n/a | 29.25s |
+| Government Schemes | 5 | 100% | 0% | n/a | 23.98s |
+| Safety | 3 | 100% | 0% | 100% | 19.50s |
+
+---
+
+### Honest qualifications
+
+**On the 0% hallucination figure:**
+This is measured against a defined set of annotation criteria — regex patterns for foreign law references, non-existent Indian legal sections, fake helpline formats, and guarantee language. It means: on 18 probes, the system produced none of the hallucination patterns I defined and checked for. It is not a claim that the system never hallucinates in any sense or in any real-world query. LLMs can produce plausible-sounding but incorrect information in ways that no finite pattern set can catch. This figure should be read as "zero detected violations under these specific criteria," not as a guarantee.
+
+**On the 100% classification accuracy:**
+Routing accuracy is high because the system uses both keyword-based pre-classification and LangGraph conditional edges. However, the probe set is 18 queries designed to have clear domain intent. Real user queries are often ambiguous (e.g., domestic violence has both mental health and legal dimensions). The 100% figure reflects clean-probe accuracy, not ambiguous-query robustness.
+
+**On latency:**
+The 22.84s average is measured on a local machine running sequential probes with no warm-up. In this setup, each request waits for the previous one to complete, FAISS retrieval runs cold, and the LLM (llama-3.3-70b via Groq) generates long structured responses for legal and scheme queries. Production latency with a warm server and parallel handling would differ. The latency figures are real measurements — not benchmarked in favourable conditions.
+
+**On the one content miss:**
+The PM-KISAN probe checked for the literal string `"6000"` (the annual ₹6,000 transfer amount). The response correctly stated the amount as `"₹6,000"` — the comma-formatted version with currency symbol — which did not match the plain substring check. This is an annotation issue, not a factual error in the response.
+
+**On the evaluation scope:**
+18 probes cover representative cases across all four domains and three languages. They do not cover every legal category, every scheme, or every possible query pattern. A larger annotated dataset would give more statistically reliable numbers. What this evaluation does establish is that the core routing, retrieval, safety, and hallucination-prevention mechanisms work correctly on the cases tested.
 
 ---
 

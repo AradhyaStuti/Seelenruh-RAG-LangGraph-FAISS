@@ -1,9 +1,7 @@
-"""
-hallucination_guardrails.py
----------------------------
-Validates LLM-generated legal citations against a whitelist of known Indian
-statutes and their valid section ranges.  Call validate_citations() on any
-composed response before returning it to the user.
+"""Check LLM responses for hallucinated section numbers.
+
+Maintains a whitelist of Indian statutes with their valid section ranges.
+If a cited section exceeds the known max, we append a verification note.
 """
 
 from __future__ import annotations
@@ -12,10 +10,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-# ---------------------------------------------------------------------------
-# Known Acts — name variants → max valid section number
-# ---------------------------------------------------------------------------
-
+# act name / alias → max valid section number
 KNOWN_ACTS: dict[str, dict] = {
     # Constitution & criminal codes
     "constitution of india": {"max_section": 395, "aliases": ["article", "constitution"]},
@@ -65,7 +60,6 @@ KNOWN_ACTS: dict[str, dict] = {
     "goods and services tax act": {"max_section": 174, "aliases": ["gst act", "cgst act", "igst act"]},
 }
 
-# Compile alias → canonical name mapping for fast lookup
 _ALIAS_TO_CANONICAL: dict[str, str] = {}
 for _canonical, _info in KNOWN_ACTS.items():
     _ALIAS_TO_CANONICAL[_canonical] = _canonical
@@ -73,22 +67,14 @@ for _canonical, _info in KNOWN_ACTS.items():
         _ALIAS_TO_CANONICAL[_alias.lower()] = _canonical
 
 
-# ---------------------------------------------------------------------------
-# Section reference pattern — finds "Section 42", "S. 420", "Art. 21" etc.
-# ---------------------------------------------------------------------------
-
+# catches "Section 42", "S. 420", "Art. 21" etc.
 _SECTION_PATTERN = re.compile(
     r"\b(?:section|sec|s\.|article|art\.)\s*(\d{1,4})[A-Z]?\b",
     re.IGNORECASE,
 )
 
-# Pattern to match act names near a section reference (±120 chars)
+# look this far around a section ref to find the act name
 _ACT_WINDOW = 120
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 @dataclass
 class CitationIssue:
@@ -124,19 +110,7 @@ def get_act_info(act_name: str) -> Optional[dict]:
 
 
 def validate_citations(text: str, strict: bool = False) -> GuardrailResult:
-    """
-    Scan *text* for legal section references and validate them.
-
-    Parameters
-    ----------
-    text   : The LLM-generated response string.
-    strict : If True, any section reference without a recognisable act name
-             in the surrounding window is flagged as a warning.
-
-    Returns
-    -------
-    GuardrailResult with .passed, .issues, .flagged_sections
-    """
+    """Scan text for section references and flag any that exceed the known max for their act."""
     issues: list[CitationIssue] = []
     flagged: list[str] = []
 
@@ -183,10 +157,7 @@ def validate_citations(text: str, strict: bool = False) -> GuardrailResult:
 
 
 def build_guardrail_note(result: GuardrailResult) -> str:
-    """
-    Return a short disclaimer string to append to a response when citations
-    are suspect.  Returns "" when result.passed is True.
-    """
+    """Returns a disclaimer to append when citations look suspect. Empty string if all good."""
     if result.passed:
         return ""
     return (

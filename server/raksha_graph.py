@@ -1,19 +1,4 @@
-"""
-Raksha's multi-agent safety reasoning sub-graph.
-
-User sees: one calm, direct safety guide named Raksha.
-Internally: specialized agents collaborate via LangGraph.
-
-Graph:
-  START
-    → analyze     [Agent 1: 8B LLM — classify situation type, threat, urgency]
-    → prepare     [Agents 2-3: Python — organize chunks, build safety plan]
-    → compose     [Agent 4: 70B LLM — synthesize final Raksha response]
-    → END
-
-Deterministic safety plans (Agent 3) are Python-hardcoded — never LLM-generated for life-safety.
-Invoked from graph.py when routed_domain == "Safety".
-"""
+"""Raksha's LangGraph sub-graph: analyze → prepare → compose. Invoked for Safety domain."""
 from typing import Optional, TypedDict
 
 from langgraph.graph import StateGraph, START, END

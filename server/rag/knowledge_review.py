@@ -1,16 +1,4 @@
-"""
-CLI maintenance workflow for knowledge freshness review.
-
-Scans all knowledge chunks, enriches them with document type + review status,
-and produces a human-readable report grouped by action priority.
-
-Usage:
-    python -m rag.knowledge_review
-    python -m rag.knowledge_review --domain Legal
-    python -m rag.knowledge_review --status NeedsReview
-    python -m rag.knowledge_review --type Helpline
-    python -m rag.knowledge_review --domain Safety --status NeedsReview
-"""
+"""CLI tool to check which knowledge chunks need re-verification."""
 import argparse
 import sys
 from collections import defaultdict
@@ -43,7 +31,6 @@ def main() -> int:
     today = date.today()
     enriched = [enrich_chunk(c, today=today) for c in CHUNKS]
 
-    # ── Apply filters ──────────────────────────────────────────
     filtered = enriched
     if args.domain:
         filtered = [c for c in filtered if (c.get("domain") or "").lower() == args.domain.lower()]
@@ -52,12 +39,10 @@ def main() -> int:
     if args.doc_type:
         filtered = [c for c in filtered if c.get("documentType", "") == args.doc_type]
 
-    # ── Group by review status ─────────────────────────────────
     by_status: dict[str, list[dict]] = defaultdict(list)
     for c in filtered:
         by_status[c.get("reviewStatus", ReviewStatus.UNKNOWN.value)].append(c)
 
-    # ── Print report ───────────────────────────────────────────
     print(f"\n{'='*65}")
     print(f"  Knowledge Freshness Report   {today}")
     print(f"{'='*65}")
@@ -100,7 +85,6 @@ def main() -> int:
                 print(f"    ↳ {note}")
             print()
 
-    # ── Summary ────────────────────────────────────────────────
     print(f"{'='*65}")
     needs_action = (
         len(by_status.get(ReviewStatus.DEPRECATED.value, [])) +

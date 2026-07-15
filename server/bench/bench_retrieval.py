@@ -41,16 +41,11 @@ RESULTS_DIR.mkdir(exist_ok=True)
 
 DEFAULT_K = max(RETRIEVAL_TOP_K, 10)   # evaluate up to 10 even if retriever returns 5
 
-
-# ---------------------------------------------------------------------------
 # Metric helpers
-# ---------------------------------------------------------------------------
-
 def _precision_at_k(retrieved_ids: list[str], gold_set: set[str], k: int) -> float:
     top_k = retrieved_ids[:k]
     hits = sum(1 for r in top_k if r in gold_set)
     return hits / k if k else 0.0
-
 
 def _recall_at_k(retrieved_ids: list[str], gold_set: set[str], k: int) -> float:
     if not gold_set:
@@ -59,13 +54,11 @@ def _recall_at_k(retrieved_ids: list[str], gold_set: set[str], k: int) -> float:
     hits = sum(1 for r in top_k if r in gold_set)
     return hits / len(gold_set)
 
-
 def _reciprocal_rank(retrieved_ids: list[str], gold_set: set[str]) -> float:
     for i, rid in enumerate(retrieved_ids, start=1):
         if rid in gold_set:
             return 1.0 / i
     return 0.0
-
 
 def _dcg_at_k(retrieved_ids: list[str], gold_set: set[str], k: int) -> float:
     """DCG with binary relevance."""
@@ -75,12 +68,10 @@ def _dcg_at_k(retrieved_ids: list[str], gold_set: set[str], k: int) -> float:
             dcg += 1.0 / math.log2(i + 1)
     return dcg
 
-
 def _idcg_at_k(gold_size: int, k: int) -> float:
     """Ideal DCG: all relevant docs at the top."""
     n_rel = min(gold_size, k)
     return sum(1.0 / math.log2(i + 1) for i in range(1, n_rel + 1))
-
 
 def _ndcg_at_k(retrieved_ids: list[str], gold_set: set[str], k: int) -> float:
     idcg = _idcg_at_k(len(gold_set), k)
@@ -88,11 +79,7 @@ def _ndcg_at_k(retrieved_ids: list[str], gold_set: set[str], k: int) -> float:
         return 0.0
     return _dcg_at_k(retrieved_ids, gold_set, k) / idcg
 
-
-# ---------------------------------------------------------------------------
 # Core evaluator
-# ---------------------------------------------------------------------------
-
 async def run_retrieval_eval(cases: list[dict], k: int = DEFAULT_K) -> dict:
     """
     Run retrieval evaluation on *cases* (must have gold chunk IDs).
@@ -162,16 +149,11 @@ async def run_retrieval_eval(cases: list[dict], k: int = DEFAULT_K) -> dict:
         "raw_rows": results,
     }
 
-
-# ---------------------------------------------------------------------------
 # Report writer
-# ---------------------------------------------------------------------------
-
 def _fmt(v: float, pct: bool = False, dec: int = 3) -> str:
     if pct:
         return f"{v * 100:.1f}%"
     return f"{v:.{dec}f}"
-
 
 def write_retrieval_report(data: dict, out_path: Path) -> None:
     k = data["k"]
@@ -278,11 +260,7 @@ def write_retrieval_report(data: dict, out_path: Path) -> None:
     out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  Retrieval report -> {out_path.relative_to(Path(__file__).parent.parent)}")
 
-
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
-
 async def main() -> None:
     k = DEFAULT_K
     split = "all"
@@ -320,7 +298,6 @@ async def main() -> None:
 
     report_path = RESULTS_DIR / "retrieval_report.md"
     write_retrieval_report(data, report_path)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

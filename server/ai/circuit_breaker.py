@@ -1,14 +1,4 @@
-"""Per-provider circuit breaker.
-
-States:
-  CLOSED   — normal operation; failures increment a counter.
-  OPEN     — fast-fail; requests rejected immediately. Transitions to HALF_OPEN
-             after `reset_timeout` seconds.
-  HALF_OPEN — one trial request allowed; success → CLOSED, failure → OPEN.
-
-Usage:
-    result = await groq_breaker.call(groq_client.chat, **opts)
-"""
+"""Per-provider circuit breaker: CLOSED → OPEN (on N failures) → HALF_OPEN (after timeout) → CLOSED."""
 import asyncio
 import time
 from enum import Enum
@@ -78,11 +68,7 @@ class CircuitBreaker:
             raise
 
     async def call_stream(self, fn: Callable, *args, **kwargs):
-        """Wrap an async generator with circuit-breaker protection.
-
-        Checks state before starting; records failure if the generator raises
-        before or during iteration; records success on first yielded chunk.
-        """
+        """Wrap an async generator with circuit-breaker protection."""
         async with self._lock:
             current = self.state
             if current == CircuitState.OPEN:

@@ -1,29 +1,16 @@
-"""
-Raksha's specialized safety agents — internal only, invisible to the user.
-
-The user sees ONE assistant (Raksha). Internally, specialized agents collaborate:
-
-  Agent 1 — Situation Classifier (8B, fast):  detect threat type, urgency, situation mode
-  Agent 2 — Resource Filter     (Python):     classify chunks by emergency contacts vs. procedure vs. awareness
-  Agent 3 — Safety Plan Builder (Python):     generate immediate safety steps for active emergencies
-  Agent 4 — Response Composer   (70B):        synthesize one calm, direct Raksha response
-
-LLM calls: 2 total (8B classifier + 70B composer) vs. 1 previously.
-"""
+"""Internal pipeline for Raksha's safety responses. 2 LLM calls: 8B classifier + 70B composer."""
 import json
 from typing import Optional
 
 from ai.context import trim_history
 from ai.provider import chat
+from ai.utils import _kw_score
 from config import GROQ_MODEL_FAST
 from logger import get_logger
 
 log = get_logger("raksha_agents")
 
-# ──────────────────────────────────────────────────────────────
 # AGENT 1 — SITUATION CLASSIFIER
-# ──────────────────────────────────────────────────────────────
-
 _SITUATION_CLASSIFIER_SYSTEM = """\
 You are a safety situation classifier for Raksha, an Indian personal safety assistant.
 Analyse the user's message and output ONLY valid JSON — no markdown, no explanation.
@@ -53,7 +40,6 @@ Rules:
 - is_child_involved: true if a minor appears to be at risk (POCSO triggers)
 - follow_up: ONE question that changes the safety advice; null if sufficient context
 Output ONLY the JSON object."""
-
 
 async def classify_situation(query: str, history: list[dict]) -> dict:
     """
@@ -100,11 +86,7 @@ async def classify_situation(query: str, history: list[dict]) -> dict:
         log.warning("situation_classifier failed — using defaults", error=str(err))
         return default
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 2 — RESOURCE FILTER (Python, no LLM)
-# ──────────────────────────────────────────────────────────────
-
 _EMERGENCY_CONTACT_KW = [
     "112", "100", "1091", "1098", "1930", "181", "14567", "7827170170",
     "helpline", "emergency", "police", "ambulance", "fire brigade", "cybercrime.gov.in",
@@ -130,13 +112,6 @@ _DISASTER_KW = [
     "flood", "earthquake", "cyclone", "fire", "landslide", "heatwave",
     "tsunami", "disaster", "NDRF", "SDRF", "evacuation", "relief camp",
 ]
-
-
-def _kw_score(chunk: dict, keywords: list[str]) -> float:
-    text = (chunk.get("topic", "") + " " + chunk.get("text", "")).lower()
-    hits = sum(1 for kw in keywords if kw.lower() in text)
-    return hits / max(len(keywords), 1)
-
 
 def organize_chunks(retrieved: list[dict], analysis: dict) -> dict:
     """
@@ -183,12 +158,8 @@ def organize_chunks(retrieved: list[dict], analysis: dict) -> dict:
         "general": general,
     }
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 3 — SAFETY PLAN BUILDER (Python, no LLM)
 # Deterministic immediate-action plans for active emergencies.
-# ──────────────────────────────────────────────────────────────
-
 _SAFETY_PLANS: dict[str, list[str]] = {
     "violence": [
         "Call 112 (unified emergency) immediately — say 'I need police'.",
@@ -263,7 +234,6 @@ _SAFETY_PLANS: dict[str, list[str]] = {
     ],
 }
 
-
 def get_safety_plan(threat_category: str, urgency: str) -> Optional[list[str]]:
     """
     Agent 3: Return a deterministic immediate-action safety plan.
@@ -273,11 +243,7 @@ def get_safety_plan(threat_category: str, urgency: str) -> Optional[list[str]]:
         return None
     return _SAFETY_PLANS.get(threat_category, _SAFETY_PLANS["general"])
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 4 — RESPONSE COMPOSER (message builder for 70B call)
-# ──────────────────────────────────────────────────────────────
-
 def build_composer_messages(
     *,
     query: str,

@@ -1,12 +1,4 @@
-"""Server-side TTS.
-
-Priority:
-  1. ElevenLabs neural TTS  — high quality; used when ELEVENLABS_KEY is set
-  2. gTTS                    — free fallback; robotic but always available
-
-ElevenLabs voices are ~2 s latency and stream back a single MP3 blob.
-gTTS wraps the Google TTS API and is synchronous; we run it in a thread.
-"""
+"""TTS: ElevenLabs when configured, gTTS as fallback."""
 import io
 import asyncio
 import re as _re

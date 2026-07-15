@@ -23,7 +23,6 @@ import {
 } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
 
-// ── Skeleton helpers ──────────────────────────────────────────────────────────
 function Skeleton({ className }) {
   return (
     <div
@@ -45,7 +44,6 @@ function StatCardSkeleton() {
   );
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, sub, color = "primary", loading }) {
   if (loading) return <StatCardSkeleton />;
   return (
@@ -69,7 +67,6 @@ function StatCard({ icon: Icon, label, value, sub, color = "primary", loading })
   );
 }
 
-// ── RAG status badge ──────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const ok = status === "ok" || status === "healthy";
   return (
@@ -85,7 +82,6 @@ function StatusBadge({ status }) {
   );
 }
 
-// ── Audit row ─────────────────────────────────────────────────────────────────
 function AuditRow({ entry, idx }) {
   const ts = entry.timestamp
     ? new Date(entry.timestamp).toLocaleString([], { dateStyle: "short", timeStyle: "short" })

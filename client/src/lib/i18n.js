@@ -1,8 +1,4 @@
-// Lightweight i18n for the eligibility checker + document-templates UI chrome.
-// Only the form labels and button text are translated. The legal document
-// bodies themselves stay in English because they are statute-specific and
-// would need lawyer review to translate accurately.
-//
+// Lightweight i18n for the eligibility checker UI chrome.
 // Resolution rule: "auto" falls through to the browser language; everything
 // else is the user's explicit pick from the LangToggle.
 
@@ -46,22 +42,6 @@ const STRINGS = {
     elig_official: "Official portal →",
     elig_central: "central",
     elig_state_level: "state",
-
-    // doc templates
-    doc_title: "Legal document templates",
-    doc_intro:
-      "Fill the fields and we'll generate a ready-to-send draft. Templates are reviewed boilerplate — they're a starting point, not a substitute for a lawyer when the stakes are high.",
-    doc_kind: "Document",
-    doc_generate: "Generate draft",
-    doc_drafting: "Drafting…",
-    doc_edit: "Edit fields",
-    doc_before_you_send: "Before you send",
-    doc_t_rti: "RTI application",
-    doc_t_rti_blurb: "Section 6 application under the Right to Information Act, 2005.",
-    doc_t_cc: "Consumer complaint",
-    doc_t_cc_blurb: "Complaint under Section 35 of the Consumer Protection Act, 2019.",
-    doc_t_rent: "Rent / quit notice",
-    doc_t_rent_blurb: "Notice under Section 106 of the Transfer of Property Act, 1882.",
   },
   hi: {
     cancel: "रद्द करें",
@@ -97,21 +77,6 @@ const STRINGS = {
     elig_official: "आधिकारिक पोर्टल →",
     elig_central: "केंद्र",
     elig_state_level: "राज्य",
-
-    doc_title: "क़ानूनी दस्तावेज़ टेम्पलेट",
-    doc_intro:
-      "फ़ील्ड भरें और हम आपके लिए भेजने योग्य ड्राफ़्ट तैयार करेंगे। ये टेम्पलेट समीक्षित बॉयलरप्लेट हैं — शुरुआत के लिए ठीक, गंभीर मामलों में वकील का विकल्प नहीं।",
-    doc_kind: "दस्तावेज़",
-    doc_generate: "ड्राफ़्ट बनाएँ",
-    doc_drafting: "तैयार किया जा रहा है…",
-    doc_edit: "फ़ील्ड बदलें",
-    doc_before_you_send: "भेजने से पहले",
-    doc_t_rti: "RTI आवेदन",
-    doc_t_rti_blurb: "सूचना का अधिकार अधिनियम 2005 की धारा 6 के तहत आवेदन।",
-    doc_t_cc: "उपभोक्ता शिकायत",
-    doc_t_cc_blurb: "उपभोक्ता संरक्षण अधिनियम 2019 की धारा 35 के तहत शिकायत।",
-    doc_t_rent: "किराया / खाली करने का नोटिस",
-    doc_t_rent_blurb: "संपत्ति अंतरण अधिनियम 1882 की धारा 106 के तहत नोटिस।",
   },
   de: {
     cancel: "Abbrechen",
@@ -147,21 +112,6 @@ const STRINGS = {
     elig_official: "Offizielles Portal →",
     elig_central: "zentral",
     elig_state_level: "bundesstaatlich",
-
-    doc_title: "Vorlagen für juristische Dokumente",
-    doc_intro:
-      "Felder ausfüllen und wir erzeugen einen versandfertigen Entwurf. Die Vorlagen sind geprüfte Bausteine — ein Ausgangspunkt, kein Ersatz für eine Anwält:in, wenn etwas auf dem Spiel steht.",
-    doc_kind: "Dokument",
-    doc_generate: "Entwurf erstellen",
-    doc_drafting: "Wird erstellt…",
-    doc_edit: "Felder bearbeiten",
-    doc_before_you_send: "Vor dem Versenden",
-    doc_t_rti: "RTI-Antrag",
-    doc_t_rti_blurb: "Antrag nach Section 6 des Right to Information Act, 2005.",
-    doc_t_cc: "Verbraucherbeschwerde",
-    doc_t_cc_blurb: "Beschwerde nach Section 35 des Consumer Protection Act, 2019.",
-    doc_t_rent: "Kündigungsschreiben",
-    doc_t_rent_blurb: "Kündigung nach Section 106 des Transfer of Property Act, 1882.",
   },
 };
 

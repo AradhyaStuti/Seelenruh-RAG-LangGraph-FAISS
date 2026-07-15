@@ -67,7 +67,6 @@ function Select({ value, onChange, options, placeholder, className }) {
   );
 }
 
-// ── Document detail modal ─────────────────────────────────────────────────────
 function DocDetailModal({ docId, onClose }) {
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -161,7 +160,6 @@ function DocDetailModal({ docId, onClose }) {
   );
 }
 
-// ── Upload section ─────────────────────────────────────────────────────────────
 function UploadSection({ onUploaded }) {
   const [file, setFile] = useState(null);
   const [domain, setDomain]     = useState("");
@@ -325,7 +323,6 @@ function UploadSection({ onUploaded }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function KnowledgeBase({ adminKey }) {
   const [docs, setDocs]         = useState([]);
   const [loading, setLoading]   = useState(true);

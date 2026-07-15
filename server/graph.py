@@ -81,7 +81,7 @@ class ChatState(TypedDict, total=False):
 
 
 def _build_context(state: ChatState) -> str:
-    """Build the conversation context string shared by both streaming and non-streaming paths."""
+    """Assemble the CONVERSATION CONTEXT block injected into the system prompt."""
     emotion = state.get("emotion", "neutral")
     tone_hint = _TONE_HINTS.get(emotion, "")
 
@@ -237,7 +237,7 @@ _PERSONA_NAMES = {
 
 
 def _merge_web_results(state: ChatState) -> list[dict]:
-    """Merge RAG hits and web results into a single retrieved list for the responder."""
+    """Combine RAG chunks and web results into one list for the generate step."""
     retrieved = list(state.get("retrieved", []))
     for i, wr in enumerate(state.get("web_results", [])):
         retrieved.append({
@@ -385,6 +385,7 @@ async def stream_run(
     lang: str = "auto",
     user_id: str = "",
     session_id: str = "",
+    fast_mode: bool = False,
 ):
     """Async generator — yields {"token": "..."} per token then {"done": True, ...metadata}."""
     history = history or []
@@ -396,6 +397,7 @@ async def stream_run(
         "lang": lang,
         "user_id": user_id,
         "session_id": session_id,
+        "fast_mode": fast_mode,
     }
 
     state.update(await _load_memory(state))
@@ -410,26 +412,27 @@ async def stream_run(
     collected: list[str] = []
     via_bag = {"via": "stream"}
 
-    domain   = state.get("routed_domain", "Mental Health")
+    routed_domain = state.get("routed_domain", "Mental Health")
     conf     = _confidence_from(state.get("retrieved", []))
     _skw = dict(
         query=query, history=history, retrieved=retrieved,
         emotion=state.get("emotion", "neutral"), lang=lang,
-        outer_context=context, confidence=conf, _via_bag=via_bag,
+        outer_context=context, confidence=conf,
+        fast_mode=fast_mode, _via_bag=via_bag,
     )
 
-    if domain == "Mental Health":
+    if routed_domain == "Mental Health":
         stream_gen = usha_graph.stream_run(**_skw)
-    elif domain == "Legal":
+    elif routed_domain == "Legal":
         stream_gen = legal_graph.stream_run(**_skw)
-    elif domain == "Government Schemes":
+    elif routed_domain == "Government Schemes":
         stream_gen = aarogya_graph.stream_run(**_skw)
-    elif domain == "Safety":
+    elif routed_domain == "Safety":
         stream_gen = raksha_graph.stream_run(**_skw)
     else:
         # Fallback — should not normally happen
         stream_gen = responder.stream_respond(
-            query=query, intent=domain, emotion=state.get("emotion", "neutral"),
+            query=query, intent=routed_domain, emotion=state.get("emotion", "neutral"),
             lang=lang, history=history, retrieved=retrieved, context=context, _via_bag=via_bag,
         )
 

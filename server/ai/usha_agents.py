@@ -1,29 +1,15 @@
-"""
-Usha's specialized mental health agents — internal only, invisible to the user.
-
-The user sees ONE assistant (Usha). Internally, specialized agents collaborate:
-
-  Agent 1 — Emotion Analyzer  (8B, fast):   detect emotional state, intensity, crisis signals
-  Agent 2 — Content Organizer (Python):      classify chunks by support type vs. CBT vs. resources
-  Agent 3 — Crisis Check      (Python):      hard-code crisis override when suicide/self-harm detected
-  Agent 4 — Response Composer (70B):         synthesize one warm, natural Usha response
-
-LLM calls: 2 total (8B analyzer + 70B composer) vs. 1 previously.
-Added latency: ~150 ms for the 8B call.
-"""
+"""Internal pipeline for Usha's mental health responses. 2 LLM calls: 8B analyzer + 70B composer."""
 import json
 
 from ai.context import trim_history
 from ai.provider import chat
+from ai.utils import _kw_score
 from config import GROQ_MODEL_FAST
 from logger import get_logger
 
 log = get_logger("usha_agents")
 
-# ──────────────────────────────────────────────────────────────
 # AGENT 1 — EMOTION ANALYZER
-# ──────────────────────────────────────────────────────────────
-
 _EMOTION_ANALYZER_SYSTEM = """\
 You are an emotion classifier for Usha, a mental health support assistant.
 Analyse the user's message and output ONLY valid JSON — no markdown, no explanation.
@@ -48,7 +34,6 @@ Rules:
 - needs_resources: true if situation may benefit from a helpline or therapist referral
 - follow_up: ONE natural question Usha could ask to understand the user better; null if sufficient context exists
 Output ONLY the JSON object."""
-
 
 async def analyze_emotional_state(query: str, history: list[dict]) -> dict:
     """
@@ -88,11 +73,7 @@ async def analyze_emotional_state(query: str, history: list[dict]) -> dict:
         log.warning("emotion_analyzer failed — using defaults", error=str(err))
         return default
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 2 — CONTENT ORGANIZER (Python, no LLM)
-# ──────────────────────────────────────────────────────────────
-
 _EMOTIONAL_SUPPORT_KW = [
     "grief", "loss", "sadness", "loneliness", "isolation", "depression", "low mood",
     "feel empty", "hopeless", "worthless", "crying", "breakdown", "overwhelmed",
@@ -124,13 +105,6 @@ _RESOURCES_KW = [
     "helpline", "NIMHANS", "iCall", "AASRA", "Vandrevala", "Tele-MANAS",
     "professional help", "mental health professional", "appointment", "session",
 ]
-
-
-def _kw_score(chunk: dict, keywords: list[str]) -> float:
-    text = (chunk.get("topic", "") + " " + chunk.get("text", "")).lower()
-    hits = sum(1 for kw in keywords if kw.lower() in text)
-    return hits / max(len(keywords), 1)
-
 
 def organize_chunks(retrieved: list[dict], topic_type: str) -> dict:
     """
@@ -164,12 +138,8 @@ def organize_chunks(retrieved: list[dict], topic_type: str) -> dict:
 
     return {"primary": primary, "secondary": secondary, "general": general}
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 3 — CRISIS CHECK (Python, no LLM)
 # Hard-coded override — never rely on LLM for life-safety decisions.
-# ──────────────────────────────────────────────────────────────
-
 _CRISIS_TRIGGER_PHRASES = [
     "suicide", "suicidal", "kill myself", "end my life", "want to die",
     "don't want to live", "no reason to live", "hurt myself", "self-harm",
@@ -177,7 +147,6 @@ _CRISIS_TRIGGER_PHRASES = [
     "khatam kar lena chahta", "zindagi khatam", "jeena nahi chahta",
     "mar jana chahta", "khud ko hurt",
 ]
-
 
 def is_crisis(query: str, emotion_analysis: dict) -> bool:
     """
@@ -192,11 +161,7 @@ def is_crisis(query: str, emotion_analysis: dict) -> bool:
     q_lower = query.lower()
     return any(phrase in q_lower for phrase in _CRISIS_TRIGGER_PHRASES)
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 4 — RESPONSE COMPOSER (message builder for 70B call)
-# ──────────────────────────────────────────────────────────────
-
 def build_composer_messages(
     *,
     query: str,

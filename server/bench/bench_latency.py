@@ -52,11 +52,7 @@ _SAMPLE_QUERIES: list[tuple[str, str]] = [
     ("Safety",             "My husband is violent — I need immediate help"),
 ]
 
-
-# ---------------------------------------------------------------------------
 # Retrieval latency profiler
-# ---------------------------------------------------------------------------
-
 async def _profile_retrieval(n_runs: int) -> dict[str, list[float]]:
     """
     Run retrieve() N times across sample queries and collect per-stage
@@ -123,7 +119,6 @@ async def _profile_retrieval(n_runs: int) -> dict[str, list[float]]:
 
     return dict(stages)
 
-
 async def _profile_llm_latency(model_name: str, n_samples: int = 5) -> dict:
     """
     Profile a single LLM call latency (non-streaming).
@@ -154,11 +149,7 @@ async def _profile_llm_latency(model_name: str, n_samples: int = 5) -> dict:
         "samples": len(times),
     }
 
-
-# ---------------------------------------------------------------------------
 # Stats helper
-# ---------------------------------------------------------------------------
-
 def _stats(values: list[float]) -> dict:
     if not values:
         return {"p50": 0, "p90": 0, "p99": 0, "mean": 0, "max": 0, "std": 0, "n": 0}
@@ -177,11 +168,7 @@ def _stats(values: list[float]) -> dict:
         "n": n,
     }
 
-
-# ---------------------------------------------------------------------------
 # Report writer
-# ---------------------------------------------------------------------------
-
 def write_latency_report(data: dict, out_path: Path) -> None:
     lines: list[str] = []
     lines += [
@@ -314,11 +301,7 @@ def write_latency_report(data: dict, out_path: Path) -> None:
     out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  Latency report -> {out_path.relative_to(Path(__file__).parent.parent)}")
 
-
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
-
 async def main() -> None:
     n_runs = 50
     skip_llm = False
@@ -373,7 +356,6 @@ async def main() -> None:
 
     report_path = RESULTS_DIR / "latency_report.md"
     write_latency_report(data, report_path)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

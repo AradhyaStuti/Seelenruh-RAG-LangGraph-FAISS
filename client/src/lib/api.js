@@ -62,11 +62,17 @@ async function post(path, body, { _retried = false, timeoutMs = 120000 } = {}) {
   return data;
 }
 
-async function get(path, { _retried = false } = {}) {
+async function get(path, { _retried = false, timeoutMs = 30000 } = {}) {
   let res;
   try {
-    res = await fetch(path, { headers: authHeaders() });
-  } catch {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    res = await fetch(path, {
+      headers: authHeaders(),
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timer));
+  } catch (err) {
+    if (err?.name === "AbortError") throw new Error("Request timed out. Please try again.");
     throw new Error("Can't reach the server. Please check your connection.");
   }
   if (res.status === 401) {
@@ -94,13 +100,7 @@ export function processUserMessage(input) {
   return post("/api/chat", input);
 }
 
-/**
- * Stream a chat response via SSE.
- * Calls `onToken(text)` for each streamed token, then resolves with the final
- * metadata object (same shape as processUserMessage response).
- *
- * Falls back to the non-streaming endpoint on any SSE error.
- */
+// streams tokens via SSE, falls back to regular endpoint on error
 export async function streamUserMessage(input, { onToken, timeoutMs = 60000 } = {}) {
   const token = getToken();
   const controller = new AbortController();
@@ -166,20 +166,8 @@ export async function streamUserMessage(input, { onToken, timeoutMs = 60000 } = 
   return finalMeta || {};
 }
 
-export function processUserAudio(input) {
-  return post("/api/audio", input);
-}
-
-export function transcribeAudio(input) {
-  return post("/api/transcribe", input);
-}
-
 export function matchSchemes(input) {
   return post("/api/schemes/match", input);
-}
-
-export function renderTemplate(input) {
-  return post("/api/templates/render", input);
 }
 
 export function summarizeConversation(messages, opts = {}) {
@@ -208,11 +196,7 @@ export function changePassword(currentPassword, newPassword) {
   return post("/api/auth/change-password", { currentPassword, newPassword });
 }
 
-/**
- * Upload a document file and get extracted text back.
- * Supports .txt, .md, .csv, .json, .log, .pdf, .docx (max 5 MB).
- * Returns { text, name, truncated, chars }.
- */
+// accepts .txt, .md, .csv, .json, .pdf, .docx (max 5 MB)
 export async function parseDocument(file) {
   const token = getToken();
   const form = new FormData();
@@ -247,11 +231,7 @@ export async function submitFeedbackToServer(messageId, vote, domain, extra = {}
   }
 }
 
-/**
- * Returns { online: bool, dbConnected: bool }.
- * `online` = server responded with HTTP 200.
- * `dbConnected` = MongoDB is connected (false → in-memory fallback active).
- */
+// returns { online, dbConnected } — dbConnected=false means in-memory fallback
 export async function checkServerHealth() {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);

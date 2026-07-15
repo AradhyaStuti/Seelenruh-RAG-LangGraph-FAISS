@@ -63,9 +63,7 @@ export function setAuth({ token, refreshToken, user }) {
 }
 
 export function clearAuth({ wipeUserData = false } = {}) {
-  // Best-effort server-side revocation: tells the backend to blacklist this
-  // JWT's jti so the token can't be reused even if it leaks. Fire-and-forget —
-  // a network failure here shouldn't block the user from signing out locally.
+  // tell the server to blacklist this token's jti — fire-and-forget
   const token = (() => {
     try {
       return window.localStorage.getItem(TOKEN_KEY);
@@ -97,11 +95,7 @@ export function clearAuth({ wipeUserData = false } = {}) {
   emit();
 }
 
-/**
- * Silently exchange the refresh token for a fresh access + refresh token pair.
- * Returns true if the refresh succeeded (new tokens stored), false otherwise.
- * Never throws — any failure results in false so the caller can sign out cleanly.
- */
+// exchanges refresh token for new token pair, returns true/false
 export async function silentRefresh() {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;

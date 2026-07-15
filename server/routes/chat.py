@@ -1,10 +1,10 @@
-"""Chat, audio, transcribe, history, feedback, and streaming endpoints."""
+"""Chat, audio, transcribe, history, and streaming endpoints."""
 import json
-from typing import AsyncIterator, Literal, Optional
+import re as _re
+from typing import AsyncIterator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
 
 from ai import stt
 import db
@@ -15,8 +15,6 @@ from rate_limit import chat_limit, burst_limit
 from logger import get_logger
 
 log = get_logger("chat")
-
-import re as _re  # noqa: E402
 
 _INJECTION_PATTERNS = [
     _re.compile(r"ignore\s+(previous|above|all|your)\s+instructions", _re.I),
@@ -76,10 +74,11 @@ async def _handle(req: ChatRequest, user: dict, fast_mode: bool = False) -> Chat
     retrieved_ids = result.get("retrievedIds", [])
 
     # Log knowledge gap when retrieval yields nothing useful
+    # Truncate query to 200 chars to limit PII exposure in the knowledge gap log
     if confidence in ("Low", "None") and len(retrieved_ids) == 0:
         try:
             await db.save_knowledge_gap(
-                query=req.query,
+                query=req.query[:200],
                 domain=req.domain,
                 confidence=confidence,
                 session_id=session_id,
@@ -179,7 +178,9 @@ async def chat_stream_endpoint(
                     done_event = event
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as err:
-            yield f"data: {json.dumps({'error': str(err)})}\n\n"
+            log.error("stream graph.run failed", error=str(err), domain=req.domain)
+            _err_msg = json.dumps({"error": "I\u2019m having trouble reaching my AI right now. Please try again in a moment."})
+            yield f"data: {_err_msg}\n\n"
             return
 
         # Log knowledge gap when stream yields no retrieved docs
@@ -188,7 +189,7 @@ async def chat_stream_endpoint(
             gap_ids = done_event.get("retrievedIds", [])
             if gap_confidence in ("Low", "None") and len(gap_ids) == 0:
                 await db.save_knowledge_gap(
-                    query=req.query,
+                    query=req.query[:200],
                     domain=req.domain,
                     confidence=gap_confidence,
                     session_id=session_id,
@@ -219,23 +220,3 @@ async def chat_stream_endpoint(
     )
 
 
-class FeedbackRequest(BaseModel):
-    messageId: str = Field(min_length=1, max_length=100)
-    vote: Literal["up", "down"]
-    domain: Optional[str] = Field(default="Mental Health", max_length=50)
-
-
-@router.post("/feedback")
-@burst_limit("60/minute")
-async def feedback_endpoint(
-    request: Request,
-    req: FeedbackRequest,
-    user: dict = Depends(current_user),
-) -> dict:
-    await db.upsert_feedback(
-        user_id=user["id"],
-        message_id=req.messageId,
-        vote=req.vote,
-        domain=req.domain or "Mental Health",
-    )
-    return {"ok": True}

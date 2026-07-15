@@ -1,9 +1,4 @@
-"""Conversation summary endpoints.
-
-POST /api/summary           — generate + upsert a fresh summary
-GET  /api/summary/{persona}/{sessionId} — fetch the pinned summary, if any
-GET  /api/summary/all       — every summary the user has (cross-device hydrate)
-"""
+"""Conversation summary endpoints."""
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from schemas import SummaryRequest, SummaryResponse, PinnedSummary, AllSummariesResponse
@@ -20,9 +15,7 @@ router = APIRouter(prefix="/api/summary", tags=["summary"])
 async def summary_endpoint(
     request: Request, req: SummaryRequest, user: dict = Depends(current_user),
 ) -> SummaryResponse:
-    """Generate a summary from posted messages and persist it server-side so
-    the same user sees it on a different device next time they load this
-    persona+session."""
+    """Summarize posted messages and persist for cross-device access."""
     messages = [m.model_dump() for m in req.messages]
     summary = await summarizer.summarize(messages)
     if summary and req.sessionId:
@@ -40,9 +33,7 @@ async def summary_endpoint(
 async def all_summaries_endpoint(
     request: Request, user: dict = Depends(current_user),
 ) -> AllSummariesResponse:
-    """Used at app load to hydrate any session summaries the user wrote on
-    other devices — pinned card appears immediately, no extra round-trip per
-    session."""
+    """Fetch all summaries for the user — used at app load to hydrate cross-device sessions."""
     rows = await db.fetch_user_summaries(user["id"])
     return AllSummariesResponse(summaries=[PinnedSummary(**r) for r in rows])
 

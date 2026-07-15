@@ -1,15 +1,4 @@
-"""Rolling conversation summary. Used when a chat grows past a comfortable
-context window — we summarise older turns into one paragraph so the LLM
-keeps the gist without paying for every token.
-
-Uses the fast Llama 3.1 8B with low temperature; the summary is meant to
-be a faithful precis, not generative writing.
-
-Best-effort PII redaction runs before any message leaves this process. It
-catches the obvious things (phone numbers, emails, Aadhaar / PAN / credit
-card digits) and replaces them with placeholders so they don't end up in
-the Groq request log. It is *not* a substitute for a real PII pipeline
-— it won't catch names, addresses, or paraphrased identifiers."""
+"""Rolling conversation summary with best-effort PII redaction before sending to Groq."""
 import re
 
 from ai.provider import chat

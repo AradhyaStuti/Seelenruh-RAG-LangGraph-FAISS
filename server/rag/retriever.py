@@ -111,9 +111,7 @@ _HINGLISH_MAP = {
 
 _DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]+")
 
-# Legal query expansion — appends domain-specific terminology before embedding
-# so vague natural-language queries map to the right knowledge chunks.
-# Each tuple: (compiled regex pattern, extra terms to append)
+# (pattern, expansion terms) — appended before embedding for vague legal queries
 _LEGAL_EXPANSIONS: list[tuple] = [
     (re.compile(r"husband|wife|spouse|(?<!business )partner.{0,30}(beat|hit|hurt|abuse|slap|kick|threaten|violence|assault|torture)", re.I),
      "domestic violence PWDVA protection order Section 18 DV Act BNS 85 498A shelter home"),
@@ -207,11 +205,7 @@ _LEGAL_EXPANSIONS: list[tuple] = [
 
 
 def _expand_legal_query(query: str) -> str:
-    """
-    Append legal terminology to vague natural-language legal queries so that
-    multilingual-e5-small maps them onto the right knowledge chunks.
-    Only called when domain='Legal'. Pure string operation — no LLM needed.
-    """
+    """Append domain-specific terminology to vague legal queries before embedding. No LLM call."""
     additions: list[str] = []
     for pattern, expansion in _LEGAL_EXPANSIONS:
         if pattern.search(query):
@@ -287,10 +281,7 @@ def _rrf_fuse(
     bm25_hits: list[dict],
     k_param: int = 60,
 ) -> list[dict]:
-    """
-    Reciprocal Rank Fusion of two ranked lists.
-    Returns deduplicated list ordered by fused score descending.
-    """
+    """Reciprocal Rank Fusion of FAISS + BM25 results, deduplicated by chunk id."""
     scores: dict[str, float] = {}
     id_to_chunk: dict[str, dict] = {}
 
@@ -384,8 +375,7 @@ async def ingest(chunks: list[dict]) -> int:
 
 
 def _overfetch_k(k: int, domain: Optional[str]) -> int:
-    """Legal and scheme queries benefit from more candidates before reranking —
-    they have denser knowledge chunks and small wording differences matter."""
+    """Fetch more candidates for Legal/Scheme domains — dense chunks, wording differences matter."""
     if not reranker.is_enabled():
         return k
     base = max(k, RETRIEVAL_OVERFETCH)
@@ -397,9 +387,7 @@ def _overfetch_k(k: int, domain: Optional[str]) -> int:
 
 
 def _dedup(hits: list[dict]) -> list[dict]:
-    """Remove near-duplicate chunks that share the same topic string.
-    After reranking, higher-ranked chunks come first, so we keep the first
-    occurrence of each topic and discard later ones with the same key."""
+    """Drop duplicate chunks with the same topic. Keeps the highest-ranked occurrence."""
     seen: set[str] = set()
     out: list[dict] = []
     for h in hits:

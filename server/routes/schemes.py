@@ -1,6 +1,4 @@
-"""Scheme eligibility checker — rule-based, hand-coded. The model isn't in
-the loop here: every matching scheme is a transparent rule the user can
-read in `server/schemes.py`."""
+"""Scheme eligibility checker — rule-based, no LLM involved."""
 from fastapi import APIRouter, Depends, Request
 
 from schemas import EligibilityRequest, EligibilityResponse, SchemeMatch

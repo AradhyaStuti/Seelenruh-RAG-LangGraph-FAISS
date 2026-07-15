@@ -5,14 +5,15 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from config import PORT, CLIENT_ORIGIN, DEV_ALLOWED_PORTS
+from fastapi import Header as _Header
+from config import PORT, CLIENT_ORIGIN, DEV_ALLOWED_PORTS, ADMIN_KEY
 from logger import get_logger
 from schemas import HealthResponse
 from rate_limit import limiter
@@ -107,7 +108,9 @@ async def health() -> HealthResponse:
 
 
 @app.get("/api/metrics")
-async def metrics() -> dict:
+async def metrics(x_admin_key: str = _Header(default="")) -> dict:
+    if not ADMIN_KEY or x_admin_key != ADMIN_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing admin key.")
     from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
     return {
         "uptime_s": int(time.time() - _start_time),

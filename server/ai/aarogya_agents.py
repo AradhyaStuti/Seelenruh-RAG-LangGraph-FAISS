@@ -1,30 +1,16 @@
-"""
-Aarogya's specialized government scheme agents — internal only, invisible to the user.
-
-The user sees ONE assistant (Aarogya). Internally, specialized agents collaborate:
-
-  Agent 1 — Scheme Analyzer    (8B, fast):   classify query, extract user profile, detect missing info
-  Agent 2 — Eligibility Filter (Python):     score chunks by scheme category relevance
-  Agent 3 — State Specialist   (Python):     boost state-specific scheme chunks
-  Agent 4 — Doc Checker        (Python):     derive required document list from scheme category
-  Agent 5 — Response Composer  (70B):        synthesize one helpful, practical Aarogya response
-
-LLM calls: 2 total (8B analyzer + 70B composer) vs. 1 previously.
-"""
+"""Internal pipeline for Aarogya's scheme responses. 2 LLM calls: 8B analyzer + 70B composer."""
 import json
 from typing import Optional
 
 from ai.context import trim_history
 from ai.provider import chat
+from ai.utils import _kw_score
 from config import GROQ_MODEL_FAST
 from logger import get_logger
 
 log = get_logger("aarogya_agents")
 
-# ──────────────────────────────────────────────────────────────
 # AGENT 1 — SCHEME ANALYZER
-# ──────────────────────────────────────────────────────────────
-
 _SCHEME_ANALYZER_SYSTEM = """\
 You are a government scheme classifier for Aarogya, an Indian government benefits assistant.
 Analyse the user's query and output ONLY valid JSON — no markdown, no explanation.
@@ -58,7 +44,6 @@ Rules:
 - specific_scheme_name: the scheme name if is_specific_scheme=true, else null
 - missing_info: ONE specific question whose answer changes which schemes to recommend; null if sufficient
 Output ONLY the JSON object."""
-
 
 async def analyze_scheme_query(query: str, history: list[dict]) -> dict:
     """
@@ -103,11 +88,7 @@ async def analyze_scheme_query(query: str, history: list[dict]) -> dict:
         log.warning("scheme_analyzer failed — using defaults", error=str(err))
         return default
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 2 — ELIGIBILITY FILTER + AGENT 3 — STATE SPECIALIST (Python, no LLM)
-# ──────────────────────────────────────────────────────────────
-
 _CATEGORY_KW: dict[str, list[str]] = {
     "Health":      ["health", "ayushman", "PM-JAY", "CGHS", "insurance", "hospital", "medical", "PMJAY", "treatment"],
     "Education":   ["scholarship", "fellowship", "stipend", "education", "student", "NSP", "fee waiver", "coaching"],
@@ -132,19 +113,11 @@ _DOCUMENT_KW = [
     "caste", "papers", "list", "kya chahiye", "kaun si", "attachment",
 ]
 
-
-def _kw_score(chunk: dict, keywords: list[str]) -> float:
-    text = (chunk.get("topic", "") + " " + chunk.get("text", "")).lower()
-    hits = sum(1 for kw in keywords if kw.lower() in text)
-    return hits / max(len(keywords), 1)
-
-
 def _state_boost(chunk: dict, state: Optional[str]) -> float:
     if not state:
         return 0.0
     text = (chunk.get("topic", "") + " " + chunk.get("text", "")).lower()
     return 0.15 if state.lower() in text else 0.0
-
 
 def organize_chunks(retrieved: list[dict], analysis: dict) -> dict:
     """
@@ -187,11 +160,7 @@ def organize_chunks(retrieved: list[dict], analysis: dict) -> dict:
         "general":     general,
     }
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 4 — DOCUMENT CHECKER (Python, no LLM)
-# ──────────────────────────────────────────────────────────────
-
 _SCHEME_DOCS: dict[str, list[str]] = {
     "Health": [
         "Aadhaar card",
@@ -287,16 +256,11 @@ _SCHEME_DOCS: dict[str, list[str]] = {
     ],
 }
 
-
 def get_document_checklist(scheme_category: str) -> list[str]:
     """Agent 4: Return standard document checklist for a scheme category."""
     return _SCHEME_DOCS.get(scheme_category, _SCHEME_DOCS["General"])
 
-
-# ──────────────────────────────────────────────────────────────
 # AGENT 5 — RESPONSE COMPOSER (message builder for 70B call)
-# ──────────────────────────────────────────────────────────────
-
 def build_composer_messages(
     *,
     query: str,

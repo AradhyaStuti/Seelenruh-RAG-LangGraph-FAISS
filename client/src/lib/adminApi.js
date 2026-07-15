@@ -1,8 +1,4 @@
-/**
- * Admin API helpers.
- * All requests require an X-Admin-Key header which is stored in sessionStorage.
- */
-
+// Admin API — all requests require X-Admin-Key from sessionStorage.
 const ADMIN_KEY_STORAGE = "seelenruh:admin-key";
 
 export function getAdminKey() {
@@ -63,18 +59,18 @@ async function adminDelete(path) {
   return res.json();
 }
 
-// ─── Verify admin key ─────────────────────────────────────────────────────────
+// verify admin key
 export async function verifyAdminKey(key) {
   const res = await fetch("/api/admin/status", { headers: { "X-Admin-Key": key } });
   return res.ok;
 }
 
-// ─── Status & analytics ───────────────────────────────────────────────────────
+// status & analytics
 export const fetchAdminStatus    = () => adminGet("/api/admin/status");
 export const fetchAdminAnalytics = () => adminGet("/api/admin/analytics");
 export const fetchAuditLog       = (limit = 100) => adminGet(`/api/admin/audit?limit=${limit}`);
 
-// ─── Documents ────────────────────────────────────────────────────────────────
+// documents
 export const fetchDocuments = (params = {}) => {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
   return adminGet(`/api/admin/documents${qs ? "?" + qs : ""}`);
@@ -123,18 +119,18 @@ export async function uploadDocument(file, { domain, topic = "", source = "", la
   });
 }
 
-// ─── Chunks ───────────────────────────────────────────────────────────────────
+// chunks
 export const fetchChunks = (domain, page = 1, pageSize = 50) =>
   adminGet(`/api/admin/chunks?page=${page}&page_size=${pageSize}${domain ? "&domain=" + domain : ""}`);
 
-// ─── Knowledge gaps ───────────────────────────────────────────────────────────
+// knowledge gaps
 export const fetchKnowledgeGaps  = (status) => adminGet(`/api/admin/knowledge-gaps${status ? "?status=" + status : ""}`);
 export const updateKnowledgeGap  = (id, status) => adminPatch(`/api/admin/knowledge-gaps/${id}`, { status });
 
-// ─── Feedback ─────────────────────────────────────────────────────────────────
+// feedback
 export const fetchFeedbackStats  = () => adminGet("/api/feedback/stats");
 export const exportFeedbackUrl   = () => `/api/feedback/export?x_admin_key=${encodeURIComponent(getAdminKey())}`;
 
-// ─── RAG management ───────────────────────────────────────────────────────────
+// RAG management
 export const fetchSnapshots = () => adminGet("/api/admin/snapshots");
 export const rollbackIndex  = (steps) => adminPost(`/api/admin/rollback?steps=${steps}`, {});

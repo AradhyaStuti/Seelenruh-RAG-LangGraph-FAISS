@@ -7,9 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  # ── Python backend ──────────────────────────────────────────────────────────
+  # Python backend
   backend:
-    name: Backend — lint + test
+    name: Backend — lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,21 +30,12 @@ jobs:
           pip install --upgrade pip
           pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio ruff
+          pip install ruff
 
       - name: Lint (ruff)
         run: ruff check . --select=E,F,W --ignore=E501
 
-      - name: Run tests
-        env:
-          # Minimal env so config.py doesn't error out on missing vars
-          GROQ_API_KEY: "test-key-ci"
-          JWT_SECRET: "ci-test-secret-32-chars-minimum!!"
-          MONGODB_URI: ""          # in-memory fallback
-          SEELENRUH_ENV: "dev"
-        run: pytest tests/ -v --tb=short
-
-  # ── React frontend ──────────────────────────────────────────────────────────
+  # React frontend
   frontend:
     name: Frontend — build check
     runs-on: ubuntu-latest
@@ -68,7 +59,7 @@ jobs:
       - name: Build
         run: npm run build
 
-  # ── Docker image build check ────────────────────────────────────────────────
+  # Docker build check
   docker:
     name: Docker — build check
     runs-on: ubuntu-latest

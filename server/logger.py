@@ -1,19 +1,4 @@
-"""Structured logging for Seelenruh.
-
-Dev mode  → coloured human-readable output via structlog's ConsoleRenderer.
-Prod mode → newline-delimited JSON suitable for Loki, Datadog, or any log
-            aggregator that ingests JSON-per-line.
-
-Usage:
-    from logger import get_logger
-    log = get_logger(__name__)
-    log.info("chat request", user_id=uid, domain=domain)
-    log.error("llm failed", provider="groq", error=str(e))
-
-Sentry (optional):
-    Set SENTRY_DSN in the environment. The SDK is only imported when the DSN
-    is present, so the app starts normally without it installed.
-"""
+"""Structured logging: human-readable in dev, JSON in prod. Sentry optional (set SENTRY_DSN)."""
 import logging
 import sys
 
@@ -79,8 +64,7 @@ except ImportError:
 
     _STRUCTLOG = False
 
-
-# ── Sentry integration (optional) ──────────────────────────────────────────
+# Sentry integration (optional)
 if SENTRY_DSN:
     try:
         import sentry_sdk

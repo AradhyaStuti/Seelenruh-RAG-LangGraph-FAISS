@@ -1,22 +1,4 @@
-"""
-Umang's multi-agent legal reasoning sub-graph.
-
-From the user's perspective: one assistant named Umang.
-Internally: specialized agents collaborate via LangGraph.
-
-Graph topology:
-  START
-    → analyze        [Agent 1: 8B LLM — classify, extract known/missing facts, detect urgency]
-    → prepare        [Agents 2–6: Python — organize chunks, build legal reasoning context,
-                      detect jurisdiction, load template]
-    → compose        [Agent 7: 70B LLM — synthesize final Umang response]
-    → END
-
-Streaming path mirrors the same three phases, then streams the compose step.
-
-Invoked from graph.py when routed_domain == "Legal".
-All other domains continue to use the original responder pipeline unchanged.
-"""
+"""Umang's LangGraph sub-graph: analyze → prepare → compose. Invoked for Legal domain."""
 from typing import Optional, TypedDict
 
 from langgraph.graph import StateGraph, START, END
@@ -30,11 +12,7 @@ from logger import get_logger
 
 log = get_logger("legal_graph")
 
-
-# ──────────────────────────────────────────────────────────────
 # STATE
-# ──────────────────────────────────────────────────────────────
-
 class LegalState(TypedDict, total=False):
     # Passed in from the outer graph
     query:         str
@@ -61,11 +39,7 @@ class LegalState(TypedDict, total=False):
     response: str
     via:      str
 
-
-# ──────────────────────────────────────────────────────────────
 # NODES
-# ──────────────────────────────────────────────────────────────
-
 async def _analyze(state: LegalState) -> dict:
     """
     Agent 1 — Case Analyzer (8B model, ~150 ms).
@@ -103,7 +77,6 @@ async def _analyze(state: LegalState) -> dict:
             "needs_evidence_guide": False, "needs_cost_estimate": False,
             "state_hint": None, "personal_law": None, "follow_up": None,
         }}
-
 
 async def _prepare(state: LegalState) -> dict:
     """
@@ -157,7 +130,6 @@ async def _prepare(state: LegalState) -> dict:
         "reasoning_context": reasoning_context,
     }
 
-
 async def _compose(state: LegalState) -> dict:
     """
     Agent 7 — Response Composer (70B model).
@@ -208,11 +180,7 @@ async def _compose(state: LegalState) -> dict:
 
     return {"response": response_text, "via": result["via"]}
 
-
-# ──────────────────────────────────────────────────────────────
 # GRAPH COMPILATION
-# ──────────────────────────────────────────────────────────────
-
 _builder = StateGraph(LegalState)
 _builder.add_node("analyze",  _analyze)
 _builder.add_node("prepare",  _prepare)
@@ -225,11 +193,7 @@ _builder.add_edge("compose", END)
 
 _compiled = _builder.compile()
 
-
-# ──────────────────────────────────────────────────────────────
 # PUBLIC API — called by the outer graph
-# ──────────────────────────────────────────────────────────────
-
 async def run(
     *,
     query:         str,
@@ -253,7 +217,6 @@ async def run(
         "fast_mode":     fast_mode,
     })
     return {"response": final.get("response", ""), "via": final.get("via", "groq")}
-
 
 async def stream_run(
     *,

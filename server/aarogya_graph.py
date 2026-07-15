@@ -1,18 +1,4 @@
-"""
-Aarogya's multi-agent government scheme reasoning sub-graph.
-
-User sees: one helpful, practical guide named Aarogya.
-Internally: specialized agents collaborate via LangGraph.
-
-Graph:
-  START
-    → analyze     [Agent 1: 8B LLM — classify scheme category, extract user profile]
-    → prepare     [Agents 2-4: Python — organize chunks, state specialist, document checker]
-    → compose     [Agent 5: 70B LLM — synthesize final Aarogya response]
-    → END
-
-Invoked from graph.py when routed_domain == "Government Schemes".
-"""
+"""Aarogya's LangGraph sub-graph: analyze → prepare → compose. Invoked for Government Schemes."""
 from typing import Optional, TypedDict
 
 from langgraph.graph import StateGraph, START, END

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Overview — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 20px 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; }
+  .card h2 { font-size: 13px; font-weight: 700; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
+  .item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #374151; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+  .note { font-size: 11px; color: #6b7280; margin-top: 4px; padding-left: 16px; }
+  svg { display: block; margin: 0 auto 20px; }
+</style>
+</head>
+<body>
+<h1>Architecture Overview</h1>
+<p class="subtitle">Technology stack and architectural decisions at a glance</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="1060" height="360" viewBox="0 0 1060 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sh" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000015"/>
+    </filter>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- Horizontal pipeline boxes -->
+  <!-- Box 1: User -->
+  <rect x="10" y="80" width="140" height="200" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2" filter="url(#sh)"/>
+  <text x="80" y="108" text-anchor="middle" font-size="11" font-weight="700" fill="#1d4ed8">User</text>
+  <text x="80" y="136" text-anchor="middle" font-size="10" fill="#374151">React 18 SPA</text>
+  <text x="80" y="154" text-anchor="middle" font-size="9" fill="#6b7280">Tailwind + shadcn</text>
+  <text x="80" y="172" text-anchor="middle" font-size="9" fill="#6b7280">EventSource SSE</text>
+  <text x="80" y="190" text-anchor="middle" font-size="9" fill="#6b7280">JWT in localStorage</text>
+  <text x="80" y="208" text-anchor="middle" font-size="9" fill="#6b7280">i18n: en/hi/de</text>
+  <text x="80" y="226" text-anchor="middle" font-size="9" fill="#6b7280">Admin Panel</text>
+  <text x="80" y="244" text-anchor="middle" font-size="9" fill="#6b7280">Eligibility Checker</text>
+  <text x="80" y="264" text-anchor="middle" font-size="9" fill="#6b7280">Breathing Companion</text>
+
+  <line x1="150" y1="180" x2="178" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Box 2: Gateway -->
+  <rect x="180" y="80" width="160" height="200" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2" filter="url(#sh)"/>
+  <text x="260" y="108" text-anchor="middle" font-size="11" font-weight="700" fill="#15803d">API Gateway</text>
+  <text x="260" y="136" text-anchor="middle" font-size="10" fill="#374151">FastAPI + uvicorn</text>
+  <text x="260" y="154" text-anchor="middle" font-size="9" fill="#6b7280">JWT auth middleware</text>
+  <text x="260" y="172" text-anchor="middle" font-size="9" fill="#6b7280">slowapi rate limit</text>
+  <text x="260" y="190" text-anchor="middle" font-size="9" fill="#6b7280">Pydantic validation</text>
+  <text x="260" y="208" text-anchor="middle" font-size="9" fill="#6b7280">8 routers</text>
+  <text x="260" y="226" text-anchor="middle" font-size="9" fill="#6b7280">SSE StreamingResponse</text>
+  <text x="260" y="244" text-anchor="middle" font-size="9" fill="#6b7280">structlog + Sentry</text>
+
+  <line x1="340" y1="180" x2="368" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Box 3: AI Orchestration -->
+  <rect x="370" y="80" width="180" height="200" rx="10" fill="#fdf4ff" stroke="#e9d5ff" stroke-width="2" filter="url(#sh)"/>
+  <text x="460" y="108" text-anchor="middle" font-size="11" font-weight="700" fill="#7e22ce">AI Orchestration</text>
+  <text x="460" y="136" text-anchor="middle" font-size="10" fill="#374151">LangGraph StateGraph</text>
+  <text x="460" y="154" text-anchor="middle" font-size="9" fill="#6b7280">4 persona sub-graphs</text>
+  <text x="460" y="172" text-anchor="middle" font-size="9" fill="#6b7280">LLM fallback chain</text>
+  <text x="460" y="190" text-anchor="middle" font-size="9" fill="#6b7280">Circuit breakers</text>
+  <text x="460" y="208" text-anchor="middle" font-size="9" fill="#6b7280">Emotion detection</text>
+  <text x="460" y="226" text-anchor="middle" font-size="9" fill="#6b7280">Hallucination guardrails</text>
+  <text x="460" y="244" text-anchor="middle" font-size="9" fill="#6b7280">Quality checker</text>
+  <text x="460" y="262" text-anchor="middle" font-size="9" fill="#6b7280">Web search fallback</text>
+
+  <line x1="550" y1="180" x2="578" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Box 4: RAG Pipeline -->
+  <rect x="580" y="80" width="160" height="200" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="2" filter="url(#sh)"/>
+  <text x="660" y="108" text-anchor="middle" font-size="11" font-weight="700" fill="#c2410c">RAG Pipeline</text>
+  <text x="660" y="136" text-anchor="middle" font-size="10" fill="#374151">FAISS IndexFlatIP</text>
+  <text x="660" y="154" text-anchor="middle" font-size="9" fill="#6b7280">multilingual-e5-small</text>
+  <text x="660" y="172" text-anchor="middle" font-size="9" fill="#6b7280">BM25 (rank-bm25)</text>
+  <text x="660" y="190" text-anchor="middle" font-size="9" fill="#6b7280">RRF fusion (k=60)</text>
+  <text x="660" y="208" text-anchor="middle" font-size="9" fill="#6b7280">Cross-encoder reranker</text>
+  <text x="660" y="226" text-anchor="middle" font-size="9" fill="#6b7280">ms-marco-MiniLM-L-6</text>
+  <text x="660" y="244" text-anchor="middle" font-size="9" fill="#6b7280">Soft-delete + snapshots</text>
+  <text x="660" y="262" text-anchor="middle" font-size="9" fill="#6b7280">Confidence bands</text>
+
+  <line x1="740" y1="180" x2="768" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Box 5: Storage -->
+  <rect x="770" y="80" width="160" height="200" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" filter="url(#sh)"/>
+  <text x="850" y="108" text-anchor="middle" font-size="11" font-weight="700" fill="#475569">Storage</text>
+  <text x="850" y="136" text-anchor="middle" font-size="10" fill="#374151">MongoDB Atlas</text>
+  <text x="850" y="154" text-anchor="middle" font-size="9" fill="#6b7280">Motor async driver</text>
+  <text x="850" y="172" text-anchor="middle" font-size="9" fill="#6b7280">14 collections</text>
+  <text x="850" y="190" text-anchor="middle" font-size="9" fill="#6b7280">TTL indexes</text>
+  <text x="850" y="208" text-anchor="middle" font-size="9" fill="#6b7280">FAISS file cache</text>
+  <text x="850" y="226" text-anchor="middle" font-size="9" fill="#6b7280">5 rolling snapshots</text>
+  <text x="850" y="244" text-anchor="middle" font-size="9" fill="#6b7280">JWT blacklist</text>
+
+  <line x1="930" y1="180" x2="958" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Box 6: External -->
+  <rect x="960" y="80" width="90" height="200" rx="10" fill="#fef9c3" stroke="#fde68a" stroke-width="2" filter="url(#sh)"/>
+  <text x="1005" y="108" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">External</text>
+  <text x="1005" y="136" text-anchor="middle" font-size="9" fill="#374151">Groq</text>
+  <text x="1005" y="152" text-anchor="middle" font-size="9" fill="#374151">Ollama</text>
+  <text x="1005" y="168" text-anchor="middle" font-size="9" fill="#374151">Anthropic</text>
+  <text x="1005" y="188" text-anchor="middle" font-size="9" fill="#6b7280">DDG</text>
+  <text x="1005" y="204" text-anchor="middle" font-size="9" fill="#6b7280">Wikipedia</text>
+  <text x="1005" y="220" text-anchor="middle" font-size="9" fill="#6b7280">Brave</text>
+
+  <!-- Labels below -->
+  <text x="80" y="50" text-anchor="middle" font-size="10" fill="#94a3b8" letter-spacing="1">FRONTEND</text>
+  <text x="260" y="50" text-anchor="middle" font-size="10" fill="#94a3b8" letter-spacing="1">GATEWAY</text>
+  <text x="460" y="50" text-anchor="middle" font-size="10" fill="#94a3b8" letter-spacing="1">AI PIPELINE</text>
+  <text x="660" y="50" text-anchor="middle" font-size="10" fill="#94a3b8" letter-spacing="1">RETRIEVAL</text>
+  <text x="850" y="50" text-anchor="middle" font-size="10" fill="#94a3b8" letter-spacing="1">PERSISTENCE</text>
+  <text x="1005" y="50" text-anchor="middle" font-size="10" fill="#94a3b8" letter-spacing="1">CLOUD</text>
+
+  <!-- Tech notes at bottom -->
+  <text x="530" y="320" text-anchor="middle" font-size="10" fill="#6b7280">Python 3.11 · FastAPI · LangGraph · FAISS · sentence-transformers · MongoDB Motor · React 18 · Vite · Tailwind · Docker · Hugging Face Spaces</text>
+  <text x="530" y="340" text-anchor="middle" font-size="10" fill="#6b7280">Groq (llama-3.3-70b) → Ollama → Anthropic (claude-haiku-4-5)  ·  multilingual-e5-small  ·  ms-marco-MiniLM-L-6-v2  ·  rank-bm25</text>
+</svg>
+
+<div class="container">
+  <div class="card">
+    <h2 style="color:#1d4ed8">Design Decisions</h2>
+    <div class="item"><div class="dot" style="background:#3b82f6"></div><div><strong>LangGraph over plain functions:</strong> state machine makes branching and memory explicit; easier to extend sub-graphs independently
+    <div class="note">Each persona graph is compiled separately — adding a 5th persona is one new file</div></div></div>
+    <div class="item"><div class="dot" style="background:#3b82f6"></div><div><strong>Hybrid RAG (FAISS + BM25):</strong> dense alone misses exact keyword matches; BM25 catches those; RRF merges without threshold tuning</div></div>
+    <div class="item"><div class="dot" style="background:#3b82f6"></div><div><strong>Rule-based eligibility checker:</strong> LLM hallucinated income thresholds; deterministic rules are verifiable and never wrong</div></div>
+    <div class="item"><div class="dot" style="background:#3b82f6"></div><div><strong>SSE over WebSockets:</strong> simpler server (no connection state), works through any CDN/proxy, browser EventSource handles reconnect</div></div>
+  </div>
+
+  <div class="card">
+    <h2 style="color:#15803d">Scalability & Resilience</h2>
+    <div class="item"><div class="dot" style="background:#22c55e"></div><div><strong>Circuit Breaker (per-provider):</strong> if Groq rate-limits, falls over to Ollama, then Anthropic — no single point of LLM failure</div></div>
+    <div class="item"><div class="dot" style="background:#22c55e"></div><div><strong>FAISS snapshots (5 rolling):</strong> admin mistakes recoverable by rolling back up to 5 states</div></div>
+    <div class="item"><div class="dot" style="background:#22c55e"></div><div><strong>Soft-delete + compaction:</strong> chunk deletions don't rebuild immediately; compaction only when ≥30% waste</div></div>
+    <div class="item"><div class="dot" style="background:#22c55e"></div><div><strong>TTL indexes on tokens/sessions:</strong> no cron job needed; MongoDB auto-evicts expired data</div></div>
+    <div class="item"><div class="dot" style="background:#22c55e"></div><div><strong>Async everywhere:</strong> Motor + asyncio.gather for concurrent web search; no blocking calls on event loop</div></div>
+  </div>
+
+  <div class="card">
+    <h2 style="color:#7e22ce">Security Model</h2>
+    <div class="item"><div class="dot" style="background:#a855f7"></div><div><strong>JWT HS256 + JTI blacklist:</strong> revocation on logout is explicit — no need to wait for expiry</div></div>
+    <div class="item"><div class="dot" style="background:#a855f7"></div><div><strong>Separate ADMIN_KEY:</strong> admin routes don't go through JWT flow — admin credentials never stored in MongoDB</div></div>
+    <div class="item"><div class="dot" style="background:#a855f7"></div><div><strong>Pydantic at every boundary:</strong> all request bodies validated before any handler runs</div></div>
+    <div class="item"><div class="dot" style="background:#a855f7"></div><div><strong>Rate limiting per user:</strong> keyed on JWT sub (not just IP) so authenticated users get fair throttling</div></div>
+    <div class="item"><div class="dot" style="background:#a855f7"></div><div><strong>bcrypt for passwords:</strong> cost factor 12 by default; no plaintext ever stored</div></div>
+  </div>
+</div>
+</body>
+</html>

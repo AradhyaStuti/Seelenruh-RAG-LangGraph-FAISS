@@ -87,7 +87,6 @@ export default function FeedbackPage({ adminKey }) {
     toast({ title: "Downloading feedback CSV…" });
   };
 
-  // ── Derived data ─────────────────────────────────────────────────────────────
   const total    = stats?.total_votes    ?? stats?.total    ?? 0;
   const upvotes  = stats?.upvotes        ?? stats?.up       ?? 0;
   const downvotes = stats?.downvotes     ?? stats?.down     ?? 0;

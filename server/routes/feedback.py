@@ -9,14 +9,33 @@ import csv
 from io import StringIO
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends
 from pydantic import BaseModel, Field
 
 from config import ADMIN_KEY
+from rate_limit import burst_limit
+from auth import decode_token
 import db
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
+
+_bearer = HTTPBearer(auto_error=False)
+
+
+def _extract_user_id(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+) -> Optional[str]:
+    """Extract user_id from a Bearer token if present; return None for unauthenticated requests."""
+    if not credentials:
+        return None
+    try:
+        payload = decode_token(credentials.credentials)
+        return payload.get("sub")
+    except Exception:
+        return None
 
 
 def _check_key(x_admin_key: Optional[str]) -> None:
@@ -38,8 +57,13 @@ class FeedbackRequest(BaseModel):
 
 
 @router.post("")
-async def submit_feedback(req: FeedbackRequest) -> dict:
-    """Save user feedback for a message. Fire-and-forget — always returns ok."""
+@burst_limit("30/minute")
+async def submit_feedback(
+    request: Request,
+    req: FeedbackRequest,
+    user_id: Optional[str] = Depends(_extract_user_id),
+) -> dict:
+    """Save user feedback. Auth is optional — user_id is captured when token is present."""
     await db.save_feedback_log(
         message_id=req.messageId,
         vote=req.vote,
@@ -49,6 +73,7 @@ async def submit_feedback(req: FeedbackRequest) -> dict:
         confidence=req.confidence,
         persona=req.persona,
         session_id=req.sessionId,
+        user_id=user_id,
     )
     return {"ok": True}
 

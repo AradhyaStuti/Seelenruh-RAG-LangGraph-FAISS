@@ -93,7 +93,6 @@ export default function Analytics({ adminKey }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Data derivation ──────────────────────────────────────────────────────────
   // Feedback by domain — for BarChart
   const feedbackByDomain = (() => {
     const raw = feedback?.by_domain || analytics?.feedback_by_domain || [];

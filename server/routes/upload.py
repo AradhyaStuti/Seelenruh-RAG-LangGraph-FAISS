@@ -1,16 +1,4 @@
-"""Document upload and text extraction endpoint.
-
-POST /api/parse-document
-  - Accepts multipart/form-data with a `file` field
-  - Supports: .txt, .md, .csv, .json, .log, .pdf, .docx
-  - Returns extracted plain text (max 8 000 chars)
-  - PDF: extracted via pdfplumber (pip install pdfplumber)
-  - DOCX: extracted via python-docx (pip install python-docx)
-  - Others: decoded as UTF-8 text
-
-Both pdfplumber and python-docx are optional — the endpoint returns 415 if the
-required library is missing for that file type.
-"""
+"""Document upload: extract plain text from PDF, DOCX, or plain-text files."""
 import asyncio
 import io
 
@@ -82,11 +70,7 @@ async def parse_document(
     file: UploadFile = File(...),
     user: dict = Depends(current_user),
 ) -> JSONResponse:
-    """Extract plain text from an uploaded document.
-
-    Returns: { "text": "<extracted text, max 8000 chars>", "name": "<filename>",
-               "truncated": <bool>, "chars": <int> }
-    """
+    """Extract plain text from an uploaded document. Returns up to 8000 chars."""
     filename = file.filename or "upload"
     suffix = _suffix(filename)
 

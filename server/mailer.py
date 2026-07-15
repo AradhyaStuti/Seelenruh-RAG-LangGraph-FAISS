@@ -1,10 +1,4 @@
-"""Email sender — uses aiosmtplib when SMTP_HOST is configured, otherwise
-logs the token/link to the console (dev mode). This lets the app work without
-any SMTP setup during development while being production-ready when configured.
-
-Install aiosmtplib for real email delivery:
-    pip install aiosmtplib
-"""
+"""Email sender — aiosmtplib when SMTP_HOST is set, console output otherwise (dev)."""
 from config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM, APP_BASE_URL
 from logger import get_logger
 

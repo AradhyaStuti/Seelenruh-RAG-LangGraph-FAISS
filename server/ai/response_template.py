@@ -1,15 +1,6 @@
-"""
-response_template.py
---------------------
-Defines the canonical response structure for Umang's legal assistant.
-Injected into the composer system prompt as a format specification.
-"""
+"""Umang's response structure — sections injected into the composer prompt."""
 
 from __future__ import annotations
-
-# ---------------------------------------------------------------------------
-# Section definitions (ordered)
-# ---------------------------------------------------------------------------
 
 RESPONSE_SECTIONS: list[dict] = [
     {
@@ -84,10 +75,6 @@ RESPONSE_SECTIONS: list[dict] = [
     },
 ]
 
-# ---------------------------------------------------------------------------
-# Compact format description — injected into system prompt
-# ---------------------------------------------------------------------------
-
 RESPONSE_TEMPLATE_DESCRIPTION = """\
 RESPONSE FORMAT — use these sections IN ORDER:
 
@@ -121,10 +108,6 @@ Trigger conditions. Always mention free legal aid (DLSA / 15100) before paid law
 ## Important Notes
 2–4 bullets: (a) cannot guarantee outcome, (b) state-specific laws may vary, (c) consult a lawyer for specific advice. Do NOT include unverified helpline numbers.\
 """
-
-# ---------------------------------------------------------------------------
-# Disclaimer (appended to every response)
-# ---------------------------------------------------------------------------
 
 DISCLAIMER = (
     "\n\n---\n"

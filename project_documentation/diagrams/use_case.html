@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Use Case Diagram — Seelenruh</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a2e; }
+  h1 { text-align: center; padding: 28px 0 6px; font-size: 26px; font-weight: 700; }
+  .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+  .export-btn { display: block; margin: 0 auto 20px; padding: 8px 22px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<h1>Use Case Diagram</h1>
+<p class="subtitle">All system use cases mapped to actors (End User, Registered User, Admin)</p>
+<button class="export-btn" onclick="window.print()">Print / Export PDF</button>
+
+<svg width="1060" height="820" viewBox="0 0 1060 820" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sh" x="-6%" y="-6%" width="112%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/>
+    </filter>
+  </defs>
+
+  <!-- SYSTEM BOUNDARY -->
+  <rect x="160" y="30" width="740" height="760" rx="14" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"/>
+  <text x="530" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#374151">«system»  Seelenruh</text>
+
+  <!-- ── ACTORS ── -->
+  <!-- Guest -->
+  <g transform="translate(50,160)">
+    <circle cx="0" cy="0" r="20" fill="none" stroke="#94a3b8" stroke-width="2"/>
+    <line x1="0" y1="20" x2="0" y2="60" stroke="#94a3b8" stroke-width="2"/>
+    <line x1="-24" y1="40" x2="24" y2="40" stroke="#94a3b8" stroke-width="2"/>
+    <line x1="0" y1="60" x2="-18" y2="90" stroke="#94a3b8" stroke-width="2"/>
+    <line x1="0" y1="60" x2="18" y2="90" stroke="#94a3b8" stroke-width="2"/>
+    <text x="0" y="108" text-anchor="middle" font-size="11" fill="#374151">Guest</text>
+    <text x="0" y="122" text-anchor="middle" font-size="9" fill="#6b7280">(unauthenticated)</text>
+  </g>
+
+  <!-- Registered User -->
+  <g transform="translate(50,420)">
+    <circle cx="0" cy="0" r="20" fill="none" stroke="#3b82f6" stroke-width="2"/>
+    <line x1="0" y1="20" x2="0" y2="60" stroke="#3b82f6" stroke-width="2"/>
+    <line x1="-24" y1="40" x2="24" y2="40" stroke="#3b82f6" stroke-width="2"/>
+    <line x1="0" y1="60" x2="-18" y2="90" stroke="#3b82f6" stroke-width="2"/>
+    <line x1="0" y1="60" x2="18" y2="90" stroke="#3b82f6" stroke-width="2"/>
+    <text x="0" y="108" text-anchor="middle" font-size="11" fill="#3b82f6">Registered</text>
+    <text x="0" y="122" text-anchor="middle" font-size="9" fill="#3b82f6">User</text>
+  </g>
+
+  <!-- Admin -->
+  <g transform="translate(1010,280)">
+    <circle cx="0" cy="0" r="20" fill="none" stroke="#7c3aed" stroke-width="2"/>
+    <line x1="0" y1="20" x2="0" y2="60" stroke="#7c3aed" stroke-width="2"/>
+    <line x1="-24" y1="40" x2="24" y2="40" stroke="#7c3aed" stroke-width="2"/>
+    <line x1="0" y1="60" x2="-18" y2="90" stroke="#7c3aed" stroke-width="2"/>
+    <line x1="0" y1="60" x2="18" y2="90" stroke="#7c3aed" stroke-width="2"/>
+    <text x="0" y="108" text-anchor="middle" font-size="11" fill="#7c3aed">Admin</text>
+  </g>
+
+  <!-- ── GUEST USE CASES ── -->
+  <ellipse cx="370" cy="120" rx="110" ry="28" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="370" y="125" text-anchor="middle" font-size="11" fill="#374151">Register Account</text>
+  <line x1="70" y1="168" x2="258" y2="128" stroke="#94a3b8" stroke-width="1.5"/>
+
+  <ellipse cx="600" cy="120" rx="110" ry="28" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="600" y="125" text-anchor="middle" font-size="11" fill="#374151">Login</text>
+  <line x1="70" y1="172" x2="488" y2="124" stroke="#94a3b8" stroke-width="1.5"/>
+
+  <ellipse cx="800" cy="120" rx="110" ry="28" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="800" y="119" text-anchor="middle" font-size="11" fill="#374151">Check Scheme</text>
+  <text x="800" y="133" text-anchor="middle" font-size="9" fill="#6b7280">Eligibility (no auth)</text>
+  <line x1="70" y1="174" x2="688" y2="122" stroke="#94a3b8" stroke-width="1.5"/>
+
+  <!-- ── REGISTERED USER USE CASES ── -->
+  <ellipse cx="350" cy="240" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="350" y="239" text-anchor="middle" font-size="11" fill="#1e40af">Chat with AI Persona</text>
+  <text x="350" y="253" text-anchor="middle" font-size="9" fill="#3b82f6">Usha / Umang / Aarogya / Raksha</text>
+  <line x1="70" y1="424" x2="218" y2="250" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="630" cy="240" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="630" y="239" text-anchor="middle" font-size="11" fill="#1e40af">Switch Language</text>
+  <text x="630" y="253" text-anchor="middle" font-size="9" fill="#3b82f6">English / Hindi / Deutsch</text>
+  <line x1="70" y1="428" x2="498" y2="246" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="350" cy="340" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="350" y="344" text-anchor="middle" font-size="11" fill="#1e40af">View Explain Panel</text>
+  <line x1="70" y1="430" x2="218" y2="346" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="630" cy="340" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="630" y="344" text-anchor="middle" font-size="11" fill="#1e40af">Submit Feedback Vote</text>
+  <line x1="70" y1="436" x2="498" y2="342" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="350" cy="440" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="350" y="444" text-anchor="middle" font-size="11" fill="#1e40af">View Legal Timeline</text>
+  <line x1="70" y1="440" x2="218" y2="444" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="630" cy="440" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="630" y="444" text-anchor="middle" font-size="11" fill="#1e40af">Use Breathing Companion</text>
+  <line x1="70" y1="444" x2="498" y2="444" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="350" cy="540" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="350" y="540" text-anchor="middle" font-size="11" fill="#1e40af">Get Session Summary</text>
+  <line x1="70" y1="446" x2="218" y2="542" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="630" cy="540" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="630" y="540" text-anchor="middle" font-size="11" fill="#1e40af">Text-to-Speech</text>
+  <line x1="70" y1="450" x2="498" y2="542" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <ellipse cx="490" cy="640" rx="130" ry="28" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="490" y="644" text-anchor="middle" font-size="11" fill="#1e40af">Logout</text>
+  <line x1="70" y1="452" x2="358" y2="642" stroke="#3b82f6" stroke-width="1.5"/>
+
+  <!-- ── ADMIN USE CASES ── -->
+  <ellipse cx="710" cy="640" rx="140" ry="28" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="710" y="644" text-anchor="middle" font-size="11" fill="#6b21a8">Manage Knowledge Base</text>
+  <line x1="1010" y1="288" x2="852" y2="640" stroke="#7c3aed" stroke-width="1.5"/>
+
+  <ellipse cx="820" cy="480" rx="120" ry="28" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="820" y="484" text-anchor="middle" font-size="11" fill="#6b21a8">View Feedback Analytics</text>
+  <line x1="1010" y1="290" x2="942" y2="483" stroke="#7c3aed" stroke-width="1.5"/>
+
+  <ellipse cx="820" cy="380" rx="120" ry="28" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="820" y="384" text-anchor="middle" font-size="11" fill="#6b21a8">Review Knowledge Gaps</text>
+  <line x1="1010" y1="288" x2="942" y2="383" stroke="#7c3aed" stroke-width="1.5"/>
+
+  <ellipse cx="820" cy="280" rx="120" ry="28" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="820" y="284" text-anchor="middle" font-size="11" fill="#6b21a8">Manage Users</text>
+  <line x1="1010" y1="282" x2="942" y2="282" stroke="#7c3aed" stroke-width="1.5"/>
+
+  <ellipse cx="820" cy="180" rx="120" ry="28" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="820" y="184" text-anchor="middle" font-size="11" fill="#6b21a8">Upload Knowledge Docs</text>
+  <line x1="1010" y1="278" x2="942" y2="183" stroke="#7c3aed" stroke-width="1.5"/>
+
+  <ellipse cx="710" cy="740" rx="140" ry="28" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="710" y="739" text-anchor="middle" font-size="11" fill="#6b21a8">Export Feedback CSV</text>
+  <text x="710" y="753" text-anchor="middle" font-size="9" fill="#7c3aed">+ Rollback KB Snapshot</text>
+  <line x1="1010" y1="292" x2="852" y2="740" stroke="#7c3aed" stroke-width="1.5"/>
+</svg>
+</body>
+</html>

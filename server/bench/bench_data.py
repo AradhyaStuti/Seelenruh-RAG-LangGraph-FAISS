@@ -16,10 +16,7 @@ Counts
 """
 from __future__ import annotations
 
-# ---------------------------------------------------------------------------
 # Umang — Legal (100 cases, 10 categories × 10)
-# ---------------------------------------------------------------------------
-
 UMANG_CASES: list[dict] = [
 
     # ── Employment (10) ─────────────────────────────────────────────────────
@@ -633,11 +630,7 @@ UMANG_CASES: list[dict] = [
      "severity": "high"},
 ]
 
-
-# ---------------------------------------------------------------------------
 # Aarogya — Government Schemes (50 cases)
-# ---------------------------------------------------------------------------
-
 AAROGYA_CASES: list[dict] = [
 
     # Health schemes (8)
@@ -948,11 +941,7 @@ AAROGYA_CASES: list[dict] = [
      "severity": "medium"},
 ]
 
-
-# ---------------------------------------------------------------------------
 # Usha — Mental Health (30 scenarios, single-turn)
-# ---------------------------------------------------------------------------
-
 USHA_SCENARIOS: list[dict] = [
 
     # Depression / low mood (5)
@@ -1173,11 +1162,7 @@ USHA_SCENARIOS: list[dict] = [
      "is_crisis": False},
 ]
 
-
-# ---------------------------------------------------------------------------
 # Raksha — Safety & Emergency (30 cases)
-# ---------------------------------------------------------------------------
-
 RAKSHA_CASES: list[dict] = [
 
     # Domestic violence (6)
@@ -1367,11 +1352,7 @@ RAKSHA_CASES: list[dict] = [
      "is_emergency": True, "urgency": "immediate"},
 ]
 
-
-# ---------------------------------------------------------------------------
 # Convenience helpers
-# ---------------------------------------------------------------------------
-
 ALL_CASES: list[dict] = UMANG_CASES + AAROGYA_CASES + USHA_SCENARIOS + RAKSHA_CASES
 
 DOMAIN_MAP: dict[str, list[dict]] = {
@@ -1386,19 +1367,15 @@ AAROGYA_CATEGORIES = sorted({c["category"] for c in AAROGYA_CASES})
 USHA_CATEGORIES = sorted({c["category"] for c in USHA_SCENARIOS})
 RAKSHA_CATEGORIES = sorted({c["category"] for c in RAKSHA_CASES})
 
-
 def by_category(domain: str, category: str) -> list[dict]:
     cases = DOMAIN_MAP.get(domain, [])
     return [c for c in cases if c.get("category") == category]
 
-
 def crisis_cases() -> list[dict]:
     return [c for c in USHA_SCENARIOS if c.get("is_crisis")]
 
-
 def emergency_cases() -> list[dict]:
     return [c for c in RAKSHA_CASES if c.get("is_emergency")]
-
 
 if __name__ == "__main__":
     print("\nSeelenruh Benchmark Dataset\n")
