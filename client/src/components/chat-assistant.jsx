@@ -133,226 +133,6 @@ const domainConfig = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Disclaimer system — config-driven, variant-styled, accessible
-// ---------------------------------------------------------------------------
-
-const DISCLAIMER_KEY = "seelenruh:disc-dismissed:v1";
-
-// One config entry per persona. All disclaimer data lives here — nothing is
-// scattered across domainConfig or hardcoded inside JSX.
-const DISCLAIMER_CONFIG = {
-  "Mental Health": {
-    title: "Supportive guidance only",
-    description:
-      "Usha is here to listen and offer a space to reflect — not to replace a therapist, counsellor, or doctor. If you're in crisis, please call iCall (9152987821) or Tele-MANAS (14416).",
-    footnote: null,
-    variant: "info",
-    dismissible: true,
-    alwaysShow: false,
-    emergencyOverride: true,
-  },
-  Legal: {
-    title: "For educational purposes",
-    description:
-      "This information is meant to help you understand your rights and options in general terms. It is not legal advice and may not cover your specific situation. For personalised guidance, consult a lawyer or contact NALSA (nalsa.gov.in) for free legal aid.",
-    footnote: "Educational guidance · not legal advice · verify with a lawyer",
-    variant: "neutral",
-    dismissible: true,
-    alwaysShow: false,
-    emergencyOverride: false,
-  },
-  "Government Schemes": {
-    title: "Verify before applying",
-    description:
-      "Scheme eligibility, benefit amounts, and application procedures are set by government policy and change frequently. Always confirm current details at the official government portal before taking any action.",
-    footnote: "Details may change · confirm at official portals",
-    variant: "official",
-    dismissible: true,
-    alwaysShow: false,
-    emergencyOverride: false,
-  },
-  Safety: {
-    title: "Important",
-    description:
-      "If you or someone nearby is in immediate danger, call 112 or 100 right now. Raksha provides guidance and information — it cannot contact emergency services on your behalf.",
-    footnote: "Guidance only · for emergencies call 112",
-    variant: "critical",
-    dismissible: false,
-    alwaysShow: true,
-    emergencyOverride: true,
-  },
-};
-
-// Variant token maps — one source of truth for all per-persona colours.
-// Keeping colours here means changing Usha's palette is a one-line edit.
-const VARIANT_STYLES = {
-  info: {
-    container: "border-blue-200/70 bg-blue-50/80 dark:border-blue-800/30 dark:bg-blue-950/25",
-    icon:      "text-blue-500 dark:text-blue-400",
-    title:     "text-blue-800 dark:text-blue-200",
-    body:      "text-blue-700/90 dark:text-blue-200/75",
-    dismiss:   "text-blue-400/70 hover:text-blue-700 dark:text-blue-400/60 dark:hover:text-blue-200 focus-visible:ring-blue-400",
-  },
-  neutral: {
-    container: "border-slate-200/80 bg-slate-50/90 dark:border-slate-700/40 dark:bg-slate-800/30",
-    icon:      "text-slate-500 dark:text-slate-400",
-    title:     "text-slate-700 dark:text-slate-200",
-    body:      "text-slate-600/90 dark:text-slate-300/80",
-    dismiss:   "text-slate-400/70 hover:text-slate-700 dark:text-slate-400/60 dark:hover:text-slate-200 focus-visible:ring-slate-400",
-  },
-  official: {
-    container: "border-teal-200/70 bg-teal-50/80 dark:border-teal-800/30 dark:bg-teal-950/25",
-    icon:      "text-teal-600 dark:text-teal-400",
-    title:     "text-teal-800 dark:text-teal-200",
-    body:      "text-teal-700/90 dark:text-teal-200/75",
-    dismiss:   "text-teal-400/70 hover:text-teal-700 dark:text-teal-400/60 dark:hover:text-teal-200 focus-visible:ring-teal-400",
-  },
-  critical: {
-    container: "border-amber-200/80 bg-amber-50/90 dark:border-amber-800/35 dark:bg-amber-950/30",
-    icon:      "text-amber-600 dark:text-amber-400",
-    title:     "text-amber-900 dark:text-amber-200",
-    body:      "text-amber-800/90 dark:text-amber-200/80",
-    dismiss:   "text-amber-500/60 hover:text-amber-800 dark:text-amber-400/60 dark:hover:text-amber-200 focus-visible:ring-amber-400",
-  },
-};
-
-// Info circle SVG — used for info / neutral / official variants
-const InfoIcon = ({ className }) => (
-  <svg
-    aria-hidden="true"
-    focusable="false"
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="16" x2="12" y2="12" />
-    <line x1="12" y1="8" x2="12.01" y2="8" />
-  </svg>
-);
-
-// Triangle alert SVG — used for the critical (Raksha) variant
-const AlertIcon = ({ className }) => (
-  <svg
-    aria-hidden="true"
-    focusable="false"
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-
-/**
- * DisclaimerBanner — renders the per-persona notice in the chat header.
- *
- * Props:
- *   domain      — one of the four domain keys ("Mental Health", "Legal", …)
- *   isEmergency — true when the conversation has been classified as high-risk;
- *                 forces the banner back open for any config with emergencyOverride
- */
-function DisclaimerBanner({ domain, isEmergency = false }) {
-  const config = DISCLAIMER_CONFIG[domain];
-  const s = VARIANT_STYLES[config?.variant ?? "info"];
-  const storageKey = `${DISCLAIMER_KEY}:${domain}`;
-
-  const [dismissed, setDismissed] = useState(() => {
-    if (!config || config.alwaysShow) return false;
-    try { return sessionStorage.getItem(storageKey) === "1"; } catch { return false; }
-  });
-
-  // Re-show if the conversation escalates to an emergency and this persona
-  // has emergencyOverride set — without touching the stored dismissed state.
-  const forceShow = isEmergency && (config?.emergencyOverride ?? false);
-
-  const dismiss = useCallback(() => {
-    setDismissed(true);
-    try { sessionStorage.setItem(storageKey, "1"); } catch {}
-  }, [storageKey]);
-
-  if (!config) return null;
-  if (!config.alwaysShow && dismissed && !forceShow) return null;
-
-  const BannerIcon = config.variant === "critical" ? AlertIcon : InfoIcon;
-
-  return (
-    <div
-      role="note"
-      aria-label={config.title}
-      className={cn(
-        "animate-disclaimer-in flex items-start gap-2.5 rounded-xl border",
-        "px-3 py-2.5 sm:px-3.5 mt-2 text-left",
-        s.container,
-      )}
-    >
-      <BannerIcon className={cn("h-3.5 w-3.5 shrink-0 mt-[1px]", s.icon)} />
-
-      <div className="flex-1 min-w-0">
-        <p className={cn("text-[11.5px] font-semibold leading-snug mb-0.5", s.title)}>
-          {config.title}
-        </p>
-        <p className={cn("text-[11px] leading-relaxed", s.body)}>
-          {config.description}
-        </p>
-      </div>
-
-      {config.dismissible && !forceShow && (
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label="Dismiss this notice"
-          className={cn(
-            "shrink-0 rounded p-1 -mt-0.5 -mr-0.5 transition-colors",
-            "min-h-[28px] min-w-[28px] flex items-center justify-center",
-            "focus-visible:outline-none focus-visible:ring-2",
-            s.dismiss,
-          )}
-        >
-          <svg
-            aria-hidden="true"
-            focusable="false"
-            className="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      )}
-    </div>
-  );
-}
-
-// Per-message footnote shown once on the first real assistant reply.
-// Returns null when the domain has no footnote (e.g. Mental Health).
-function InlineFootnote({ domain }) {
-  const disc = DISCLAIMER_CONFIG[domain];
-  if (!disc?.footnote) return null;
-  const s = VARIANT_STYLES[disc.variant ?? "neutral"];
-  return (
-    <p className={cn("mt-2 text-[11px] leading-relaxed flex items-center gap-1.5", s.body)}>
-      <InfoIcon className={cn("h-3 w-3 shrink-0", s.icon)} />
-      {disc.footnote}
-    </p>
-  );
-}
 
 const formatTime = (ts) => {
   try {
@@ -1050,12 +830,6 @@ export default function ChatAssistant({ onDomainChange }) {
                 </div>
               )}
 
-              <DisclaimerBanner
-                key={selectedDomain}
-                domain={selectedDomain}
-                isEmergency={isEmergency || preEmergency}
-              />
-
               <div key={selectedDomain} className="mt-3 p-3 sm:p-4 rounded-[1.75rem] bg-background/55 border border-border/50 shadow-inner backdrop-blur-sm animate-fade-in">
                 <div className="mb-3 flex items-center justify-between gap-1 px-1">
                   <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground overflow-hidden">
@@ -1289,11 +1063,7 @@ export default function ChatAssistant({ onDomainChange }) {
                       </div>
                     )}
                     {(isEmergency || preEmergency) && <EmergencyContacts />}
-                    {(() => {
-                      const firstRealAssistantIdx = visibleMessages.findIndex(
-                        (m) => m.role === "assistant" && !m.id?.startsWith("welcome-")
-                      );
-                      return visibleMessages.map((message, msgIdx) => {
+                    {visibleMessages.map((message, msgIdx) => {
                       const saved = savedIds.has(message.content);
                       return (
                         <div
@@ -1527,11 +1297,6 @@ export default function ChatAssistant({ onDomainChange }) {
                               <LegalTimeline messageContent={message.content} />
                             )}
                             {/* Inline footnote — shown only on the first real assistant message */}
-                            {message.role === "assistant" &&
-                              !message.id?.startsWith("welcome-") &&
-                              msgIdx === firstRealAssistantIdx && (
-                              <InlineFootnote domain={selectedDomain} />
-                            )}
                             {message.role === "assistant" && message.webSearched && (
                               <span
                                 className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground/70"
@@ -1564,8 +1329,7 @@ export default function ChatAssistant({ onDomainChange }) {
                           )}
                         </div>
                       );
-                    });
-                    })()}
+                    })}
                     {isLoading && !streamingMsgId && (
                       <div className="flex items-end gap-3 justify-start animate-slide-in-left">
                         <Avatar className="h-9 w-9 ring-2 ring-primary/30">
