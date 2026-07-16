@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SavedMomentsDrawer } from "@/components/saved-moments";
+import { getUser, subscribe } from "@/lib/auth";
+import { verifyAdminKey, setAdminKey } from "@/lib/adminApi";
+import { cn } from "@/lib/utils";
 
 const BreathingCompanion = lazy(() => import("@/components/breathing-companion").then(m => ({ default: m.BreathingCompanion })));
 const SignOutDialog       = lazy(() => import("@/components/sign-out-dialog").then(m => ({ default: m.SignOutDialog })));
 const ChangePasswordDialog = lazy(() => import("@/components/change-password").then(m => ({ default: m.ChangePasswordDialog })));
-import { getUser, subscribe } from "@/lib/auth";
-import { verifyAdminKey, setAdminKey } from "@/lib/adminApi";
-import { cn } from "@/lib/utils";
 
 function initialsOf(name, email) {
   const source = (name || email || "").trim();
