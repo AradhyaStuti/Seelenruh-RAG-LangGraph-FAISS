@@ -506,6 +506,7 @@ export default function ChatAssistant({ onDomainChange }) {
   );
   const welcomeMessage = useMemo(() => welcomeMessageFor(selectedDomain), [selectedDomain]);
   const visibleMessages = activeSession ? activeSession.messages : [welcomeMessage];
+  const messageCount = visibleMessages.length;
   const isLoading = !!loadingByDomain[selectedDomain];
   const isEmergency = !!activeSession?.isEmergency;
 
@@ -988,7 +989,6 @@ export default function ChatAssistant({ onDomainChange }) {
 
   const inputValue = form.watch("message");
   const remaining = useMemo(() => 4000 - (inputValue?.length ?? 0), [inputValue]);
-  const messageCount = visibleMessages.length;
   const currentPersona = domainConfig[selectedDomain];
   const sessionCount = currentDomainState.sessions.length;
   const personaCards = Object.entries(domainConfig);
