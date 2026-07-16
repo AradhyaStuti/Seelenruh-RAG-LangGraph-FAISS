@@ -174,6 +174,7 @@ export default function ChatAssistant({ onDomainChange }) {
   const [loadingByDomain, setLoadingByDomain] = useState({});
   const [hydrated, setHydrated] = useState(false);
 
+  const [chatView, setChatView] = useState(false);
   const [pendingDomain, setPendingDomain] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
@@ -338,6 +339,7 @@ export default function ChatAssistant({ onDomainChange }) {
     }));
     setDomainLoading(false);
     setPreEmergency(false);
+    setChatView(false);
     inputRef.current?.focus();
   };
 
@@ -455,12 +457,12 @@ export default function ChatAssistant({ onDomainChange }) {
   };
 
   const handlePersonaSelect = useCallback((value) => {
-    if (value === selectedDomain) return;
     if (messageCount > 1 || currentDomainState?.activeId) {
       setPendingDomain(value);
       return;
     }
     handleDomainSwitch(value);
+    setChatView(true);
   }, [currentDomainState?.activeId, handleDomainSwitch, messageCount, selectedDomain]);
 
   const copyMessage = async (id, text) => {
@@ -613,6 +615,7 @@ export default function ChatAssistant({ onDomainChange }) {
   const sendTextMessage = async (text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    setChatView(true);
 
 
     // If a file is attached, prepend it as context for this message then clear it
@@ -810,9 +813,19 @@ export default function ChatAssistant({ onDomainChange }) {
                 ))}
               </TabsList>
 
-              {/* Persona identity row — visible only when conversation is active */}
-              {(messageCount > 1 || isLoading) && (
+              {/* Persona identity row — visible when in chat view */}
+              {(chatView || messageCount > 1 || isLoading) && (
                 <div className="mt-3 flex items-center gap-3 px-1">
+                  <button
+                    type="button"
+                    onClick={() => { setChatView(false); startNewChat(); }}
+                    className="shrink-0 rounded-full p-1.5 text-muted-foreground/60 hover:bg-muted hover:text-foreground transition-colors"
+                    aria-label="Back to persona selection"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
                   {(() => {
                     const { icon: Icon, persona, subtitle } = currentPersona;
                     return (
@@ -959,7 +972,7 @@ export default function ChatAssistant({ onDomainChange }) {
                   </div>
                 </div>
 
-                {messageCount <= 1 && !isLoading ? (
+                {!chatView ? (
                   <div className="min-h-[54vh] sm:min-h-[58vh] rounded-[1.65rem] border border-border/45 bg-gradient-to-br from-card/90 via-card/70 to-background/70 p-4 sm:p-6 shadow-[0_18px_70px_rgba(15,23,42,0.08)]">
                     <div className="flex flex-col gap-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1467,7 +1480,7 @@ export default function ChatAssistant({ onDomainChange }) {
                   </AlertDialogCancel>
                   <AlertDialogAction
                     className="rounded-full bg-gradient-to-br from-primary to-primary/85"
-                    onClick={() => pendingDomain && handleDomainSwitch(pendingDomain)}
+                    onClick={() => { if (pendingDomain) { handleDomainSwitch(pendingDomain); setChatView(true); } }}
                   >
                     Switch
                   </AlertDialogAction>
