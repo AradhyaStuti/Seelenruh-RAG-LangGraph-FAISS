@@ -126,7 +126,7 @@ SCHEMES = [
         "match": _age_in(18, 99),
         "reasonIf": "Adult street vendors — verify with the Town Vending Committee.",
     },
-    # ─── State schemes ───
+    # State schemes
     {
         "id": "ka-gruha-lakshmi",
         "name": "Karnataka · Gruha Lakshmi",
@@ -200,7 +200,7 @@ SCHEMES = [
         ),
         "reasonIf": "MP resident woman 21–60 below the income ceiling.",
     },
-    # ─── Central — added expansion ───
+    # Central — added expansion
     {
         "id": "sukanya-samriddhi",
         "name": "Sukanya Samriddhi Yojana",
@@ -257,7 +257,7 @@ SCHEMES = [
         "match": _age_in(18, 99),
         "reasonIf": "Adult artisans in covered trades (carpenter, blacksmith, tailor, potter, mason, etc.).",
     },
-    # ─── State — added expansion ───
+    # State — added expansion
     {
         "id": "tn-magalir-urimai",
         "name": "Tamil Nadu · Kalaignar Magalir Urimai Thittam",
@@ -364,7 +364,7 @@ SCHEMES = [
         ),
         "reasonIf": "Haryana resident woman 18+.",
     },
-    # ─── More state schemes ───
+    # More state schemes
     {
         "id": "delhi-mukhyamantri-mahila-samman",
         "name": "Delhi · Mukhyamantri Mahila Samman Yojana",
@@ -437,7 +437,7 @@ SCHEMES = [
         "match": _and(_states("goa", "ga"), _age_in(18, 99)),
         "reasonIf": "Goa resident 18+ — covers unemployed, disabled, and elderly.",
     },
-    # ─── More central schemes ───
+    # More central schemes
     {
         "id": "pmfby",
         "name": "PM Fasal Bima Yojana (Crop Insurance)",

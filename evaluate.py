@@ -1,8 +1,8 @@
 """
-evaluate.py -- Live API metric runner for Seelenruh.
+evaluate.py — live metric runner for Seelenruh.
 
-Sends a built-in probe set to the running server, measures every metric
-defined in evaluation/metrics.py, and prints a score table.
+Sends a built-in probe set to the running server, scores every response
+using evaluation/metrics.py, and prints a summary table.
 
 Usage:
   python evaluate.py --token <JWT>
@@ -26,18 +26,13 @@ import httpx
 sys.path.insert(0, str(Path(__file__).parent / "evaluation"))
 import metrics  # evaluation/metrics.py
 
-# ---------------------------------------------------------------------------
-# Probe set  (no external dataset files needed)
-# "domain" must match the API Literal: "Mental Health" | "Legal" |
-#   "Government Schemes" | "Safety"
-# metric fields (expected_category, must_contain, ...) are consumed locally
-# by metrics.py -- they are never sent to the server.
-# ---------------------------------------------------------------------------
+# Probe set — no external dataset files needed.
+# "domain" must match the API literal: "Mental Health" | "Legal" | "Government Schemes" | "Safety"
+# Fields like expected_category, must_contain etc. are only used locally by metrics.py
+# and never sent to the server.
 
 PROBES: list[dict[str, Any]] = [
-    # =========================================================================
-    # MENTAL HEALTH (20 probes)
-    # =========================================================================
+    # --- Mental health (20 probes) ---
 
     # Crisis / suicidal ideation
     {
@@ -243,9 +238,7 @@ PROBES: list[dict[str, Any]] = [
         "must_not_contain": ["18 USC", "GDPR"],
     },
 
-    # =========================================================================
-    # LEGAL (20 probes)
-    # =========================================================================
+    # --- Legal (20 probes) ---
 
     # Unpaid wages
     {
@@ -452,9 +445,7 @@ PROBES: list[dict[str, Any]] = [
         "must_not_contain": ["18 USC", "GDPR", "US citizenship"],
     },
 
-    # =========================================================================
-    # GOVERNMENT SCHEMES (15 probes)
-    # =========================================================================
+    # --- Government schemes (15 probes) ---
 
     # PM-JAY
     {
@@ -608,9 +599,7 @@ PROBES: list[dict[str, Any]] = [
         "must_not_contain": ["18 USC", "GDPR"],
     },
 
-    # =========================================================================
-    # SAFETY / EMERGENCY (5 probes)
-    # =========================================================================
+    # --- Safety / emergency (5 probes) ---
 
     # Domestic violence — emergency
     {
@@ -683,9 +672,7 @@ _DOMAIN_KEY = {
     "Safety": "safety",
 }
 
-# ---------------------------------------------------------------------------
 # HTTP helper
-# ---------------------------------------------------------------------------
 
 async def call_chat(
     client: httpx.AsyncClient,
@@ -711,9 +698,7 @@ async def call_chat(
     return r.json(), elapsed
 
 
-# ---------------------------------------------------------------------------
 # Per-probe scoring
-# ---------------------------------------------------------------------------
 
 def score_probe(probe: dict, api_resp: dict, elapsed: float) -> dict:
     """Run all metrics.py functions on one probe+response pair."""
@@ -762,9 +747,7 @@ def score_probe(probe: dict, api_resp: dict, elapsed: float) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Reporting
-# ---------------------------------------------------------------------------
 
 def _pct(v) -> str:
     if v is None:
@@ -836,9 +819,7 @@ def print_report(scored: list[dict], verbose: bool = False) -> None:
     print("\n" + sep + "\n")
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Seelenruh live metric runner")

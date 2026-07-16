@@ -19,7 +19,7 @@ from __future__ import annotations
 # Umang — Legal (100 cases, 10 categories × 10)
 UMANG_CASES: list[dict] = [
 
-    # ── Employment (10) ─────────────────────────────────────────────────────
+    # Employment (10)
     {"id": "umang_emp_001", "category": "Employment", "lang": "en",
      "q": "My employer terminated me without giving any notice period",
      "expected_keywords": ["Industrial Disputes Act", "notice period", "Labour Commissioner", "wrongful termination"],
@@ -80,7 +80,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": ["FIR", "police station", "Section 420"],
      "severity": "high"},
 
-    # ── Salary Disputes (10) ────────────────────────────────────────────────
+    # Salary Disputes (10)
     {"id": "umang_sal_001", "category": "Salary", "lang": "en",
      "q": "My employer has not paid my salary for 3 months",
      "expected_keywords": ["Payment of Wages Act", "Labour Commissioner", "Section 15", "authority"],
@@ -141,7 +141,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": ["guaranteed", "definitely"],
      "severity": "medium"},
 
-    # ── FIR (10) ────────────────────────────────────────────────────────────
+    # FIR (10)
     {"id": "umang_fir_001", "category": "FIR", "lang": "en",
      "q": "How do I file an FIR if the police refuse to register it",
      "expected_keywords": ["Section 154", "Superintendent of Police", "Section 156(3)", "Zero FIR", "Magistrate"],
@@ -202,7 +202,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "high"},
 
-    # ── Tenant Rights (10) ──────────────────────────────────────────────────
+    # Tenant Rights (10)
     {"id": "umang_ten_001", "category": "TenantRights", "lang": "en",
      "q": "Landlord cut off water and electricity to force me out",
      "expected_keywords": ["essential services", "Rent Control Act", "FIR", "Section 23", "harassment"],
@@ -263,7 +263,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "high"},
 
-    # ── Consumer Rights (10) ────────────────────────────────────────────────
+    # Consumer Rights (10)
     {"id": "umang_con_001", "category": "ConsumerRights", "lang": "en",
      "q": "Flipkart delivered a broken product and is refusing refund",
      "expected_keywords": ["Consumer Protection Act", "Consumer Forum", "District Commission", "e-commerce"],
@@ -324,7 +324,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": ["5 years", "10 years"],
      "severity": "low"},
 
-    # ── Family Law (10) ─────────────────────────────────────────────────────
+    # Family Law (10)
     {"id": "umang_fam_001", "category": "FamilyLaw", "lang": "en",
      "q": "I want a divorce from my husband — what are the grounds",
      "expected_keywords": ["Hindu Marriage Act", "cruelty", "desertion", "adultery", "divorce petition", "Family Court"],
@@ -385,7 +385,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": ["immediately", "same day"],
      "severity": "medium"},
 
-    # ── Cybercrime (10) ─────────────────────────────────────────────────────
+    # Cybercrime (10)
     {"id": "umang_cyb_001", "category": "Cybercrime", "lang": "en",
      "q": "My bank account was hacked and money was transferred out",
      "expected_keywords": ["cybercrime portal", "1930", "Section 66", "IT Act", "bank fraud", "RBI"],
@@ -446,7 +446,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "medium"},
 
-    # ── RTI (10) ────────────────────────────────────────────────────────────
+    # RTI (10)
     {"id": "umang_rti_001", "category": "RTI", "lang": "en",
      "q": "How do I file an RTI application for a government scheme status",
      "expected_keywords": ["RTI Act 2005", "Section 6", "Public Information Officer", "PIO", "10 rupees", "30 days"],
@@ -507,7 +507,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "low"},
 
-    # ── Property (10) ───────────────────────────────────────────────────────
+    # Property (10)
     {"id": "umang_prp_001", "category": "Property", "lang": "en",
      "q": "My brother is denying me my share in ancestral property",
      "expected_keywords": ["Hindu Succession Act", "coparcenary", "Mitakshara", "daughter's right", "Section 6"],
@@ -568,7 +568,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "high"},
 
-    # ── Constitutional Rights (10) ──────────────────────────────────────────
+    # Constitutional Rights (10)
     {"id": "umang_con2_001", "category": "ConstitutionalRights", "lang": "en",
      "q": "Police is detaining me without any reason — what are my rights",
      "expected_keywords": ["Article 22", "24 hours", "Magistrate", "right to lawyer", "habeas corpus", "BNSS"],

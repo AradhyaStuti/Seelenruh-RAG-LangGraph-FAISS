@@ -6,7 +6,7 @@ TEST_HELDOUT for headline numbers.
 """
 
 TEST_CASES = [
-    # ===== Usha / Mental Health (25) =====
+    # Mental Health (25)
     {"q": "I can't sleep, my mind keeps racing all night",        "gold": ["mh-3", "mh-x-98"],                      "domain": "Mental Health"},
     {"q": "I have constant low mood and lost interest",           "gold": ["mh-2", "mh-x-14"],                      "domain": "Mental Health"},
     {"q": "My heart is pounding and I can't breathe - panic",     "gold": ["mh-9", "mh-x-02"],                      "domain": "Mental Health"},
@@ -33,7 +33,7 @@ TEST_CASES = [
     {"q": "Online therapist platforms in India affordable",       "gold": ["mh-4", "mh-x-87", "mh-x-92", "mh-x-93"],"domain": "Mental Health"},
     {"q": "Got into a big fight with my partner today",           "gold": ["mh-6", "mh-x-72", "mh-x-131"],          "domain": "Mental Health"},
 
-    # ===== Umang / Legal (25) =====
+    # Legal (25)
     {"q": "How do I file an RTI application",                     "gold": ["lg-2", "lg-hi-1", "lg-x-202"],          "domain": "Legal"},
     {"q": "How do I file an FIR against my neighbour",            "gold": ["lg-1", "lg-hi-2", "lg-x-01", "lg-x-153", "lg-x-154", "lg-x-169", "lg-x-201"], "domain": "Legal"},
     {"q": "My landlord wants to evict me without notice",         "gold": ["lg-4", "lg-x-110", "lg-x-111", "lg-x-205"], "domain": "Legal"},
@@ -60,7 +60,7 @@ TEST_CASES = [
     {"q": "Dowry harassment by in-laws Section 498A",             "gold": ["lg-25", "lg-x-28", "lg-x-208"],         "domain": "Legal"},
     {"q": "RTI kaise file karein hindi me",                       "gold": ["lg-hi-1", "lg-2", "lg-x-201"],          "domain": "Legal"},
 
-    # ===== Aarogya / Government Schemes (25) =====
+    # Government Schemes (25)
     {"q": "Am I eligible for Ayushman Bharat PM-JAY",             "gold": ["gs-1", "gs-hi-1", "gs-x-01", "gs-x-02", "gs-x-138", "gs-x-172"], "domain": "Government Schemes"},
     {"q": "I'm a small farmer how do I get PM Kisan",             "gold": ["gs-2", "gs-x-16", "gs-x-17", "gs-x-29", "gs-x-30", "gs-x-171"], "domain": "Government Schemes"},
     {"q": "Engineering girl student which scholarships apply",    "gold": ["gs-3", "gs-x-32", "gs-x-33", "gs-x-38", "gs-x-39"], "domain": "Government Schemes"},
@@ -87,7 +87,7 @@ TEST_CASES = [
     {"q": "Jan Dhan zero balance bank account",                   "gold": ["gs-25"],                                "domain": "Government Schemes"},
     {"q": "Mahilao ke liye sarkari yojanaye Hindi",               "gold": ["gs-hi-2", "gs-x-56", "gs-x-57", "gs-x-181"], "domain": "Government Schemes"},
 
-    # ===== Raksha / Safety (25) =====
+    # Safety (25)
     {"q": "Someone stole money from my UPI account",              "gold": ["sf-2", "sf-x-02", "sf-x-05", "sf-x-08", "sf-x-76"], "domain": "Safety"},
     {"q": "There's a fire in my building right now",              "gold": ["sf-4", "sf-x-51", "sf-x-52", "sf-x-81"],"domain": "Safety"},
     {"q": "My husband is hitting me right now",                   "gold": ["sf-6", "sf-x-77"],                      "domain": "Safety"},

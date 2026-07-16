@@ -2,7 +2,7 @@
   "name": "seelenruh",
   "version": "3.0.0",
   "private": true,
-  "description": "Seelenruh (peace of the soul) — RAG civic-support assistant. Python + LangGraph + FAISS backend, React + Vite frontend.",
+  "description": "Seelenruh — a retrieval-augmented assistant for mental health, legal, government schemes, and safety support. FastAPI + LangGraph backend, React + Vite frontend.",
   "scripts": {
     "install:all": "npm install && npm --prefix client install && py -3.10 -m venv server/.venv && server/.venv/Scripts/python -m pip install -r server/requirements.txt",
     "dev": "concurrently -n server,client -c green,cyan \"npm run dev:server\" \"npm run dev:client\"",

@@ -128,7 +128,7 @@ async def synthesize(req: TTSRequest, _user: dict = Depends(current_user)):
     if not clean:
         raise HTTPException(status_code=400, detail="Empty text")
 
-    # ── ElevenLabs path (neural, multilingual) ───────────────────────────────
+    # ElevenLabs path (neural, multilingual)
     if ELEVENLABS_KEY:
         try:
             audio_bytes = await _elevenlabs(clean, lang, req.domain)
@@ -140,7 +140,7 @@ async def synthesize(req: TTSRequest, _user: dict = Depends(current_user)):
         except Exception as e:
             log.warning("ElevenLabs failed, falling back to gTTS", error=str(e))
 
-    # ── gTTS fallback (Google TTS — free, decent quality for Hindi) ──────────
+    # gTTS fallback (Google TTS — free, decent quality for Hindi)
     try:
         from gtts import gTTS  # noqa: F401 (import check)
     except ImportError:

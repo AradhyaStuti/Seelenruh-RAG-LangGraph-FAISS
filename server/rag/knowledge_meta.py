@@ -167,7 +167,7 @@ _AUTHORITY_RULES: list[tuple[list[str], SourceAuthority]] = [
 # Maps known authority patterns → canonical official URLs.
 # More specific patterns come first; returns None when no mapping exists.
 _SOURCE_URL_MAP: list[tuple[str, str]] = [
-    # ── Primary law / Judiciary ────────────────────────────────
+    # Primary law / Judiciary
     ("indiacode.nic.in",            "https://www.indiacode.nic.in/"),
     ("india code",                  "https://www.indiacode.nic.in/"),
     ("legislative.gov.in",          "https://www.legislative.gov.in/"),
@@ -177,7 +177,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("ecourts",                     "https://services.ecourts.gov.in/"),
     ("gazette.india.gov.in",        "https://egazette.gov.in/"),
     ("gazette of india",            "https://egazette.gov.in/"),
-    # ── Legal bodies ──────────────────────────────────────────
+    # Legal bodies
     ("nalsa.gov.in",                "https://nalsa.gov.in/"),
     ("nalsa",                       "https://nalsa.gov.in/"),
     ("ncw.nic.in",                  "https://ncw.nic.in/"),
@@ -190,7 +190,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("ncrb.gov.in",                 "https://ncrb.gov.in/"),
     ("ncrb",                        "https://ncrb.gov.in/"),
     ("bar council",                 "https://www.barcouncilofindia.org/"),
-    # ── Specific acts / portals ───────────────────────────────
+    # Specific acts / portals
     ("rtionline.gov.in",            "https://rtionline.gov.in/"),
     ("rti act",                     "https://rtionline.gov.in/"),
     ("right to information",        "https://rtionline.gov.in/"),
@@ -214,7 +214,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("special marriage act",        "https://www.indiacode.nic.in/"),
     ("hindu succession act",        "https://www.indiacode.nic.in/"),
     ("transfer of property",        "https://www.indiacode.nic.in/"),
-    # ── Central schemes ───────────────────────────────────────
+    # Central schemes
     ("pmjay.gov.in",                "https://pmjay.gov.in/"),
     ("ayushman bharat",             "https://pmjay.gov.in/"),
     ("pm-jay",                      "https://pmjay.gov.in/"),
@@ -257,7 +257,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("pfms.nic.in",                 "https://pfms.nic.in/"),
     ("dpiit",                       "https://dpiit.gov.in/"),
     ("mohua.gov.in",                "https://mohua.gov.in/"),
-    # ── Ministry sites ────────────────────────────────────────
+    # Ministry sites
     ("wcd.nic.in",                  "https://wcd.nic.in/"),
     ("women and child development", "https://wcd.nic.in/"),
     ("mohfw.gov.in",                "https://www.mohfw.gov.in/"),
@@ -270,7 +270,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("sebi.gov.in",                 "https://www.sebi.gov.in/"),
     ("rbi.org.in",                  "https://www.rbi.org.in/"),
     ("pib.gov.in",                  "https://pib.gov.in/"),
-    # ── Safety / emergency / cyber ────────────────────────────
+    # Safety / emergency / cyber
     ("cybercrime.gov.in",           "https://cybercrime.gov.in/"),
     ("national cyber crime",        "https://cybercrime.gov.in/"),
     ("cyber crime portal",          "https://cybercrime.gov.in/"),
@@ -282,7 +282,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("112.gov.in",                  "https://www.112.gov.in/"),
     ("mha.gov.in",                  "https://www.mha.gov.in/"),
     ("mha ",                        "https://www.mha.gov.in/"),
-    # ── Mental health / helplines ─────────────────────────────
+    # Mental health / helplines
     ("nimhans.ac.in",               "https://nimhans.ac.in/"),
     ("nimhans",                     "https://nimhans.ac.in/"),
     ("icallhelpline.org",           "https://icallhelpline.org/"),
@@ -293,7 +293,7 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("aasra",                       "https://www.aasra.info/"),
     ("who.int",                     "https://www.who.int/"),
     ("who ",                        "https://www.who.int/"),
-    # ── State portals ─────────────────────────────────────────
+    # State portals
     ("karnataka.gov.in",            "https://www.karnataka.gov.in/"),
     ("maharashtra.gov.in",          "https://www.maharashtra.gov.in/"),
     ("up.gov.in",                   "https://www.up.gov.in/"),
@@ -308,11 +308,11 @@ _SOURCE_URL_MAP: list[tuple[str, str]] = [
     ("ap.gov.in",                   "https://www.ap.gov.in/"),
     ("assam.gov.in",                "https://assam.gov.in/"),
     ("odisha.gov.in",               "https://odisha.gov.in/"),
-    # ── International ─────────────────────────────────────────
+    # International
     ("who.int",                     "https://www.who.int/"),
     ("unicef.org",                  "https://www.unicef.org/"),
     ("ilo.org",                     "https://www.ilo.org/"),
-    # ── Additional ministry abbreviations ─────────────────────
+    # Additional ministry abbreviations
     ("dsm-5",                       "https://www.psychiatry.org/psychiatrists/practice/dsm"),
     ("dsm-iv",                      "https://www.psychiatry.org/psychiatrists/practice/dsm"),
     ("mohfw",                       "https://www.mohfw.gov.in/"),

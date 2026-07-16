@@ -15,7 +15,7 @@ class FewShotExample:
 
 EXAMPLES: list[FewShotExample] = [
 
-    # ── 1. Landlord lockout (Property / Tenant Rights) ──────────────────────
+    # 1. Landlord lockout (Property / Tenant Rights)
     FewShotExample(
         id="ex_landlord_lockout_en",
         category="Property",
@@ -59,7 +59,7 @@ As soon as possible for an urgent injunction application; free legal aid is avai
 - Free legal aid: call 15100 (National Legal Services Authority helpline).""",
     ),
 
-    # ── 2. Salary withheld (Employment) ─────────────────────────────────────
+    # 2. Salary withheld (Employment)
     FewShotExample(
         id="ex_salary_withheld_en",
         category="Employment",
@@ -115,7 +115,7 @@ If the Labour Commissioner process stalls or the amount is significant; free leg
 - If the company has shut down or the employer has absconded, wages have priority under the Insolvency & Bankruptcy Code, 2016.""",
     ),
 
-    # ── 3. Wrongful termination (Employment / Hinglish) ──────────────────────
+    # 3. Wrongful termination (Employment / Hinglish)
     FewShotExample(
         id="ex_wrongful_termination_hi_roman",
         category="Employment",
@@ -164,7 +164,7 @@ Agar Labour Commissioner process mein problem aaye ya bahut bada amount involved
 - Agar aap manager/executive hain (workman nahi), toh rights thodi alag ho sakti hain.""",
     ),
 
-    # ── 4. Police refusing to file FIR ──────────────────────────────────────
+    # 4. Police refusing to file FIR
     FewShotExample(
         id="ex_fir_refused_en",
         category="Criminal",
@@ -201,7 +201,7 @@ If the Magistrate route is needed — a lawyer can draft the Section 175 BNSS ap
 - I cannot predict how quickly the police will act.""",
     ),
 
-    # ── 5. Cyber / UPI fraud ─────────────────────────────────────────────────
+    # 5. Cyber / UPI fraud
     FewShotExample(
         id="ex_upi_fraud_en",
         category="Cyber",
@@ -245,7 +245,7 @@ Visit your nearest police station and file an FIR under BNS Section 318 and IT A
 - You do not need to pay anyone to "help recover" funds — that is a secondary scam.""",
     ),
 
-    # ── 6. Consumer complaint (Consumer) ────────────────────────────────────
+    # 6. Consumer complaint (Consumer)
     FewShotExample(
         id="ex_consumer_complaint_en",
         category="Consumer",
@@ -287,7 +287,7 @@ Consumer cases are simple enough to file yourself. A lawyer is optional but may 
 - I cannot predict the timeline — District Consumer Commissions aim for 90-day resolution but often take longer.""",
     ),
 
-    # ── 7. Domestic violence ─────────────────────────────────────────────────
+    # 7. Domestic violence
     FewShotExample(
         id="ex_domestic_violence_en",
         category="Family",
@@ -334,7 +334,7 @@ If your husband contests the case or you want to file for divorce/custody — fr
 - I cannot predict legal outcomes, but the law gives you strong protections.""",
     ),
 
-    # ── 8. Property dispute / possession ────────────────────────────────────
+    # 8. Property dispute / possession
     FewShotExample(
         id="ex_property_dispute_en",
         category="Property",
@@ -377,7 +377,7 @@ Immediately — property matters have strict limitation periods (usually 12 year
 - I cannot predict outcomes — courts look at the specific ownership records and documents.""",
     ),
 
-    # ── 9. Government scheme / PF withdrawal ────────────────────────────────
+    # 9. Government scheme / PF withdrawal
     FewShotExample(
         id="ex_pf_withdrawal_en",
         category="Employment",
@@ -422,7 +422,7 @@ Usually not needed for PF issues — the grievance and appeal process is suffici
 - Free guidance: EPFO toll-free 1800-118-005 (Mon–Sat, 9am–6pm).""",
     ),
 
-    # ── 10. German-speaking tenant in India ─────────────────────────────────
+    # 10. German-speaking tenant in India
     FewShotExample(
         id="ex_german_tenant_de",
         category="Property",

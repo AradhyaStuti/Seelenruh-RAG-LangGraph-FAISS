@@ -7,7 +7,7 @@ EXPANSION_CHUNKS = [
     # MENTAL HEALTH — ~150 chunks
     # ═════════════════════════════════════════════════════════════════════
 
-    # ─── Anxiety subtypes (10) ───
+    # Anxiety subtypes (10)
     {"id":"mh-x-01","domain":"Mental Health","lang":"en","topic":"Generalised Anxiety Disorder (GAD)",
      "source":"DSM-5 · NIMHANS","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"GAD is excessive, hard-to-control worry across multiple life domains lasting 6+ months. Physical signs: muscle tension, fatigue, sleep disturbance, irritability, restlessness. First-line treatment: CBT + SSRI/SNRI. Self-help: structured worry time, sleep hygiene, reduced caffeine."},
@@ -39,7 +39,7 @@ EXPANSION_CHUNKS = [
      "source":"DSM-5","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Not just childhood — adult separation anxiety affects ~7% of adults. Excessive fear about separation from attachment figures (partner, parent, child). Often comorbid with panic disorder. CBT + supportive partner involvement helps."},
 
-    # ─── Mood disorders (12) ───
+    # Mood disorders (12)
     {"id":"mh-x-11","domain":"Mental Health","lang":"en","topic":"Bipolar I disorder",
      "source":"DSM-5 · NIMHANS bipolar clinic protocols","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"At least one manic episode (1 week of elevated/irritable mood with grandiosity, decreased sleep need, racing thoughts, risky behaviour). Depressive episodes common but not required for diagnosis. Mood stabilisers (lithium, valproate) are first-line; psychotherapy improves adherence."},
@@ -77,7 +77,7 @@ EXPANSION_CHUNKS = [
      "source":"DSM-5","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Children/adolescents (6-18) with severe, recurrent temper outbursts (3+/week) plus persistent irritable mood between outbursts. Distinct from bipolar disorder. Parent training + CBT; medication adjunctive."},
 
-    # ─── Eating disorders (8) ───
+    # Eating disorders (8)
     {"id":"mh-x-23","domain":"Mental Health","lang":"en","topic":"Anorexia nervosa",
      "source":"DSM-5 · NIMHANS eating disorders clinic","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Restriction of energy intake leading to significantly low body weight, intense fear of weight gain, body image disturbance. Restricting subtype vs binge-eating/purging subtype. Medical complications (cardiac, bone) can be fatal. Family-Based Treatment (FBT) is first-line for adolescents."},
@@ -103,7 +103,7 @@ EXPANSION_CHUNKS = [
      "source":"DSM-5","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Repeated regurgitation of food (re-chewed, re-swallowed, or spit out) over 1+ month, not due to GI condition. Diaphragmatic breathing exercises are first-line in adolescents and adults."},
 
-    # ─── Personality disorders (10) ───
+    # Personality disorders (10)
     {"id":"mh-x-31","domain":"Mental Health","lang":"en","topic":"Borderline Personality Disorder (BPD)",
      "source":"DSM-5 Cluster B","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Pattern of unstable relationships, self-image, and affects, with marked impulsivity. Frantic efforts to avoid abandonment, self-harm/suicidal behaviour, chronic emptiness. DBT is gold-standard; MBT and TFP also evidence-based. Medications adjunctive only."},
@@ -135,7 +135,7 @@ EXPANSION_CHUNKS = [
      "source":"DSM-5 Cluster C","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Preoccupation with orderliness, perfectionism, and control — at expense of flexibility and efficiency. Distinct from OCD (no true obsessions/compulsions; ego-syntonic vs ego-dystonic). CBT works once insight develops."},
 
-    # ─── Psychotic & related (5) ───
+    # Psychotic & related (5)
     {"id":"mh-x-41","domain":"Mental Health","lang":"en","topic":"Schizophrenia",
      "source":"DSM-5 · NIMHANS","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Two or more of: delusions, hallucinations, disorganised speech, grossly disorganised behaviour, negative symptoms — for 1+ month with continuous signs 6+ months. Antipsychotics + family psychoeducation + supported employment. India's lifetime prevalence ~0.3%."},
@@ -152,7 +152,7 @@ EXPANSION_CHUNKS = [
      "source":"DSM-5","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Hallucinations/delusions during or shortly after substance use/withdrawal — common with cannabis (especially high-potency), stimulants, hallucinogens, alcohol withdrawal. Resolves with abstinence but may unmask underlying primary psychotic disorder."},
 
-    # ─── Trauma & abuse (12) ───
+    # Trauma & abuse (12)
     {"id":"mh-x-46","domain":"Mental Health","lang":"en","topic":"Childhood sexual abuse — adult survivors",
      "source":"RAINN · NIMHANS","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Long-term effects: PTSD, depression, substance use, relationship/trust difficulties, sexual difficulties. Recovery is possible at any age. Specialised trauma therapy (TF-CBT, EMDR, somatic) helps. India: iCall, Arpan Foundation, Tulir provide trauma-informed support."},
@@ -190,7 +190,7 @@ EXPANSION_CHUNKS = [
      "source":"WHO · IASC","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"After earthquakes, floods, cyclones: Psychological First Aid (PFA) in acute phase, screening for delayed PTSD/depression months later, community-based interventions outperform individual therapy. NDMA + state DMHPs activate during major disasters."},
 
-    # ─── Therapy modalities (15) ───
+    # Therapy modalities (15)
     {"id":"mh-x-58","domain":"Mental Health","lang":"en","topic":"Cognitive Behavioural Therapy (CBT)",
      "source":"Beck Institute · APA","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Structured, time-limited (typically 12-20 sessions) therapy targeting thoughts-feelings-behaviours connections. Strongest evidence base of any psychotherapy. Effective for depression, anxiety, OCD, PTSD, eating disorders, insomnia. Skills-based with homework between sessions."},
@@ -237,7 +237,7 @@ EXPANSION_CHUNKS = [
      "source":"Johnson · Gottman","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Emotionally Focused Therapy (EFT, Johnson) targets attachment cycles. Gottman Method works on physiological calm, repair attempts, friendship system. Both have strong outcome data. IBCT integrates acceptance and change."},
 
-    # ─── Medications (10) ───
+    # Medications (10)
     {"id":"mh-x-73","domain":"Mental Health","lang":"en","topic":"SSRIs (Selective Serotonin Reuptake Inhibitors)",
      "source":"NIMH · Indian Psychiatric Society","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"First-line for depression and anxiety: fluoxetine, sertraline, escitalopram, paroxetine, fluvoxamine. 4-6 weeks for full effect. Common side effects: nausea, sexual dysfunction, weight changes, sleep disturbance. Slow taper to discontinue."},
@@ -269,7 +269,7 @@ EXPANSION_CHUNKS = [
      "source":"FDA · NIMHANS","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Non-invasive brain stimulation for depression (FDA-approved), OCD, smoking cessation. ~30 sessions over 6 weeks. No anaesthesia. Available at NIMHANS, AIIMS, and several private hospitals in India. Particularly useful when medications poorly tolerated."},
 
-    # ─── India-specific MH (15) ───
+    # India-specific MH (15)
     {"id":"mh-x-83","domain":"Mental Health","lang":"en","topic":"Mental Healthcare Act 2017 (India)",
      "source":"Mental Healthcare Act 2017","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Decriminalised suicide attempts (Sec 115), guaranteed right to mental healthcare, advance directives, nominated representatives. Mandates insurance coverage for mental illness equivalent to physical illness. State and Central Mental Health Authorities oversee implementation."},
@@ -316,7 +316,7 @@ EXPANSION_CHUNKS = [
      "source":"connectingngo.org","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"+91-9922001122. Active befrienders helpline founded in 2005. Also runs suicide-prevention training for educational institutions and corporates."},
 
-    # ─── Sleep & adjacent (8) ───
+    # Sleep & adjacent (8)
     {"id":"mh-x-98","domain":"Mental Health","lang":"en","topic":"Chronic insomnia disorder",
      "source":"DSM-5 · AASM","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Difficulty initiating/maintaining sleep 3+ nights/week for 3+ months despite adequate opportunity, with daytime impairment. CBT-I is first-line (more effective long-term than hypnotics). Components: sleep restriction, stimulus control, cognitive therapy, relaxation."},
@@ -342,7 +342,7 @@ EXPANSION_CHUNKS = [
      "source":"ACOG","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Common but consequential — increases depression and gestational complication risk. CBT-I safe in pregnancy. Limited medication options; doxylamine and short-term diphenhydramine are pregnancy-acceptable; avoid benzodiazepines."},
 
-    # ─── Substance use specifics (8) ───
+    # Substance use specifics (8)
     {"id":"mh-x-106","domain":"Mental Health","lang":"en","topic":"Alcohol use disorder",
      "source":"DSM-5 · NIAAA","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"AUDIT-C is a quick screen. Withdrawal can be fatal — medically supervised detox for daily heavy drinkers. Pharmacotherapy: naltrexone, acamprosate, disulfiram (deterrent). MET + CBT + 12-step facilitation all evidence-based."},
@@ -368,7 +368,7 @@ EXPANSION_CHUNKS = [
      "source":"aaindia.org · aagsoindia.org","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Free 12-step peer support groups in most Indian metros and tier-2 cities. In-person and online meetings daily. AA literature available in English, Hindi, regional languages. Al-Anon supports family members. No professional therapy substitute, but strong adjunct."},
 
-    # ─── ADHD, autism, neurodivergence (8) ───
+    # ADHD, autism, neurodivergence (8)
     {"id":"mh-x-114","domain":"Mental Health","lang":"en","topic":"Adult ADHD",
      "source":"DSM-5 · CHADD","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Diagnosis requires symptoms before age 12 and current symptoms in 2+ settings. Inattention, hyperactivity/impulsivity. Often missed in girls/women presenting as anxiety. Treatment: stimulants/atomoxetine + behavioural strategies + accommodations."},
@@ -394,7 +394,7 @@ EXPANSION_CHUNKS = [
      "source":"Royal Society · CDC","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Heavy social media use correlates with depression, anxiety, loneliness — especially in adolescent girls. Mechanisms: upward social comparison, FOMO, displacement of sleep/exercise. Practical interventions: app limits, notification mute, intentional viewing windows."},
 
-    # ─── LGBTQ+ MH (4) ───
+    # LGBTQ+ MH (4)
     {"id":"mh-x-122","domain":"Mental Health","lang":"en","topic":"Minority stress in LGBTQ+ individuals",
      "source":"Meyer · APA","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Chronic stigma, discrimination, expectations of rejection, internalised stigma — causes elevated depression, anxiety, suicidality. Affirming therapy, community connection, advocacy involvement are protective. India: Saksham (NIMHANS), Sahodaran, Naz Foundation provide affirming services."},
@@ -408,7 +408,7 @@ EXPANSION_CHUNKS = [
      "source":"Madras HC 2021 · NMC","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Conversion therapy is harmful and ineffective — strongly opposed by WHO, APA, Indian Psychiatric Society, NMC. Madras High Court 2021 banned it in Tamil Nadu and directed NMC to discipline practitioners. Reporting unethical practice: state medical council + NMC."},
 
-    # ─── Hindi MH content (10) ───
+    # Hindi MH content (10)
     {"id":"mh-x-126","domain":"Mental Health","lang":"hi","topic":"चिंता क्या है (Hindi) — anxiety basics",
      "source":"NIMHANS · iCall","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"चिंता तनाव के प्रति शरीर की स्वाभाविक प्रतिक्रिया है, लेकिन जब यह दैनिक जीवन में बाधा डाले तो उपचार ज़रूरी है। लक्षण: दौड़ते विचार, बेचैनी, मांसपेशियों में तनाव, नींद की समस्या, तेज़ धड़कन। मदद: iCall 9152987821, Vandrevala 1860-2662-345, Tele-MANAS 14416।"},
@@ -440,7 +440,7 @@ EXPANSION_CHUNKS = [
      "source":"AASRA · iCall","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"अगर खुद को नुकसान पहुँचाने का विचार आ रहा है तो अभी कॉल करें: AASRA 9820466726, iCall 9152987821, Vandrevala 1860-2662-345, Tele-MANAS 14416। आप अकेले नहीं हैं — मदद उपलब्ध है। नज़दीकी अस्पताल जाएँ।"},
 
-    # ─── German MH content (8) ───
+    # German MH content (8)
     {"id":"mh-x-136","domain":"Mental Health","lang":"de","topic":"Depression — Symptome und Hilfe (German)",
      "source":"Stiftung Deutsche Depressionshilfe","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Anhaltende Niedergeschlagenheit, Antriebslosigkeit, Schlafstörungen über 2+ Wochen. Hausarzt oder Psychotherapeut ist erste Anlaufstelle. Hilfetelefon: Telefonseelsorge 0800 111 0 111 (kostenlos, 24/7). Bei akuter Suizidalität 112 oder nächste Klinik."},
@@ -466,7 +466,7 @@ EXPANSION_CHUNKS = [
      "source":"Hilfetelefon Gewalt gegen Frauen","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Hilfetelefon Gewalt gegen Frauen 08000 116 016 (kostenlos, 24/7, 17 Sprachen + Gebärdensprache). Frauenhäuser bundesweit (frauenhauskoordinierung.de). Polizei 110. Bei medizinischen Spuren Gewaltschutzambulanzen ohne Anzeigepflicht."},
 
-    # ─── Caregiver/family support (5) ───
+    # Caregiver/family support (5)
     {"id":"mh-x-144","domain":"Mental Health","lang":"en","topic":"Caregiver burnout — dementia, chronic illness",
      "source":"HelpAge India · Family Caregiver Alliance","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Caring for someone with dementia/serious illness causes chronic stress, depression, immune suppression. Respite care, peer support groups, scheduled self-care non-negotiable. ARDSI (Alzheimer's & Related Disorders Society of India) runs caregiver groups."},
@@ -483,7 +483,7 @@ EXPANSION_CHUNKS = [
      "source":"AFSP · SOLOS","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Grief after suicide is uniquely complex — guilt, anger, public stigma, intrusive imagery. Survivor support groups (SOLOS, AFSP) reduce isolation and complicated-grief risk. Children need age-appropriate honest explanation. Professional help recommended."},
 
-    # ─── Mind-body adjuncts (2) ───
+    # Mind-body adjuncts (2)
     {"id":"mh-x-149","domain":"Mental Health","lang":"en","topic":"Yoga and meditation — mental health evidence",
      "source":"AIIMS Integrative Medicine · Cochrane","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Hatha and pranayama practices show moderate evidence for depression, anxiety, insomnia. MBSR/MBCT formalise this within secular protocols. Best as adjunct, not replacement, for moderate-severe illness. AIIMS Integrative Medicine offers structured programmes."},
@@ -495,7 +495,7 @@ EXPANSION_CHUNKS = [
     # LEGAL — ~250 chunks
     # ═════════════════════════════════════════════════════════════════════
 
-    # ─── Criminal procedure (BNSS / former CrPC) (20) ───
+    # Criminal procedure (BNSS / former CrPC) (20)
     {"id":"lg-x-01","domain":"Legal","lang":"en","topic":"BNSS Section 173 — FIR registration (replaces CrPC §154)",
      "source":"Bharatiya Nagarik Suraksha Sanhita 2023 · §173","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Police must record information about cognizable offences in writing, read it back, get it signed. Free copy is your right. Refusal: complaint in writing to Superintendent of Police (§173(4)), then magistrate under §175(3) BNSS (formerly §156(3) CrPC)."},
@@ -557,7 +557,7 @@ EXPANSION_CHUNKS = [
      "source":"Specific Relief Act 1963 (amended 2018)","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Pre-2018: specific performance was an exception. 2018 amendment made it a rule for contracts unless damages adequate. Useful for property sale agreements, IP licences. Mandatory injunctions to compel acts also under this Act."},
 
-    # ─── Criminal law (BNS / former IPC) (25) ───
+    # Criminal law (BNS / former IPC) (25)
     {"id":"lg-x-21","domain":"Legal","lang":"en","topic":"BNS Section 64 — rape (replaces IPC §375)",
      "source":"Bharatiya Nyaya Sanhita 2023 §63-72","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Definition expanded under BNS retains 7 circumstances. Punishment minimum 10 years, extendable to life (§64). Aggravated forms (gang rape, custodial, of a minor) carry life or death. Section 65: rape on a woman under 16. Section 66: causing death/persistent vegetative state."},
@@ -634,7 +634,7 @@ EXPANSION_CHUNKS = [
      "source":"BNS 2023 §81 (replaces IPC §372)","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Selling, letting, or otherwise disposing of person under 18 for prostitution. Up to 10 years + fine. Read with Immoral Traffic (Prevention) Act 1956 and Juvenile Justice Act 2015 for child protection."},
 
-    # ─── Family law (20) ───
+    # Family law (20)
     {"id":"lg-x-46","domain":"Legal","lang":"en","topic":"Hindu Marriage Act §13(1) — fault grounds for divorce",
      "source":"HMA 1955 §13(1)","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Cruelty (mental + physical), desertion 2+ years, conversion, mental disorder, communicable disease, renunciation, presumption of death (7+ years missing). Each ground has specific evidentiary requirements. Mediation often attempted first."},
@@ -696,7 +696,7 @@ EXPANSION_CHUNKS = [
      "source":"Supriyo @ Supriya Chakraborty v UoI (2023 SC)","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Supreme Court (2023) declined to grant legal recognition to same-sex marriage, leaving it to Parliament. Court noted urgency of administrative protections (joint bank accounts, hospital visitation). Section 377 IPC decriminalised consensual same-sex relations by Navtej Singh Johar (2018)."},
 
-    # ─── Civil procedure & contract (15) ───
+    # Civil procedure & contract (15)
     {"id":"lg-x-66","domain":"Legal","lang":"en","topic":"CPC Order 7 — plaint",
      "source":"Code of Civil Procedure 1908","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Plaint (suit's statement of claim) must include parties, jurisdiction facts, cause of action, value for jurisdiction, relief sought. Order 7 Rule 11 — court can reject for non-disclosure of cause of action, undervaluation, time bar, etc."},
@@ -743,7 +743,7 @@ EXPANSION_CHUNKS = [
      "source":"Indian Easements Act 1882","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Easement: right over another's land for one's own land's beneficial use. Created by grant, necessity, or prescription (20 years' open peaceful enjoyment). Common: right of way, light, air, water. Suit to declare/enforce in civil court."},
 
-    # ─── Labour & employment (15) ───
+    # Labour & employment (15)
     {"id":"lg-x-81","domain":"Legal","lang":"en","topic":"Code on Wages 2019 — overview",
      "source":"Code on Wages 2019","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Consolidates Payment of Wages Act, Minimum Wages Act, Payment of Bonus Act, Equal Remuneration Act. Statutory floor wage. Minimum wage notified state-wise + central sphere. Equal pay for equal work codified. Yet to be fully notified across states."},
@@ -790,7 +790,7 @@ EXPANSION_CHUNKS = [
      "source":"Code on Social Security 2020","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Recognises gig and platform workers (Ola, Uber, Swiggy drivers). Aggregators must contribute 1-2% of turnover or 5% of payouts (whichever lower). Schemes for life, disability, accident insurance. Implementation rules still being framed."},
 
-    # ─── Tax law (10) ───
+    # Tax law (10)
     {"id":"lg-x-96","domain":"Legal","lang":"en","topic":"Income Tax — old vs new regime",
      "source":"Income Tax Act 1961 §115BAC","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"New regime (default since FY 2023-24): lower slab rates but limited deductions (only standard ₹50,000, NPS 80CCD(2)). Old regime: higher rates but 80C, 80D, HRA, LTA, home loan deductions. Choose annually for non-business income."},
@@ -822,7 +822,7 @@ EXPANSION_CHUNKS = [
      "source":"Income Tax Portal","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"26AS: TDS, advance tax, refunds. AIS (Annual Information Statement): comprehensive — includes SFT (specified financial transactions), GST turnover, foreign remittances. TIS (Taxpayer Information Summary): processed AIS for reconciliation. Check before ITR filing."},
 
-    # ─── Property & real estate (10) ───
+    # Property & real estate (10)
     {"id":"lg-x-106","domain":"Legal","lang":"en","topic":"RERA — Real Estate Regulatory Authority",
      "source":"Real Estate (Regulation and Development) Act 2016","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"All projects 500+ sqm or 8+ apartments need registration with state RERA. Mandates: 70% buyer funds in escrow, possession dates, carpet area disclosure, no advertising without registration. Complaints to RERA tribunal — fast-track."},
@@ -854,7 +854,7 @@ EXPANSION_CHUNKS = [
      "source":"Indian Succession Act 1925 §57-74","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Capable testator (18+, sound mind), signed in presence of 2 witnesses (who needn't know contents). No stamp duty; registration optional but recommended. Probate mandatory in Mumbai, Kolkata, Chennai presidency. Can be revoked or modified anytime."},
 
-    # ─── Constitutional & administrative (15) ───
+    # Constitutional & administrative (15)
     {"id":"lg-x-116","domain":"Legal","lang":"en","topic":"Article 14 — equality before law",
      "source":"Constitution of India Art 14","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Equality before law + equal protection. Permits reasonable classification (intelligible differentia + rational nexus). Recent: Indra Sawhney (caste reservation), Navtej Singh Johar (LGBT decriminalisation) read Article 14 expansively."},
@@ -901,7 +901,7 @@ EXPANSION_CHUNKS = [
      "source":"Protection of Human Rights Act 1993","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"National Human Rights Commission (Delhi) + State HRCs investigate violations by public servants. Recommendations to government — not binding but typically followed for institutional issues. Online complaint at nhrc.nic.in. 1-year limitation."},
 
-    # ─── Cyber & data protection (10) ───
+    # Cyber & data protection (10)
     {"id":"lg-x-131","domain":"Legal","lang":"en","topic":"IT Act §66 — hacking",
      "source":"IT Act 2000 §66","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Unauthorised access, downloading, virus introduction etc. Up to 3 years + ₹5 lakh fine. Cognizable, bailable. Report to cybercrime.gov.in or jurisdictional police. State Cyber Cells handle investigation."},
@@ -933,7 +933,7 @@ EXPANSION_CHUNKS = [
      "source":"I4C · cybercrime.gov.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"cybercrime.gov.in — central reporting portal. Financial fraud: 1930 helpline (golden hour for transaction reversal). State cyber-crime cells in major cities. Save: screenshots, transaction IDs, sender phone/email, URL of fraudulent site."},
 
-    # ─── Consumer (5) ───
+    # Consumer (5)
     {"id":"lg-x-141","domain":"Legal","lang":"en","topic":"Consumer Protection Act 2019 — defective product",
      "source":"CPA 2019 §2(10), §85","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Defect — fault, imperfection, shortcoming in quality, quantity, potency, purity, standard. Product liability action against manufacturer (§83), service provider, or seller (§86). Compensation includes physical injury, mental agony, harassment."},
@@ -950,7 +950,7 @@ EXPANSION_CHUNKS = [
      "source":"Insurance Ombudsman Rules 2017","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"17 ombudsman offices across India for individual policyholder grievances up to ₹50 lakh. Free, fast (3 months target). Insurer's reply within 30 days required before approaching ombudsman. Online filing at cioins.co.in."},
 
-    # ─── Senior citizens & disability (5) ───
+    # Senior citizens & disability (5)
     {"id":"lg-x-146","domain":"Legal","lang":"en","topic":"MWPSC Act 2007 — maintenance for parents",
      "source":"Maintenance and Welfare of Parents and Senior Citizens Act 2007","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Parents/grandparents can claim monthly maintenance up to ₹10,000 from children. Tribunal (SDM-level) decides in 90 days. Eviction of unmaintainable parents punishable. Senior citizens' helpline 14567 (Elderline)."},
@@ -967,7 +967,7 @@ EXPANSION_CHUNKS = [
      "source":"UGC Regulations on Curbing the Menace of Ragging 2009","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Ragging is a cognisable offence. Anti-Ragging Squad on every campus. National Anti-Ragging Helpline 1800-180-5522 (24×7) and antiragging.in. Punishments: cancellation of admission, debarred from exams, expulsion, FIR, rustication."},
 
-    # ─── Misc legal (50 more) ───
+    # Misc legal (50 more)
     {"id":"lg-x-151","domain":"Legal","lang":"en","topic":"Bharatiya Sakshya Adhiniyam (BSA) 2023 — overview",
      "source":"BSA 2023","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Replaces Indian Evidence Act 1872. Largely retains old structure. Electronic records and digital evidence treated on par with paper. Hearsay rules retained. Sections renumbered — major casebooks now use BSA references."},
@@ -1092,7 +1092,7 @@ EXPANSION_CHUNKS = [
      "source":"Environment Protection Act 1986 + NGT Act 2010","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Pollution complaints to State Pollution Control Board. Persistent issues to NGT (National Green Tribunal). Air, water, noise, hazardous waste regulations under EPA 1986 rules. PIL also a route — NGT often more effective for specific cases."},
 
-    # ─── More family/personal (10) ───
+    # More family/personal (10)
     {"id":"lg-x-191","domain":"Legal","lang":"en","topic":"Inter-faith marriage challenges",
      "source":"Special Marriage Act 1954 + State Anti-Conversion Laws","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"SMA 1954 — 30-day notice + public objection process. Anti-conversion laws in UP/UK/MP/HP/Gujarat/Karnataka etc. require declaration to DM 60 days before conversion-for-marriage. Constitutional validity under SC challenge."},
@@ -1124,7 +1124,7 @@ EXPANSION_CHUNKS = [
      "source":"Passports Act 1967","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Right to travel a fundamental right (Maneka Gandhi 1978). Passport authority may refuse/impound on specified grounds — court can review. Police clearance required for fresh adult passport in most cases. Tatkal scheme for urgent need."},
 
-    # ─── Hindi versions of common queries (15) ───
+    # Hindi versions of common queries (15)
     {"id":"lg-x-201","domain":"Legal","lang":"hi","topic":"FIR दर्ज न हो तो क्या करें (Hindi)",
      "source":"BNSS 2023 + Lalita Kumari","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"पुलिस FIR दर्ज न करे तो: (1) Superintendent of Police को लिखित शिकायत (BNSS §173(4))। (2) Magistrate के पास §175(3) BNSS के तहत complaint। (3) State Cyber-Cell या ऑनलाइन eFIR portal। (4) NHRC/SHRC में शिकायत।"},
@@ -1171,7 +1171,7 @@ EXPANSION_CHUNKS = [
      "source":"Indian Succession Act 1925","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"बालिग (18+) सही दिमाग का व्यक्ति। 2 गवाहों के सामने हस्ताक्षर। Stamp duty नहीं लगती; registration optional लेकिन सुझावित। मुंबई/कोलकाता/चेन्नई में probate ज़रूरी। कभी भी बदली/रद्द की जा सकती है।"},
 
-    # ─── German legal (10) ───
+    # German legal (10)
     {"id":"lg-x-216","domain":"Legal","lang":"de","topic":"Mietrecht — Kündigung durch Vermieter (German)",
      "source":"BGB §573","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Vermieter braucht berechtigtes Interesse: Eigenbedarf, schuldhafte Vertragsverletzung (z. B. Mietrückstand), wirtschaftliche Verwertung. Kündigungsfristen: 3 Monate (Mietdauer <5 J), 6 Monate (5-8 J), 9 Monate (>8 J). Schriftform mit Begründung Pflicht."},
@@ -1203,7 +1203,7 @@ EXPANSION_CHUNKS = [
      "source":"GewSchG","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Gericht kann Täter Wohnungsbetretungsverbot, Kontaktverbot, Annäherungsverbot erteilen — auch ohne mündliche Verhandlung im Eilverfahren. Hilfetelefon 08000 116 016 (24/7, mehrsprachig). Polizei 110."},
 
-    # ─── More legal misc (25) ───
+    # More legal misc (25)
     {"id":"lg-x-226","domain":"Legal","lang":"en","topic":"Anti-conversion laws — state by state",
      "source":"State-level Acts","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"UP (UP Prohibition of Unlawful Conversion of Religion Ordinance 2020), MP, HP, Uttarakhand, Gujarat, Karnataka, Haryana, Jharkhand. Require declaration 30-60 days before conversion. Burden of proof on accused. Constitutional validity under SC challenge."},
@@ -1286,7 +1286,7 @@ EXPANSION_CHUNKS = [
     # GOVERNMENT SCHEMES — ~200 chunks
     # ═════════════════════════════════════════════════════════════════════
 
-    # ─── Health-sector schemes (15) ───
+    # Health-sector schemes (15)
     {"id":"gs-x-01","domain":"Government Schemes","lang":"en","topic":"PM-JAY — empanelled hospital network",
      "source":"NHA · pmjay.gov.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"30,000+ empanelled hospitals (public + private) across India. Cashless treatment via Ayushman card. Check empanelled list on pmjay.gov.in / Ayushman Bharat PMJAY app. ABHA (health account ID) recommended for portable records."},
@@ -1333,7 +1333,7 @@ EXPANSION_CHUNKS = [
      "source":"MoHFW","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Free antenatal check-ups by gynaecologist on 9th of every month at all public health facilities. Identifies high-risk pregnancies. Volunteer private practitioners encouraged. Reduces maternal/infant mortality."},
 
-    # ─── Agriculture/farmer schemes (15) ───
+    # Agriculture/farmer schemes (15)
     {"id":"gs-x-16","domain":"Government Schemes","lang":"en","topic":"PM Fasal Bima Yojana",
      "source":"Ministry of Agriculture","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Crop insurance: farmer pays 2% (kharif), 1.5% (rabi), 5% (commercial/horticulture). Rest by government. Covers pre-sowing to post-harvest losses. Voluntary for non-loanee farmers from 2020. Apply via CSC, bank, online."},
@@ -1380,7 +1380,7 @@ EXPANSION_CHUNKS = [
      "source":"CACP · Department of Agriculture","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Announced for 23 crops (Kharif + Rabi seasons). Procurement primarily through FCI (rice, wheat) and NAFED/state agencies (pulses, oilseeds). Sell at mandi or e-NAM. Price + bonus + freight assistance vary by state."},
 
-    # ─── Education schemes (15) ───
+    # Education schemes (15)
     {"id":"gs-x-31","domain":"Government Schemes","lang":"en","topic":"PM-USHA — undergraduate higher education",
      "source":"Ministry of Education","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Centrally-sponsored scheme for state higher education institutions. Funding for infrastructure, faculty, equity initiatives. Replaces RUSA 2.0. State-level higher education councils coordinate."},
@@ -1427,7 +1427,7 @@ EXPANSION_CHUNKS = [
      "source":"Ministry of Education · NCERT","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Foundational Literacy and Numeracy for classes 1-3 by 2026-27 (NEP target). State-level FLN missions. Teacher training, learning material, parental engagement. Major school-system reform."},
 
-    # ─── Housing & infrastructure (10) ───
+    # Housing & infrastructure (10)
     {"id":"gs-x-46","domain":"Government Schemes","lang":"en","topic":"PMAY-U — Pradhan Mantri Awas Yojana Urban",
      "source":"MoHUA","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"4 verticals: In-Situ Slum Redevelopment, Credit Linked Subsidy Scheme (CLSS), Affordable Housing in Partnership, Beneficiary-Led Construction. EWS up to ₹3 lakh income; LIG ₹3-6 lakh; MIG-I ₹6-12 lakh; MIG-II ₹12-18 lakh."},
@@ -1459,7 +1459,7 @@ EXPANSION_CHUNKS = [
      "source":"MoHUA","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Sub-scheme of PMAY-U. Repurposed government-funded vacant houses + concession to private/public entities to build new. Rents 30-50% below market. For urban migrants and EWS — particularly post-Covid relevance."},
 
-    # ─── Women & child schemes (15) ───
+    # Women & child schemes (15)
     {"id":"gs-x-56","domain":"Government Schemes","lang":"en","topic":"Beti Bachao Beti Padhao (BBBP)",
      "source":"MWCD","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Multi-sectoral approach addressing declining child sex ratio + girl education. PCPNDT enforcement, awareness, school enrolment drives. Funds disbursed to districts. Awareness > direct cash transfer."},
@@ -1506,7 +1506,7 @@ EXPANSION_CHUNKS = [
      "source":"MWCD","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Honorarium-based (₹4,500-10,000/month, state-varying). Recent SC ruling: entitled to gratuity. Performance-based incentives. Often local women — selection by Gram Sabha. Major source of informal women employment in rural India."},
 
-    # ─── State schemes — by state (50) ───
+    # State schemes — by state (50)
     {"id":"gs-x-71","domain":"Government Schemes","lang":"en","topic":"Karnataka Shakti — free women bus travel",
      "source":"Karnataka KSRTC","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Free travel for women in non-premium KSRTC/BMTC buses across Karnataka. Shakti Smart Card or any Aadhaar/ID at conductor. ~₹4,000 crore annual outlay. Massive uptake — ~3 crore trips/day."},
@@ -1698,7 +1698,7 @@ EXPANSION_CHUNKS = [
      "source":"HP Social Justice","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"₹4,000/month + free education up to PhD + ₹2 lakh marriage assistance for children in care institutions (orphans, abandoned, victims of trafficking). HP first state with such comprehensive package."},
 
-    # ─── Insurance & social security (15) ───
+    # Insurance & social security (15)
     {"id":"gs-x-131","domain":"Government Schemes","lang":"en","topic":"PM-SYM — Shram Yogi Maandhan",
      "source":"MoLE · maandhan.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"₹3,000/month pension at 60 for unorganised workers (monthly income < ₹15,000). Contribution ₹55-200/month + matching government share. Apply via CSC. eShram card automatic enrolment in 2024."},
@@ -1745,7 +1745,7 @@ EXPANSION_CHUNKS = [
      "source":"Ministry of Finance (notified 2024)","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"For central government employees joining 1 April 2025 onward. Guaranteed 50% of last drawn salary as pension (after 25 years) + family pension + minimum ₹10,000. Hybrid between OPS and NPS."},
 
-    # ─── Misc schemes (25) ───
+    # Misc schemes (25)
     {"id":"gs-x-146","domain":"Government Schemes","lang":"en","topic":"DigiLocker",
      "source":"MeitY · digilocker.gov.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Secure cloud storage for government-issued documents. Aadhaar-linked. Issued documents (driving licence, vehicle RC, certificates) digitally verifiable + legally equivalent. Integrated with multiple departments."},
@@ -1825,7 +1825,7 @@ EXPANSION_CHUNKS = [
      "source":"MDoNER","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"₹6,600 crore for North-East infrastructure, livelihood, social development 2022-26. State-specific projects. Application through state government. Complements North East Special Infrastructure Development Scheme."},
 
-    # ─── Hindi versions (15) ───
+    # Hindi versions (15)
     {"id":"gs-x-171","domain":"Government Schemes","lang":"hi","topic":"प्रधानमंत्री किसान सम्मान निधि (Hindi)",
      "source":"pmkisan.gov.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"छोटे और सीमांत किसानों को ₹6,000/वर्ष (₹2,000 की 3 किस्तें) सीधे बैंक खाते में। आवेदन: pmkisan.gov.in पर ऑनलाइन या CSC में। ज़रूरी: ज़मीन के दस्तावेज़, आधार, बैंक खाता। eKYC अनिवार्य।"},
@@ -1872,7 +1872,7 @@ EXPANSION_CHUNKS = [
      "source":"mksy.up.gov.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"UP की बेटियों के जीवन के 6 चरणों में ₹25,000 तक: जन्म ₹2,000, 1 साल टीकाकरण ₹1,000, कक्षा 1 ₹2,000, कक्षा 6 ₹2,000, कक्षा 9 ₹3,000, स्नातक ₹5,000। आय < ₹3 लाख। ऑनलाइन apply।"},
 
-    # ─── German variants (10) ───
+    # German variants (10)
     {"id":"gs-x-186","domain":"Government Schemes","lang":"de","topic":"Kindergeld (Deutschland) (German)",
      "source":"Familienkasse","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"250 € pro Kind und Monat (Stand 2024). Antrag bei Familienkasse. Bis 18 (oder 25 bei Ausbildung). Auch Eltern aus EU-Staaten und Drittländern mit Aufenthaltstitel anspruchsberechtigt."},
@@ -1904,7 +1904,7 @@ EXPANSION_CHUNKS = [
      "source":"SGB XI","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Pflegegrad 2: 332 €/Monat, 3: 573 €, 4: 765 €, 5: 947 € (Stand 2024). Bei häuslicher Pflege durch Angehörige. Antrag bei Pflegekasse. Begutachtung durch MD (Medizinischen Dienst)."},
 
-    # ─── More misc (5) ───
+    # More misc (5)
     {"id":"gs-x-196","domain":"Government Schemes","lang":"en","topic":"PM-AJAY — SC Development Mission",
      "source":"Ministry of Social Justice","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Adarsh Gram + Grant-in-Aid for SCs. Habitat development, livelihood. Convergence with other schemes for integrated village development. 27,000+ SC-majority villages identified."},
@@ -1925,7 +1925,7 @@ EXPANSION_CHUNKS = [
     # SAFETY — ~100 chunks
     # ═════════════════════════════════════════════════════════════════════
 
-    # ─── Cyber and online safety (15) ───
+    # Cyber and online safety (15)
     {"id":"sf-x-01","domain":"Safety","lang":"en","topic":"Phishing — recognise and report",
      "source":"I4C · cybercrime.gov.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Red flags: urgent action language, mismatched sender domain, suspicious links, generic greeting, request for OTP/passwords. Never share OTP. Forward suspicious SMS to 1909 (Sancharsaathi reporting), email to phishing@cybercrime.gov.in. Block + report sender."},
@@ -1972,7 +1972,7 @@ EXPANSION_CHUNKS = [
      "source":"NIST 800-63B","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Unique passwords per site via password manager (Bitwarden, 1Password). 12+ characters, passphrase-style. Never reuse across financial accounts. Check haveibeenpwned.com periodically. Avoid 'security questions' answers that match social-media disclosures."},
 
-    # ─── Physical safety — gendered (15) ───
+    # Physical safety — gendered (15)
     {"id":"sf-x-16","domain":"Safety","lang":"en","topic":"Public transport safety — women",
      "source":"MoHUA · IRCTC","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"GRP helpline 1512 (railways). 139 (general railway). Reserve in ladies' coach/RAC. Avoid empty coaches at night. Share PNR with family. Most metros have CISF — flag distress to nearest officer. Delhi metro Pink panic button."},
@@ -2019,7 +2019,7 @@ EXPANSION_CHUNKS = [
      "source":"NALSA judgment + Naz Foundation","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Naz Foundation (Delhi) +91-11-26910499 — counselling, legal. Sahodaran (Chennai/Kerala) — trans women support. Sweekar (NIMHANS) — Indian queer parents. Crime by family/community can be FIR'd under regular criminal sections. Pride NGOs in metros offer support networks."},
 
-    # ─── Medical emergencies (15) ───
+    # Medical emergencies (15)
     {"id":"sf-x-31","domain":"Safety","lang":"en","topic":"Heart attack — recognising signs",
      "source":"American Heart Association","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Chest pain/pressure (not always crushing), spreading to jaw/arm/back, sweating, nausea, shortness of breath, sudden weakness. Women, diabetics may have atypical (fatigue, indigestion). Call 108/102/112 immediately. Chew aspirin (300mg) if available and not allergic."},
@@ -2066,7 +2066,7 @@ EXPANSION_CHUNKS = [
      "source":"MoHFW","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Most Indian scorpion stings — local pain, swelling, manage with cold compress + paracetamol. Red flags (Indian red scorpion — Mahabaleshwar / Konkan / coastal): vomiting, sweating, breathing difficulty — hospital + prazosin treatment. Don't apply ice or cut."},
 
-    # ─── Disaster preparedness (10) ───
+    # Disaster preparedness (10)
     {"id":"sf-x-46","domain":"Safety","lang":"en","topic":"Earthquake — during shaking",
      "source":"NDMA","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Drop, Cover, Hold. Get under sturdy table; protect head. Stay away from windows + tall furniture. If outdoors: open area, away from buildings/wires. If driving: pull over, stay in vehicle. Most injuries: falling objects, not building collapse."},
@@ -2098,7 +2098,7 @@ EXPANSION_CHUNKS = [
      "source":"NDMA disaster preparedness","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"3-day water (4L/person/day), non-perishable food, ID copies in waterproof bag, cash, torch + batteries, first aid kit, prescription medicines, hand-crank radio, whistle, multi-tool, mobile charger + power bank, masks, contact list on paper."},
 
-    # ─── Children & elder safety (10) ───
+    # Children & elder safety (10)
     {"id":"sf-x-56","domain":"Safety","lang":"en","topic":"Childline 1098",
      "source":"MWCD · childlineindia.org","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"24×7 emergency helpline for children in distress (abuse, missing, abandoned, runaway, trafficking, exploitation). Pan-India. NGO-staffed but government-supported. Free calls. Coordinates with police, hospital, CWC (Child Welfare Committee)."},
@@ -2130,7 +2130,7 @@ EXPANSION_CHUNKS = [
      "source":"ARDSI · NIMHANS","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"ID bracelet with name/phone/'memory loss — please call family'. GPS tracker (Apple AirTag in wallet). Door alarms / locks high or low (out of usual sight line). Lock kitchen knives, gas. ARDSI (alzheimerindia.org) helpline + support groups."},
 
-    # ─── Vehicle/road safety (10) ───
+    # Vehicle/road safety (10)
     {"id":"sf-x-66","domain":"Safety","lang":"en","topic":"Road accident — Good Samaritan rights",
      "source":"MV Act §134A (2019)","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Helping accident victim — no civil/criminal liability for actions taken in good faith. Cannot be detained at hospital. Don't have to disclose identity. Hospital must give 'cashless treatment' for first hour (golden hour). Call 108 + 112."},
@@ -2162,7 +2162,7 @@ EXPANSION_CHUNKS = [
      "source":"MoRTH 2022 amendment","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"From 2022: children under 4 must use child restraint (car seat) on motorcycle (limit 40 km/h, helmet from age 4) AND on passenger cars. Rear-facing infant seat 0-2, forward facing 2-4, booster 4-12 ideally."},
 
-    # ─── Hindi safety chunks (10) ───
+    # Hindi safety chunks (10)
     {"id":"sf-x-76","domain":"Safety","lang":"hi","topic":"पैसा साइबर ठगी से वापस — golden hour (Hindi)",
      "source":"1930 · cybercrime.gov.in","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"OTP देने / ठगी होने के तुरंत बाद: (1) 1930 पर कॉल करें, (2) cybercrime.gov.in पर ऑनलाइन शिकायत, (3) बैंक के fraud helpline पर भी। 1 घंटे के अंदर रिपोर्ट करें — पैसा वापस होने की संभावना सबसे ज़्यादा।"},
@@ -2194,7 +2194,7 @@ EXPANSION_CHUNKS = [
      "source":"MHA · All emergency directories","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"112 (single emergency), 100 (police), 101 (fire), 102/108 (ambulance), 1091 (महिला), 1098 (बच्चे), 1930 (साइबर ठगी), 1078 (आपदा), 1077 (राज्य आपदा), 14416 (Tele-MANAS मानसिक स्वास्थ्य), 14567 (Elderline)।"},
 
-    # ─── German safety (5) ───
+    # German safety (5)
     {"id":"sf-x-86","domain":"Safety","lang":"de","topic":"Erste Hilfe Herzinfarkt (German)",
      "source":"Deutsche Herzstiftung","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Plötzlicher Brustdruck, Ausstrahlung in Arm/Kiefer/Rücken, Schweißausbruch, Atemnot. Sofort 112 anrufen. Bei Bewusstlosigkeit + keine Atmung: Herzdruckmassage (100-120/min) bis Rettungsdienst kommt."},
@@ -2211,7 +2211,7 @@ EXPANSION_CHUNKS = [
      "source":"BKA Cybercrime","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Bei Phishing/Betrug: Online-Wache der Landespolizei nutzen. Bei Identitätsdiebstahl: Beweise sichern (Screenshots), Konten sperren, Strafanzeige. Verbraucherzentrale berät zu Internetbetrug. BSI Bürger-CERT informiert über aktuelle Bedrohungen."},
 
-    # ─── More safety misc (10) ───
+    # More safety misc (10)
     {"id":"sf-x-91","domain":"Safety","lang":"en","topic":"Mental-health crisis at home — what to do",
      "source":"NIMHANS · iCall","lastVerifiedOn":"2025-10-15","verifiedBy":"human",
      "text":"Person threatening self-harm: stay calm, remove access to means (medications, sharp objects). Don't argue or moralise. Call iCall 9152987821, Vandrevala 1860-2662-345, Tele-MANAS 14416. Active danger: 112 + nearest psychiatric ER. Don't leave alone if actively suicidal."},

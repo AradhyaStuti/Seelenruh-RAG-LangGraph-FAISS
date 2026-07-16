@@ -7,9 +7,7 @@ import time
 from statistics import mean, median, stdev
 from typing import Any
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Patterns
-# ──────────────────────────────────────────────────────────────────────────────
+# Patterns used for hallucination detection and language checks
 
 _HALLUCINATION_PATTERNS = [
     re.compile(r"\b(18\s*USC|US\s*Code|Federal\s*Court|Supreme\s*Court\s*of\s*the\s*United\s*States)\b", re.I),
@@ -33,9 +31,7 @@ _LANGUAGE_RE = {
 }
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Per-case metric functions
-# ──────────────────────────────────────────────────────────────────────────────
+# Per-probe metric functions
 
 def classification_accuracy(case: dict, result: dict) -> bool:
     """True when the routed domain matches expected_category (case-insensitive)."""
@@ -157,17 +153,10 @@ def latency_ok(elapsed_s: float, threshold_s: float = 8.0) -> bool:
     return elapsed_s <= threshold_s
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Aggregate metric functions
-# ──────────────────────────────────────────────────────────────────────────────
+# Aggregate functions — used to roll up per-probe scores into a summary
 
 def aggregate(results: list[dict]) -> dict:
-    """
-    Compute aggregate metrics across all result dicts.
-
-    Each result dict is expected to have the structure returned by
-    EvaluationResult.to_dict().
-    """
+    """Roll up all per-probe result dicts into a single aggregate score dict."""
     if not results:
         return {}
 
