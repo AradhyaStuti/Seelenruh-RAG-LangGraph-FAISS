@@ -992,7 +992,7 @@ export default function ChatAssistant({ onDomainChange }) {
                               type="button"
                               onClick={() => handlePersonaSelect(name)}
                               className={cn(
-                                "group rounded-[1.35rem] border p-3.5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
+                                "group rounded-[1.35rem] border p-2.5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
                                 active
                                   ? "border-primary/35 bg-gradient-to-br from-primary/12 to-primary/5 shadow-[0_12px_40px_rgba(124,185,232,0.16)]"
                                   : "border-border/45 bg-background/60 hover:border-primary/25"
@@ -1000,8 +1000,8 @@ export default function ChatAssistant({ onDomainChange }) {
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex min-w-0 items-center gap-2.5">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
-                                    <Icon className="h-5 w-5" />
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                                    <Icon className="h-4 w-4" />
                                   </div>
                                   <div className="min-w-0">
                                     <p className="text-sm font-semibold text-foreground/90">{config.persona}</p>
@@ -1015,37 +1015,11 @@ export default function ChatAssistant({ onDomainChange }) {
                                   {active ? "Active" : "Open"}
                                 </span>
                               </div>
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {config.quickReplies.slice(0, 2).map((prompt) => (
-                                  <span key={prompt} className="rounded-full border border-border/40 bg-background/70 px-2.5 py-1 text-[10px] text-muted-foreground/80">
-                                    {prompt}
-                                  </span>
-                                ))}
-                              </div>
                             </button>
                           );
                         })}
                       </div>
 
-                      <div className="rounded-[1.35rem] border border-border/45 bg-background/65 p-3.5 sm:p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-foreground/90">Popular prompts</p>
-                            <p className="text-[12px] text-muted-foreground/75">Start with one of these and let Seelenruh guide the rest.</p>
-                          </div>
-                          <div className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-600">
-                            Instant help
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <QuickReplies
-                            prompts={heroPrompts}
-                            onSelect={(p) => sendTextMessage(p)}
-                            disabled={isLoading}
-                            className="justify-start"
-                          />
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ) : (
