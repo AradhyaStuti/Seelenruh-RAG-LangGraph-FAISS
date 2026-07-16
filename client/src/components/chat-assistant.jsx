@@ -175,6 +175,7 @@ export default function ChatAssistant({ onDomainChange }) {
   const [hydrated, setHydrated] = useState(false);
 
   const [chatView, setChatView] = useState(false);
+  const [moodOpen, setMoodOpen] = useState(false);
   const [pendingDomain, setPendingDomain] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
@@ -959,6 +960,31 @@ export default function ChatAssistant({ onDomainChange }) {
                           type="button"
                           variant="ghost"
                           size="sm"
+                          onClick={() => setMoodOpen((v) => !v)}
+                          className={cn(
+                            "text-[11px] gap-1.5 h-8 rounded-full transition-colors",
+                            moodOpen
+                              ? "bg-primary/12 text-primary"
+                              : "hover:bg-primary/10 hover:text-primary"
+                          )}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M8 13s1.5 2 4 2 4-2 4-2" />
+                            <line x1="9" y1="9" x2="9.01" y2="9" />
+                            <line x1="15" y1="9" x2="15.01" y2="9" />
+                          </svg>
+                          <span className="hidden sm:inline">Mood</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Check in with your mood</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={startNewChat}
                           disabled={isLoading || !currentDomainState.activeId}
                           className="text-[11px] gap-1.5 h-8 rounded-full hover:bg-primary/10 hover:text-primary"
@@ -1342,6 +1368,12 @@ export default function ChatAssistant({ onDomainChange }) {
                 </ScrollArea>
                 )} {/* end hero / message view */}
 
+                {moodOpen && (
+                  <div className="mt-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                    <MoodCheckIn onMoodChange={(m) => { setMood(m); setMoodOpen(false); }} />
+                  </div>
+                )}
+
                 <div className="mt-4">
                   {/* Hidden file input for document attachment */}
                   <input
@@ -1505,7 +1537,6 @@ export default function ChatAssistant({ onDomainChange }) {
             </Suspense>
           </CardContent>
         </Card>
-        <MoodCheckIn onMoodChange={setMood} />
       </div>
 
     </TooltipProvider>
