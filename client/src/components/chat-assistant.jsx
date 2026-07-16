@@ -50,13 +50,13 @@ import { loadMoments, saveMoment, removeMoment } from "@/components/saved-moment
 import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
 import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument } from "@/lib/api";
-const EligibilityChecker = lazy(() => import("@/components/eligibility-checker").then(m => ({ default: m.EligibilityChecker })));
 import { ExplainabilityPanel } from "@/components/explainability-panel";
 import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { getLang, setLang, subscribeLang, LANGS } from "@/lib/lang";
+const EligibilityChecker = lazy(() => import("@/components/eligibility-checker").then(m => ({ default: m.EligibilityChecker })));
 
 const formSchema = z.object({
   message: z
