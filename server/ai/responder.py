@@ -231,7 +231,7 @@ SAFETY RAILS:
 
 SAFETY FIRST — if violence, abuse, assault, trafficking, kidnapping, stalking, blackmail, child abuse, missing person, or suicidal crisis: address safety BEFORE law. Lead with the helpline (112 / 1091 / 1930), then legal rights. Never open with "Under Section X..." when someone describes danger.
 
-ASK BEFORE ASSUMING — if critical facts are missing, ask ONE or TWO focused questions before giving guidance:
+ASK BEFORE ASSUMING — if critical facts are missing, ask ONE focused question before giving guidance:
 - Divorce/inheritance → personal law (Hindu / Muslim / Christian / Special Marriage Act)?
 - Tenant/landlord → state? occupancy type (flat / PG / commercial / agricultural)?
 - Employment → worker type? still employed? months unpaid? written contract?
@@ -496,12 +496,25 @@ def _build_messages(*, query: str, intent: str, emotion: str, lang: str,
     lang_instr = LANG_INSTRUCTIONS.get(lang, LANG_INSTRUCTIONS["auto"])
 
     if retrieved:
-        retrieved_block = "\n\n".join(
-            f"[Source {i+1} — {h['topic']}]\n{h['text'].strip()}"
-            for i, h in enumerate(retrieved)
-        )
+        parts = []
+        for i, h in enumerate(retrieved):
+            header = f"[Source {i+1} — {h['topic']}]"
+            if h.get("sourceUrl"):
+                header += f"\n  URL: {h['sourceUrl']}"
+            if h.get("source"):
+                header += f"\n  Authority: {h['source']}"
+            parts.append(f"{header}\n{h['text'].strip()}")
+        retrieved_block = "\n\n".join(parts)
     else:
-        retrieved_block = "(no specific chunks retrieved — answer cautiously)"
+        retrieved_block = (
+            "(no specific chunks retrieved)\n"
+            "EMPTY RETRIEVAL — the knowledge base returned nothing for this query. "
+            "Do NOT fabricate facts, laws, section numbers, or scheme details. "
+            "Answer only from what you know with high confidence (well-established laws, "
+            "major emergency numbers, widely-known schemes). "
+            "Explicitly tell the user you don't have detailed information on this specific topic "
+            "and direct them to the relevant official source or helpline listed below."
+        )
 
     fallback = FALLBACK_LINKS.get(intent, "")
 
@@ -516,6 +529,10 @@ Retrieved knowledge (your primary source — quote / cite from these; do not inv
 
 UNCERTAINTY RULE — if you are not sure about a fact, say so explicitly: "I'm not certain about this" or "you should verify this from an official source". Never guess or fill gaps with plausible-sounding information.
 
+FOLLOW-UP QUESTION RULE — never ask more than ONE question per response. If you need information, pick the single most important question and ask only that. Do not stack multiple questions even if you have several.
+
+OPENING CLICHÉ RULE — never open a response with: "Certainly!", "Of course!", "Sure!", "Absolutely!", "Great question!", "I'd be happy to help", "That's a great question". Start directly with the substance of your reply.
+
 GOAL FOLLOW-UP RULE — if the context mentions a user goal (e.g. "User's current goal: file an RTI"), and you have already explained the steps in a previous turn, briefly check in: "Have you been able to take the first step?" or "Did you manage to [goal]?" — only once per conversation, naturally, not as a checklist item.
 
 CITATION FORMAT — strict:
@@ -526,7 +543,9 @@ CITATION FORMAT — strict:
 - If you don't use any retrieved source for a sentence, leave it uncited.
 
 Authoritative links you may reference:
-{fallback}"""
+{fallback}
+
+{SOURCES_SECTION_PROMPT}"""
 
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
     messages.extend({"role": m["role"], "content": m["content"]} for m in history)
@@ -557,6 +576,7 @@ async def stream_respond(
     history: list[dict],
     retrieved: list[dict],
     context: str = "",
+    fast_mode: bool = False,
     _via_bag: dict | None = None,
 ):
     """Async generator yielding text tokens. Falls back Groq → Ollama → Anthropic → non-streaming."""
@@ -567,7 +587,9 @@ async def stream_respond(
         query=query, intent=intent, emotion=emotion, lang=lang,
         history=history, retrieved=retrieved, context=context,
     )
-    _opts = dict(messages=messages, model=GROQ_MODEL_SMART, temperature=0.3, max_tokens=900)
+    _model = GROQ_MODEL_FAST if fast_mode else GROQ_MODEL_SMART
+    _max_tokens = 500 if fast_mode else 900
+    _opts = dict(messages=messages, model=_model, temperature=0.3, max_tokens=_max_tokens)
 
     try:
         first = True

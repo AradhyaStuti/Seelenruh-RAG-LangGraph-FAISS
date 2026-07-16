@@ -1,4 +1,4 @@
-"""Groq → Ollama → Anthropic fallback chain, each wrapped by a circuit breaker."""
+"""Try Groq first, then fall back to Ollama or Anthropic when needed."""
 import json
 import time
 

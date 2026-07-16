@@ -11,7 +11,26 @@ from logger import get_logger
 log = get_logger("store")
 
 # Bump when the meta schema changes so older caches get rebuilt.
-META_VERSION = 4
+META_VERSION = 5
+
+# All chunk fields that should survive serialisation to meta.json.
+# Includes both raw knowledge-base fields and enriched fields from enrich_chunk().
+_CHUNK_FIELDS = frozenset({
+    # Core identity
+    "id", "domain", "topic", "text", "lang",
+    # Source provenance
+    "source", "sourceUrl", "lastVerifiedOn", "verifiedBy",
+    # Enriched metadata (computed by enrich_chunk() at index-build time)
+    "documentType", "sourceAuthority", "reviewStatus",
+    "reviewNote", "reviewFrequency",
+    # Optional raw overrides from the knowledge base
+    "jurisdiction", "currentStatus", "supersededBy", "deprecated",
+})
+
+
+def _serialise(item: dict) -> dict:
+    """Keep only known fields and drop None values for compact JSON storage."""
+    return {k: v for k, v in item.items() if k in _CHUNK_FIELDS and v is not None}
 
 CACHE_DIR = Path(__file__).parent / ".cache"
 INDEX_PATH = CACHE_DIR / "faiss.index"
@@ -31,18 +50,8 @@ class VectorStore:
         d = vectors.shape[1]
         self.index = faiss.IndexFlatIP(d)
         self.index.add(vectors)
-        self.meta = [
-            {
-                "id": it["id"],
-                "domain": it["domain"],
-                "topic": it["topic"],
-                "text": it["text"],
-                "source": it.get("source"),
-                "lastVerifiedOn": it.get("lastVerifiedOn"),
-                "verifiedBy": it.get("verifiedBy", "human"),
-            }
-            for it in items
-        ]
+        # Preserve all enriched metadata so authority scoring and source badges work correctly.
+        self.meta = [_serialise(it) for it in items]
 
     def _rotate_snapshots(self) -> None:
         """Shift existing snapshots up by one slot, evicting the oldest."""
@@ -114,18 +123,7 @@ class VectorStore:
             self.save()
             return
         self.index.add(vectors)
-        self.meta.extend([
-            {
-                "id": it["id"],
-                "domain": it["domain"],
-                "topic": it["topic"],
-                "text": it["text"],
-                "source": it.get("source"),
-                "lastVerifiedOn": it.get("lastVerifiedOn"),
-                "verifiedBy": it.get("verifiedBy", "human"),
-            }
-            for it in items
-        ])
+        self.meta.extend([_serialise(it) for it in items])
         self.save()
 
     def delete_chunks(self, ids: list[str]) -> int:

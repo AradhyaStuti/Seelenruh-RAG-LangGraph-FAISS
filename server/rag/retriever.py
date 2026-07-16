@@ -21,6 +21,7 @@ from logger import get_logger
 log = get_logger("retriever")
 
 
+# Single-token Hinglish → English (processed per token in _normalize_query)
 _HINGLISH_MAP = {
     # common Hinglish contractions / misspellings → clean English equivalents
     "kaise": "how to", "karu": "do", "kru": "do", "karein": "how to",
@@ -52,40 +53,16 @@ _HINGLISH_MAP = {
     "wasiyat": "will testament inheritance",
     "waris": "legal heir successor", "vaaris": "legal heir",
     "muqadma": "case lawsuit complaint registered",
-    # property and housing
+    # property and housing — single-token only; multi-word phrases handled below
     "kiraya": "rent payment", "kiraaya": "rent",
     "kirayedaar": "tenant renter", "kiraydar": "tenant",
-    "makan maalik": "landlord", "makaanmaalik": "landlord",
-    "ghar se nikaala": "eviction evicted illegally",
-    "bahar kar diya": "evicted thrown out illegal",
-    "daakhil karo": "file submit application",
-    "zameen ka hak": "land rights property ownership",
-    # employment Hinglish
+    "makaanmaalik": "landlord",   # camelCase / no-space variant
+    # employment Hinglish — single-token only
     "tankhwaah": "salary wages", "tankha": "salary wages",
     "tankhah": "salary wages", "talab": "salary wages",
-    "salary nahi mili": "unpaid wages salary withheld",
-    "salary nahi di": "unpaid wages employer withheld salary",
-    "salary pending": "salary unpaid wages pending",
-    "paise nahi mile": "salary wages not received unpaid",
-    "naukri gayi": "job terminated dismissed",
-    "naukri se nikaala": "wrongful termination dismissed",
-    "job se hataya": "wrongful termination dismissed",
-    "terminate kar diya": "termination dismissed employment",
-    "naukri chod di": "resigned from job employment",
-    "resign kar diya": "resignation employment",
     "mazdoor": "worker labour employee",
     "thekedar": "contractor employer",
     "f&f": "full and final settlement dues payable",
-    "f and f": "full and final settlement dues",
-    "final settlement": "full and final F&F dues payable on exit",
-    "full and final": "full and final settlement F&F dues",
-    "experience letter": "experience letter employment relieving",
-    "relieving letter": "relieving letter experience employment",
-    "notice period": "notice period pay employment contract",
-    "notice period ka paisa": "notice period salary payment dues",
-    "company bhaag gayi": "employer absconded company closed wages unpaid",
-    "company band ho gayi": "company closed employer absconded dues pending",
-    "hisaab nahi hua": "dues not settled salary pending",
     # crime and fraud
     "dhoka": "fraud cheated deceived",
     "thagi": "fraud scam cheated",
@@ -108,6 +85,42 @@ _HINGLISH_MAP = {
     "awas": "housing shelter", "bijli": "electricity",
     "paani": "water", "shauchalay": "toilet sanitation",
 }
+
+# Multi-word Hinglish phrases → English equivalents.
+# Processed BEFORE per-token expansion using regex substitution on the full query string.
+# Previously these were dead keys in _HINGLISH_MAP because the token loop never saw them.
+_HINGLISH_PHRASES: list[tuple[re.Pattern, str]] = [
+    # Property / housing
+    (re.compile(r'\bmakan\s+maalik\b', re.I),   "landlord"),
+    (re.compile(r'\bghar\s+se\s+nikaala\b', re.I), "eviction evicted illegally"),
+    (re.compile(r'\bbahar\s+kar\s+diya\b', re.I),  "evicted thrown out illegal"),
+    (re.compile(r'\bdaakhil\s+karo\b', re.I),      "file submit application"),
+    (re.compile(r'\bzameen\s+ka\s+hak\b', re.I),   "land rights property ownership"),
+    # Employment — salary unpaid
+    (re.compile(r'\bsalary\s+nahi\s+mili\b', re.I),  "unpaid wages salary withheld"),
+    (re.compile(r'\bsalary\s+nahi\s+di\b', re.I),    "unpaid wages employer withheld salary"),
+    (re.compile(r'\bsalary\s+pending\b', re.I),       "salary unpaid wages pending"),
+    (re.compile(r'\bpaise\s+nahi\s+mile\b', re.I),    "salary wages not received unpaid"),
+    (re.compile(r'\bhisaab\s+nahi\s+hua\b', re.I),    "dues not settled salary pending"),
+    # Employment — termination
+    (re.compile(r'\bnaukri\s+gayi\b', re.I),           "job terminated dismissed"),
+    (re.compile(r'\bnaukri\s+se\s+nikaala\b', re.I),   "wrongful termination dismissed"),
+    (re.compile(r'\bjob\s+se\s+hataya\b', re.I),        "wrongful termination dismissed"),
+    (re.compile(r'\bterminate\s+kar\s+diya\b', re.I),  "termination dismissed employment"),
+    (re.compile(r'\bnaukri\s+chod\s+di\b', re.I),      "resigned from job employment"),
+    (re.compile(r'\bresign\s+kar\s+diya\b', re.I),      "resignation employment"),
+    # Employment — settlement documents
+    (re.compile(r'\bf\s+and\s+f\b', re.I),                  "full and final settlement dues"),
+    (re.compile(r'\bfinal\s+settlement\b', re.I),           "full and final F&F dues payable on exit"),
+    (re.compile(r'\bfull\s+and\s+final\b', re.I),           "full and final settlement F&F dues"),
+    (re.compile(r'\bexperience\s+letter\b', re.I),          "experience letter employment relieving"),
+    (re.compile(r'\brelieving\s+letter\b', re.I),           "relieving letter experience employment"),
+    (re.compile(r'\bnotice\s+period\s+ka\s+paisa\b', re.I), "notice period salary payment dues"),
+    (re.compile(r'\bnotice\s+period\b', re.I),               "notice period pay employment contract"),
+    # Company absconded
+    (re.compile(r'\bcompany\s+bhaag\s+gayi\b', re.I),    "employer absconded company closed wages unpaid"),
+    (re.compile(r'\bcompany\s+band\s+ho\s+gayi\b', re.I), "company closed employer absconded dues pending"),
+]
 
 _DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]+")
 
@@ -221,10 +234,15 @@ def _normalize_query(text: str) -> str:
     text = text.replace("ﬁ", "fi").replace("ﬂ", "fl").replace("ﬀ", "ff")
     text = text.replace("ﬃ", "ffi").replace("ﬄ", "ffl")
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
-    # Remove pure Devanagari tokens — multilingual-e5 handles them natively;
-    # keeping them avoids OOV but we don't expand them here.
-    # Expand common Hinglish words to their English equivalents for better
-    # semantic matching against English knowledge chunks.
+
+    # Phase 1: multi-word phrase expansion (must run BEFORE per-token loop;
+    # these patterns were dead keys in _HINGLISH_MAP because the token loop
+    # processes one whitespace-split token at a time and never sees phrases).
+    for phrase_re, replacement in _HINGLISH_PHRASES:
+        text = phrase_re.sub(replacement, text)
+
+    # Phase 2: per-token single-word Hinglish expansion.
+    # Devanagari tokens are left as-is — multilingual-e5 handles them natively.
     tokens = text.split()
     expanded = []
     for tok in tokens:
@@ -234,6 +252,97 @@ def _normalize_query(text: str) -> str:
         else:
             expanded.append(tok)
     return " ".join(expanded).strip()
+
+
+def _build_retrieval_query(query: str, history: Optional[list[dict]]) -> str:
+    """
+    For short follow-up queries that lack sufficient retrieval context
+    (e.g. "what documents?" after a DV discussion), prepend the most recent
+    user turn so the retriever understands what topic is being continued.
+
+    Only activates when query is ≤ 10 words — longer queries are self-contained.
+    The original query is appended at the end so the embedding space is dominated
+    by the user's actual intent, not the historical context.
+    """
+    if not history or len(query.split()) > 10:
+        return query
+    # Walk history in reverse to find the last user message
+    prev_user_content = next(
+        (m.get("content", "") for m in reversed(history) if m.get("role") == "user"),
+        None,
+    )
+    if not prev_user_content or len(prev_user_content.split()) < 3:
+        return query
+    # Use up to 100 characters of context — enough for topic signal, not noise
+    context_prefix = prev_user_content.strip()[:100]
+    return f"{context_prefix} {query}"
+
+
+# Scheme-specific query expansion — mirrors _LEGAL_EXPANSIONS for Government Schemes domain.
+# Activates on scheme abbreviations, Hinglish benefit names, and category keywords
+# that the per-token Hinglish map can't handle (they need semantic context to expand).
+_SCHEME_EXPANSIONS: list[tuple] = [
+    # Health insurance
+    (re.compile(r'\b(pm-?jay|pmjay|ayushman|health\s+card|jan\s+arogya)\b', re.I),
+     "Ayushman Bharat PM-JAY health insurance hospitalisation 5 lakh pmjay.gov.in 14555"),
+    # Housing
+    (re.compile(r'\b(pmay|pm\s?awas|pradhan\s+mantri\s+awas|affordable\s+housing\s+scheme|gramin\s+awas)\b', re.I),
+     "PM Awas Yojana PMAY housing subsidy pmaymis.gov.in rural urban CLSS interest subsidy"),
+    # Farmer income support
+    (re.compile(r'\b(pm-?kisan|pmkisan|kisan\s+samman|farmer.{0,10}(₹6000|6000|installment|samman))\b', re.I),
+     "PM-KISAN 6000 annual farmer income support installment pmkisan.gov.in 155261 land records"),
+    # Rural employment
+    (re.compile(r'\b(mgnrega|mnrega|narega|100.{0,5}days|job\s+card|mahatma\s+gandhi\s+rural)\b', re.I),
+     "MGNREGA 100 days employment guarantee wage rural job card nrega.nic.in"),
+    # Accident and life insurance
+    (re.compile(r'\b(pmsby|pmjjby|jan\s+suraksha|bima\s+yojana|accidental.{0,15}government|life\s+insurance.{0,15}government)\b', re.I),
+     "PMSBY PMJJBY Jan Suraksha accident life insurance 330 436 premium jansuraksha.gov.in"),
+    # Pension for unorganised
+    (re.compile(r'\b(atal\s+pension|apy\b|pension.{0,20}(poor|bpl|worker|unorganised|asangathit))\b', re.I),
+     "Atal Pension Yojana APY 1000 5000 monthly unorganised sector retirement NPS"),
+    # Scholarships
+    (re.compile(r'\b(nsp\b|national\s+scholarship|post.?matric|pre.?matric|merit.{0,10}scholarship|oasis\s+scholarship)\b', re.I),
+     "National Scholarship Portal scholarships.gov.in post-matric pre-matric merit NSP deadline"),
+    # LPG / Ujjwala
+    (re.compile(r'\b(ujjwala|pmuy|lpg.{0,15}(free|connection|bpl|cylinder)|free.{0,10}gas)\b', re.I),
+     "PM Ujjwala Yojana PMUY free LPG connection BPL women pmuy.gov.in"),
+    # e-Shram / unorganised workers
+    (re.compile(r'\b(e-?shram|eshram|asangathit|unorganised\s+worker|gig\s+worker.{0,15}register)\b', re.I),
+     "e-Shram portal eshram.gov.in unorganised worker registration card insurance social security"),
+    # MUDRA / micro-business loans
+    (re.compile(r'\b(mudra|pmmy|shishu\s+loan|kishore\s+loan|tarun\s+loan|micro.{0,10}enterprise.{0,10}loan)\b', re.I),
+     "MUDRA loan PMMY Shishu Kishore Tarun mudra.org.in micro enterprise business loan"),
+    # Ration / food security
+    (re.compile(r'\b(ration\s+card|pds|public\s+distribution|free\s+ration|pmgkay|antyodaya|aay\b)\b', re.I),
+     "ration card PDS public distribution free grain PMGKAY Antyodaya BPL food security"),
+    # Jan Dhan / financial inclusion
+    (re.compile(r'\b(jan\s+dhan|pmjdy|zero.{0,10}balance.{0,10}account|basic.{0,10}savings.{0,10}account)\b', re.I),
+     "Jan Dhan Yojana PMJDY zero balance bank account financial inclusion pmjdy.gov.in"),
+    # Category-specific benefits
+    (re.compile(r'\b(sc|st|obc|ews).{0,20}(scheme|reservation|quota|benefit|scholarship|yojana)\b', re.I),
+     "SC ST OBC EWS category scheme scholarship reservation benefit eligibility caste certificate"),
+    # Disability
+    (re.compile(r'\b(disability|divyang|viklang|handicap).{0,20}(scheme|pension|benefit|card|certificate)\b', re.I),
+     "disability Divyangjan scheme pension UDID card disability certificate welfare benefit"),
+    # Women / child schemes
+    (re.compile(r'\b(sukanya|beti\s+bachao|ladli|mahila\s+samridhi|maternity\s+benefit)\b', re.I),
+     "Sukanya Samriddhi Beti Bachao Beti Padhao Ladli maternity benefit girl child scheme savings"),
+    # Startup / MSME
+    (re.compile(r'\b(startup\s+india|stand.?up\s+india|msme\s+(loan|scheme|benefit)|udyam\s+registration)\b', re.I),
+     "Startup India Stand Up India MSME loan Udyam registration DPIIT recognition fund-of-funds"),
+]
+
+
+def _expand_scheme_query(query: str) -> str:
+    """Append scheme-specific terminology to Government Schemes queries before embedding."""
+    additions: list[str] = []
+    for pattern, expansion in _SCHEME_EXPANSIONS:
+        if pattern.search(query):
+            additions.append(expansion)
+    if not additions:
+        return query
+    return query + " " + " ".join(additions)
+
 
 _store = VectorStore()
 _ready = False
@@ -400,28 +509,44 @@ def _dedup(hits: list[dict]) -> list[dict]:
     return out
 
 
-async def retrieve(query: str, *, domain: Optional[str] = None, k: int = RETRIEVAL_TOP_K) -> list[dict]:
+async def retrieve(
+    query: str,
+    *,
+    domain: Optional[str] = None,
+    k: int = RETRIEVAL_TOP_K,
+    history: Optional[list[dict]] = None,
+) -> list[dict]:
     if not _ready:
         await init()
-    query = _normalize_query(query)
+
+    # Multi-turn context injection: for short follow-up queries, prepend the
+    # previous user turn so the retriever understands what topic is being continued.
+    retrieval_query = _build_retrieval_query(query, history)
+
+    # Normalise Hinglish (phrase pass + per-token pass)
+    retrieval_query = _normalize_query(retrieval_query)
+
+    # Domain-specific keyword expansion
     if domain == "Legal":
-        query = _expand_legal_query(query)
-    qv = await asyncio.to_thread(embedder.embed_one, f"query: {query}")
+        retrieval_query = _expand_legal_query(retrieval_query)
+    elif domain == "Government Schemes":
+        retrieval_query = _expand_scheme_query(retrieval_query)
+
+    qv = await asyncio.to_thread(embedder.embed_one, f"query: {retrieval_query}")
     fetch_k = _overfetch_k(k, domain)
 
     # Dense retrieval (FAISS)
     faiss_hits = _store.search(qv, k=fetch_k, domain=domain)
 
-    # Sparse retrieval (BM25) — only if available and have hits
+    # Sparse retrieval (BM25) — only if available
     if _BM25_AVAILABLE and _bm25_index is not None:
-        bm25_hits = _bm25_search(query, k=fetch_k, domain=domain)
-        # Fuse with Reciprocal Rank Fusion
+        bm25_hits = _bm25_search(retrieval_query, k=fetch_k, domain=domain)
         candidates = _rrf_fuse(faiss_hits, bm25_hits)
     else:
         candidates = faiss_hits
 
     if reranker.is_enabled() and len(candidates) > k:
-        results = await reranker.rerank(query, candidates, k=k)
+        results = await reranker.rerank(retrieval_query, candidates, k=k)
     else:
         results = candidates[:k]
 

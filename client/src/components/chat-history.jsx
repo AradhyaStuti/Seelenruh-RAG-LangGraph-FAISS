@@ -76,30 +76,37 @@ export function ChatHistoryDrawer({
             </div>
           </div>
 
-          <div className="px-4 pb-4 max-h-[60vh] overflow-y-auto">
+          <div
+            className="px-4 pb-4 max-h-[65vh] overflow-y-auto overscroll-contain"
+            role="region"
+            aria-label="Chat history list"
+          >
             {ordered.length === 0 ? (
-              <div className="text-center py-10 px-4">
-                <div className="mx-auto h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-                  <BlossomLogo className="h-6 w-6 text-muted-foreground/60" />
+              <div className="text-center py-12 px-4">
+                <div className="mx-auto h-14 w-14 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/50" aria-hidden>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
                 </div>
-                <p className="text-sm text-foreground/80 font-medium">No chats with {persona} yet</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Anything you say will be saved here and you can come back to it later.
+                <p className="text-sm text-foreground/75 font-medium">No chats with {persona} yet</p>
+                <p className="text-xs text-muted-foreground/65 mt-1 leading-relaxed max-w-[220px] mx-auto">
+                  Start a conversation — it will appear here so you can return to it later.
                 </p>
               </div>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="space-y-1.5" role="listbox" aria-label={`${persona}'s conversations`}>
                 {ordered.map((s) => {
                   const isActive = s.id === activeId;
                   const turns = s.messages.filter((m) => m.role === "user").length;
+                  const title = s.title || "New chat";
                   return (
-                    <li key={s.id}>
+                    <li key={s.id} role="option" aria-selected={isActive}>
                       <div
                         className={cn(
-                          "group flex items-start gap-2 rounded-2xl border p-3 transition-all",
+                          "group flex items-start gap-2 rounded-2xl border p-3 transition-all duration-150",
                           isActive
                             ? "border-primary/45 bg-primary/10"
-                            : "border-border/40 bg-card/60 hover:border-primary/40"
+                            : "border-border/40 bg-card/60 hover:border-primary/35 hover:bg-card/80"
                         )}
                       >
                         <button
@@ -108,21 +115,22 @@ export function ChatHistoryDrawer({
                             onSelect(s.id);
                             onOpenChange(false);
                           }}
-                          className="flex-1 text-left min-w-0"
+                          aria-label={`Open chat: ${title}${isActive ? " (current)" : ""}`}
+                          className="flex-1 text-left min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-lg"
                         >
                           <p className="text-sm text-foreground/90 font-medium leading-snug line-clamp-2">
-                            {s.title || "New chat"}
+                            {title}
                           </p>
-                          <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                            {formatDate(s.updatedAt)} · {turns} {turns === 1 ? "turn" : "turns"} · {domain}
+                          <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                            {formatDate(s.updatedAt)} · {turns} {turns === 1 ? "turn" : "turns"}
                           </p>
                         </button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => onDelete(s.id)}
-                          className="h-7 text-xs text-muted-foreground hover:text-destructive opacity-60 group-hover:opacity-100 transition-opacity shrink-0"
-                          aria-label="Delete chat"
+                          className="h-8 min-w-[44px] text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all duration-150 shrink-0"
+                          aria-label={`Delete chat: ${title}`}
                         >
                           Delete
                         </Button>

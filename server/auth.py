@@ -18,7 +18,7 @@ log = get_logger("auth")
 
 _bearer = HTTPBearer(auto_error=False)
 
-# Fallback when MongoDB isn't configured (handy for local dev).
+# Fallback user store used when MongoDB is unavailable.
 _memory_users: dict[str, dict] = {}
 _memory_blacklist: dict[str, datetime] = {}  # jti -> expiry
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import ChatAssistant from '@/components/chat-assistant';
 import { AppHeader } from '@/components/app-header';
 import { AppFooter } from '@/components/app-footer';
@@ -8,7 +8,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { OfflineBanner } from '@/components/offline-banner';
 import { isAuthed, subscribe } from '@/lib/auth';
-import AdminPanel from '@/components/admin/AdminPanel';
+
+const AdminPanel = lazy(() => import('@/components/admin/AdminPanel'));
 
 const domainThemes = {
   'Mental Health': 'theme-mental-health',
@@ -40,7 +41,13 @@ export default function App() {
       <TooltipProvider delayDuration={150}>
         <OfflineBanner />
         {authed && adminMode ? (
-          <AdminPanel onExit={exitAdmin} />
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-label="Loading admin panel" />
+            </div>
+          }>
+            <AdminPanel onExit={exitAdmin} />
+          </Suspense>
         ) : (
           <div className="relative flex min-h-screen flex-col transition-colors duration-700">
             {authed ? (

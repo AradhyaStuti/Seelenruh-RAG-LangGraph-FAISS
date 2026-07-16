@@ -288,17 +288,31 @@ export function LegalTimeline({ messageContent }) {
                 <div className="space-y-1">
                   <p className="text-[11px] font-semibold text-foreground/90">{step.title}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground">
-                    <span>⏱ {step.duration}</span>
-                    <span>💰 {step.cost}</span>
+                    <span className="flex items-center gap-1">
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      {step.duration}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                      </svg>
+                      {step.cost}
+                    </span>
                   </div>
                   {step.docs.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {step.docs.map((doc) => (
                         <span
                           key={doc}
-                          className="rounded px-1.5 py-0.5 bg-card/80 border border-border/40 text-[9px] text-muted-foreground"
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-card/80 border border-border/40 text-[9px] text-muted-foreground"
                         >
-                          📄 {doc}
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                          </svg>
+                          {doc}
                         </span>
                       ))}
                     </div>

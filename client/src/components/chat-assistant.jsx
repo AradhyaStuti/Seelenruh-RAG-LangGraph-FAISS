@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -20,7 +20,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -50,7 +50,7 @@ import { loadMoments, saveMoment, removeMoment } from "@/components/saved-moment
 import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
 import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument } from "@/lib/api";
-import { EligibilityChecker } from "@/components/eligibility-checker";
+const EligibilityChecker = lazy(() => import("@/components/eligibility-checker").then(m => ({ default: m.EligibilityChecker })));
 import { ExplainabilityPanel } from "@/components/explainability-panel";
 import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
@@ -67,12 +67,19 @@ const formSchema = z.object({
 
 const ACTIVE_DOMAIN_KEY = "seelenruh:active-domain:v1";
 
+const DOMAIN_SHORT = {
+  "Mental Health":      "Wellbeing",
+  "Legal":              "Legal",
+  "Government Schemes": "Schemes",
+  "Safety":             "Safety",
+};
+
 const domainConfig = {
   "Mental Health": {
     icon: PetalHeart,
     persona: "Usha",
     subtitle: "A quiet, judgement-free space to talk through what's on your mind.",
-    disclaimer: "Not a substitute for professional mental health care. If you're in crisis, please contact iCall (+91 9152987821) or Tele-MANAS (14416).",
+    description: "Calm, judgement-free support for stress, anxiety, and everyday wellbeing.",
     initialMessage:
       "Hi, I'm Usha. I'm here to listen — what's on your mind today?",
     quickReplies: [
@@ -86,7 +93,7 @@ const domainConfig = {
     icon: FeatherScale,
     persona: "Umang",
     subtitle: "Plain-language answers cited from real laws and official sources.",
-    disclaimer: "General legal information only — not legal advice. For your situation, consult a lawyer or contact NALSA (nalsa.gov.in) for free legal aid.",
+    description: "Friendly legal guidance with practical, rights-based explanations.",
     initialMessage:
       "Hi, I'm Umang. Tell me what's happening and I'll explain your rights in plain words.",
     quickReplies: [
@@ -100,6 +107,7 @@ const domainConfig = {
     icon: SunBloom,
     persona: "Aarogya",
     subtitle: "Find the schemes, benefits and entitlements that apply to you.",
+    description: "Practical help finding official benefits, eligibility cues, and application steps.",
     initialMessage:
       "Hi, I'm Aarogya. Tell me a bit about yourself and I'll suggest schemes you may be eligible for.",
     quickReplies: [
@@ -113,6 +121,7 @@ const domainConfig = {
     icon: GentleShield,
     persona: "Raksha",
     subtitle: "Calm, step-by-step guidance for emergencies and personal safety.",
+    description: "Clear, calm support for emergencies, personal safety, and urgent next steps.",
     initialMessage:
       "Hi, I'm Raksha. Tell me what's happening and we'll work through it step by step.",
     quickReplies: [
@@ -123,6 +132,227 @@ const domainConfig = {
     ],
   },
 };
+
+// ---------------------------------------------------------------------------
+// Disclaimer system — config-driven, variant-styled, accessible
+// ---------------------------------------------------------------------------
+
+const DISCLAIMER_KEY = "seelenruh:disc-dismissed:v1";
+
+// One config entry per persona. All disclaimer data lives here — nothing is
+// scattered across domainConfig or hardcoded inside JSX.
+const DISCLAIMER_CONFIG = {
+  "Mental Health": {
+    title: "Supportive guidance only",
+    description:
+      "Usha is here to listen and offer a space to reflect — not to replace a therapist, counsellor, or doctor. If you're in crisis, please call iCall (9152987821) or Tele-MANAS (14416).",
+    footnote: null,
+    variant: "info",
+    dismissible: true,
+    alwaysShow: false,
+    emergencyOverride: true,
+  },
+  Legal: {
+    title: "For educational purposes",
+    description:
+      "This information is meant to help you understand your rights and options in general terms. It is not legal advice and may not cover your specific situation. For personalised guidance, consult a lawyer or contact NALSA (nalsa.gov.in) for free legal aid.",
+    footnote: "Educational guidance · not legal advice · verify with a lawyer",
+    variant: "neutral",
+    dismissible: true,
+    alwaysShow: false,
+    emergencyOverride: false,
+  },
+  "Government Schemes": {
+    title: "Verify before applying",
+    description:
+      "Scheme eligibility, benefit amounts, and application procedures are set by government policy and change frequently. Always confirm current details at the official government portal before taking any action.",
+    footnote: "Details may change · confirm at official portals",
+    variant: "official",
+    dismissible: true,
+    alwaysShow: false,
+    emergencyOverride: false,
+  },
+  Safety: {
+    title: "Important",
+    description:
+      "If you or someone nearby is in immediate danger, call 112 or 100 right now. Raksha provides guidance and information — it cannot contact emergency services on your behalf.",
+    footnote: "Guidance only · for emergencies call 112",
+    variant: "critical",
+    dismissible: false,
+    alwaysShow: true,
+    emergencyOverride: true,
+  },
+};
+
+// Variant token maps — one source of truth for all per-persona colours.
+// Keeping colours here means changing Usha's palette is a one-line edit.
+const VARIANT_STYLES = {
+  info: {
+    container: "border-blue-200/70 bg-blue-50/80 dark:border-blue-800/30 dark:bg-blue-950/25",
+    icon:      "text-blue-500 dark:text-blue-400",
+    title:     "text-blue-800 dark:text-blue-200",
+    body:      "text-blue-700/90 dark:text-blue-200/75",
+    dismiss:   "text-blue-400/70 hover:text-blue-700 dark:text-blue-400/60 dark:hover:text-blue-200 focus-visible:ring-blue-400",
+  },
+  neutral: {
+    container: "border-slate-200/80 bg-slate-50/90 dark:border-slate-700/40 dark:bg-slate-800/30",
+    icon:      "text-slate-500 dark:text-slate-400",
+    title:     "text-slate-700 dark:text-slate-200",
+    body:      "text-slate-600/90 dark:text-slate-300/80",
+    dismiss:   "text-slate-400/70 hover:text-slate-700 dark:text-slate-400/60 dark:hover:text-slate-200 focus-visible:ring-slate-400",
+  },
+  official: {
+    container: "border-teal-200/70 bg-teal-50/80 dark:border-teal-800/30 dark:bg-teal-950/25",
+    icon:      "text-teal-600 dark:text-teal-400",
+    title:     "text-teal-800 dark:text-teal-200",
+    body:      "text-teal-700/90 dark:text-teal-200/75",
+    dismiss:   "text-teal-400/70 hover:text-teal-700 dark:text-teal-400/60 dark:hover:text-teal-200 focus-visible:ring-teal-400",
+  },
+  critical: {
+    container: "border-amber-200/80 bg-amber-50/90 dark:border-amber-800/35 dark:bg-amber-950/30",
+    icon:      "text-amber-600 dark:text-amber-400",
+    title:     "text-amber-900 dark:text-amber-200",
+    body:      "text-amber-800/90 dark:text-amber-200/80",
+    dismiss:   "text-amber-500/60 hover:text-amber-800 dark:text-amber-400/60 dark:hover:text-amber-200 focus-visible:ring-amber-400",
+  },
+};
+
+// Info circle SVG — used for info / neutral / official variants
+const InfoIcon = ({ className }) => (
+  <svg
+    aria-hidden="true"
+    focusable="false"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="16" x2="12" y2="12" />
+    <line x1="12" y1="8" x2="12.01" y2="8" />
+  </svg>
+);
+
+// Triangle alert SVG — used for the critical (Raksha) variant
+const AlertIcon = ({ className }) => (
+  <svg
+    aria-hidden="true"
+    focusable="false"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+/**
+ * DisclaimerBanner — renders the per-persona notice in the chat header.
+ *
+ * Props:
+ *   domain      — one of the four domain keys ("Mental Health", "Legal", …)
+ *   isEmergency — true when the conversation has been classified as high-risk;
+ *                 forces the banner back open for any config with emergencyOverride
+ */
+function DisclaimerBanner({ domain, isEmergency = false }) {
+  const config = DISCLAIMER_CONFIG[domain];
+  const s = VARIANT_STYLES[config?.variant ?? "info"];
+  const storageKey = `${DISCLAIMER_KEY}:${domain}`;
+
+  const [dismissed, setDismissed] = useState(() => {
+    if (!config || config.alwaysShow) return false;
+    try { return sessionStorage.getItem(storageKey) === "1"; } catch { return false; }
+  });
+
+  // Re-show if the conversation escalates to an emergency and this persona
+  // has emergencyOverride set — without touching the stored dismissed state.
+  const forceShow = isEmergency && (config?.emergencyOverride ?? false);
+
+  const dismiss = useCallback(() => {
+    setDismissed(true);
+    try { sessionStorage.setItem(storageKey, "1"); } catch {}
+  }, [storageKey]);
+
+  if (!config) return null;
+  if (!config.alwaysShow && dismissed && !forceShow) return null;
+
+  const BannerIcon = config.variant === "critical" ? AlertIcon : InfoIcon;
+
+  return (
+    <div
+      role="note"
+      aria-label={config.title}
+      className={cn(
+        "animate-disclaimer-in flex items-start gap-2.5 rounded-xl border",
+        "px-3 py-2.5 sm:px-3.5 mt-2 text-left",
+        s.container,
+      )}
+    >
+      <BannerIcon className={cn("h-3.5 w-3.5 shrink-0 mt-[1px]", s.icon)} />
+
+      <div className="flex-1 min-w-0">
+        <p className={cn("text-[11.5px] font-semibold leading-snug mb-0.5", s.title)}>
+          {config.title}
+        </p>
+        <p className={cn("text-[11px] leading-relaxed", s.body)}>
+          {config.description}
+        </p>
+      </div>
+
+      {config.dismissible && !forceShow && (
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Dismiss this notice"
+          className={cn(
+            "shrink-0 rounded p-1 -mt-0.5 -mr-0.5 transition-colors",
+            "min-h-[28px] min-w-[28px] flex items-center justify-center",
+            "focus-visible:outline-none focus-visible:ring-2",
+            s.dismiss,
+          )}
+        >
+          <svg
+            aria-hidden="true"
+            focusable="false"
+            className="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Per-message footnote shown once on the first real assistant reply.
+// Returns null when the domain has no footnote (e.g. Mental Health).
+function InlineFootnote({ domain }) {
+  const disc = DISCLAIMER_CONFIG[domain];
+  if (!disc?.footnote) return null;
+  const s = VARIANT_STYLES[disc.variant ?? "neutral"];
+  return (
+    <p className={cn("mt-2 text-[11px] leading-relaxed flex items-center gap-1.5", s.body)}>
+      <InfoIcon className={cn("h-3 w-3 shrink-0", s.icon)} />
+      {disc.footnote}
+    </p>
+  );
+}
 
 const formatTime = (ts) => {
   try {
@@ -443,6 +673,15 @@ export default function ChatAssistant({ onDomainChange }) {
     }
   };
 
+  const handlePersonaSelect = useCallback((value) => {
+    if (value === selectedDomain) return;
+    if (messageCount > 1 || currentDomainState?.activeId) {
+      setPendingDomain(value);
+      return;
+    }
+    handleDomainSwitch(value);
+  }, [currentDomainState?.activeId, handleDomainSwitch, messageCount, selectedDomain]);
+
   const copyMessage = async (id, text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -752,28 +991,14 @@ export default function ChatAssistant({ onDomainChange }) {
   const messageCount = visibleMessages.length;
   const currentPersona = domainConfig[selectedDomain];
   const sessionCount = currentDomainState.sessions.length;
+  const personaCards = Object.entries(domainConfig);
+  const heroPrompts = currentPersona?.quickReplies?.slice(0, 4) || [];
 
   return (
     <TooltipProvider delayDuration={150}>
       <div className="space-y-4">
-        <MoodCheckIn onMoodChange={setMood} />
-
         <Card className="w-full rounded-[2rem] glass-strong petal-shadow transition-all duration-500 overflow-hidden border-border/40">
-          <CardHeader className="text-center pb-3 pt-6">
-            <CardTitle className="font-headline text-2xl sm:text-[1.75rem] font-bold tracking-tight">
-              Talk to <span className="text-gradient">{currentPersona.persona}</span>
-            </CardTitle>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-sm mx-auto leading-relaxed">
-              {currentPersona.subtitle}
-            </p>
-            {currentPersona.disclaimer && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 max-w-sm mx-auto leading-snug opacity-80">
-                ⚠ {currentPersona.disclaimer}
-              </p>
-            )}
-          </CardHeader>
-
-          <CardContent className="pt-0 px-3 sm:px-5 pb-5">
+          <CardContent className="pt-5 px-3 sm:px-5 pb-5">
             <Tabs value={selectedDomain} onValueChange={handleTabChange} className="w-full">
               <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto bg-transparent p-0 gap-2">
                 {Object.entries(domainConfig).map(([name, { icon: Icon, persona }]) => (
@@ -781,22 +1006,59 @@ export default function ChatAssistant({ onDomainChange }) {
                     key={name}
                     value={name}
                     className={cn(
-                      "group relative py-3 rounded-2xl border border-border/45 bg-card/55 backdrop-blur transition-all duration-300",
-                      "data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/80",
-                      "data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border-primary/40 data-[state=active]:scale-[1.02]",
-                      "hover:-translate-y-0.5 hover:bg-card/85 hover:border-primary/50",
-                      "focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      "group relative flex-col py-4 rounded-2xl border border-border/45 bg-card/55 backdrop-blur transition-all duration-300",
+                      "data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/85",
+                      "data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border-primary/30",
+                      "hover:-translate-y-0.5 hover:shadow-sm hover:border-border/70 hover:bg-card/80",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     )}
                   >
-                    <Icon className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:scale-110 group-data-[state=active]:rotate-[-6deg]" />
-                    <span className="font-medium text-[13px] sm:text-sm">{persona}</span>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={cn(
+                        "h-9 w-9 rounded-xl flex items-center justify-center ring-1 transition-all duration-300",
+                        "bg-primary/8 ring-primary/15 text-primary/70",
+                        "group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:ring-primary-foreground/25 group-data-[state=active]:text-primary-foreground"
+                      )}>
+                        <Icon className="h-[18px] w-[18px] transition-transform duration-300 group-hover:scale-110 group-data-[state=active]:scale-105" />
+                      </div>
+                      <div className="text-center leading-tight">
+                        <p className="font-semibold text-[13px]">{persona}</p>
+                        <p className="text-[10px] mt-0.5 opacity-50 group-data-[state=active]:opacity-75">{DOMAIN_SHORT[name]}</p>
+                      </div>
+                    </div>
                   </TabsTrigger>
                 ))}
               </TabsList>
 
-              <div className="mt-4 p-3 sm:p-4 rounded-[1.75rem] bg-background/55 border border-border/50 shadow-inner backdrop-blur-sm">
-                <div className="mb-3 flex items-center justify-between gap-1 px-1 flex-wrap">
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              {/* Persona identity row — visible only when conversation is active */}
+              {(messageCount > 1 || isLoading) && (
+                <div className="mt-3 flex items-center gap-3 px-1">
+                  {(() => {
+                    const { icon: Icon, persona, subtitle } = currentPersona;
+                    return (
+                      <>
+                        <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0">
+                          <Icon className="h-5 w-5 text-primary/80" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-foreground/90 leading-tight">{persona}</p>
+                          <p className="text-[11px] text-muted-foreground/65 leading-snug truncate">{subtitle}</p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              <DisclaimerBanner
+                key={selectedDomain}
+                domain={selectedDomain}
+                isEmergency={isEmergency || preEmergency}
+              />
+
+              <div key={selectedDomain} className="mt-3 p-3 sm:p-4 rounded-[1.75rem] bg-background/55 border border-border/50 shadow-inner backdrop-blur-sm animate-fade-in">
+                <div className="mb-3 flex items-center justify-between gap-1 px-1">
+                  <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground overflow-hidden">
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500">
                       <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
                     </span>
@@ -827,7 +1089,7 @@ export default function ChatAssistant({ onDomainChange }) {
                       );
                     })()}
                   </div>
-                  <div className="flex items-center gap-1 flex-wrap justify-end">
+                  <div className="flex shrink-0 items-center gap-0.5">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -923,19 +1185,115 @@ export default function ChatAssistant({ onDomainChange }) {
                   </div>
                 </div>
 
-                <ScrollArea className="h-[52vh] sm:h-[58vh] pr-2">
-                  <div className="space-y-5">
-                    {activeSession?.summary && (
-                      <div className="rounded-2xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-[12px] leading-relaxed">
-                        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-primary/85">
-                          <PetalHeart className="h-3 w-3" />
-                          Conversation memory
+                {messageCount <= 1 && !isLoading ? (
+                  <div className="min-h-[54vh] sm:min-h-[58vh] rounded-[1.65rem] border border-border/45 bg-gradient-to-br from-card/90 via-card/70 to-background/70 p-4 sm:p-6 shadow-[0_18px_70px_rgba(15,23,42,0.08)]">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-2.8 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                            Seelenruh • {currentPersona.persona}
+                          </div>
+                          <div>
+                            <p className="font-headline text-xl font-semibold text-foreground/90">
+                              How can Seelenruh help today?
+                            </p>
+                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground/80 max-w-2xl">
+                              {currentPersona.description}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-foreground/85">{activeSession.summary}</p>
+                        <div className="rounded-full border border-border/40 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-muted-foreground/80">
+                          English • Hindi • Hinglish • German
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {personaCards.map(([name, config]) => {
+                          const Icon = config.icon;
+                          const active = selectedDomain === name;
+                          return (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => handlePersonaSelect(name)}
+                              className={cn(
+                                "group rounded-[1.35rem] border p-3.5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
+                                active
+                                  ? "border-primary/35 bg-gradient-to-br from-primary/12 to-primary/5 shadow-[0_12px_40px_rgba(124,185,232,0.16)]"
+                                  : "border-border/45 bg-background/60 hover:border-primary/25"
+                              )}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2.5">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                                    <Icon className="h-5 w-5" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-foreground/90">{config.persona}</p>
+                                    <p className="text-[11px] leading-relaxed text-muted-foreground/70">{config.description}</p>
+                                  </div>
+                                </div>
+                                <span className={cn(
+                                  "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
+                                  active ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                                )}>
+                                  {active ? "Active" : "Open"}
+                                </span>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {config.quickReplies.slice(0, 2).map((prompt) => (
+                                  <span key={prompt} className="rounded-full border border-border/40 bg-background/70 px-2.5 py-1 text-[10px] text-muted-foreground/80">
+                                    {prompt}
+                                  </span>
+                                ))}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="rounded-[1.35rem] border border-border/45 bg-background/65 p-3.5 sm:p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground/90">Popular prompts</p>
+                            <p className="text-[12px] text-muted-foreground/75">Start with one of these and let Seelenruh guide the rest.</p>
+                          </div>
+                          <div className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-600">
+                            Instant help
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <QuickReplies
+                            prompts={heroPrompts}
+                            onSelect={(p) => sendTextMessage(p)}
+                            disabled={isLoading}
+                            className="justify-start"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                <ScrollArea className="h-[52vh] sm:h-[58vh] pr-2">
+                  <div className="space-y-6">
+                    {activeSession?.summary && (
+                      <div className="rounded-xl border border-border/30 bg-muted/25 px-3.5 py-2.5 text-[12px] leading-relaxed">
+                        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground/70">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          Session context
+                        </div>
+                        <p className="text-foreground/80">{activeSession.summary}</p>
                       </div>
                     )}
                     {(isEmergency || preEmergency) && <EmergencyContacts />}
-                    {visibleMessages.map((message) => {
+                    {(() => {
+                      const firstRealAssistantIdx = visibleMessages.findIndex(
+                        (m) => m.role === "assistant" && !m.id?.startsWith("welcome-")
+                      );
+                      return visibleMessages.map((message, msgIdx) => {
                       const saved = savedIds.has(message.content);
                       return (
                         <div
@@ -954,19 +1312,28 @@ export default function ChatAssistant({ onDomainChange }) {
                               </AvatarFallback>
                             </Avatar>
                           )}
-                          <div className="flex flex-col max-w-[85%] sm:max-w-md">
+                          <div className="flex flex-col max-w-[88%] sm:max-w-[520px]">
                             <div
                               className={cn(
-                                "relative rounded-2xl p-3.5 text-sm prose prose-sm prose-p:m-0 transition-all duration-300",
-                                "prose-a:text-primary hover:prose-a:text-primary/80 prose-a:underline-offset-2",
-                                "prose-strong:text-foreground/90",
-                                "group hover:shadow-md",
+                                "relative rounded-2xl p-4 text-sm transition-all duration-300 group hover:shadow-md",
                                 message.role === "user"
-                                  ? "bg-gradient-to-br from-primary/85 to-primary text-primary-foreground rounded-br-md petal-shadow"
-                                  : "bg-card/95 text-card-foreground rounded-bl-md border border-border/40 petal-shadow"
+                                  ? "bg-gradient-to-br from-primary/85 to-primary text-primary-foreground rounded-br-md petal-shadow leading-relaxed"
+                                  : cn(
+                                      "bg-card/95 text-card-foreground rounded-bl-md border border-border/40 petal-shadow",
+                                      "prose prose-sm max-w-none leading-relaxed",
+                                      "prose-p:my-1 prose-p:leading-relaxed",
+                                      "prose-headings:font-headline prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground/90 prose-headings:mt-3 prose-headings:mb-1",
+                                      "prose-a:text-primary hover:prose-a:text-primary/80 prose-a:underline-offset-2 prose-a:decoration-primary/35",
+                                      "prose-strong:text-foreground/90 prose-strong:font-semibold",
+                                      "prose-blockquote:not-italic prose-blockquote:border-l-2 prose-blockquote:border-primary/35 prose-blockquote:pl-3 prose-blockquote:text-foreground/70 prose-blockquote:my-2",
+                                      "prose-code:before:content-none prose-code:after:content-none prose-code:bg-muted/55 prose-code:rounded-md prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.82em] prose-code:font-mono prose-code:text-foreground/85",
+                                      "prose-pre:bg-muted/35 prose-pre:border prose-pre:border-border/35 prose-pre:rounded-xl prose-pre:text-xs prose-pre:my-2",
+                                      "prose-table:text-xs prose-th:font-semibold prose-th:bg-muted/30 prose-td:border-border/30",
+                                      "prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5",
+                                    )
                               )}
                             >
-                              <div className="min-w-0 break-words">
+                              <div className="min-w-0 break-anywhere">
                                 {message.role === "user" && message.hasAttachment && (
                                   <p className="mb-1 flex items-center gap-1 text-[10px] text-primary-foreground/70">
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -990,11 +1357,7 @@ export default function ChatAssistant({ onDomainChange }) {
                                       {message.content}
                                     </ReactMarkdown>
                                     {message.streaming && (
-                                      <span
-                                        className="inline-block w-[2px] h-[1em] bg-current align-middle ml-0.5 opacity-80"
-                                        style={{ animation: "pulse 0.9s ease-in-out infinite" }}
-                                        aria-hidden
-                                      />
+                                      <span className="streaming-cursor" aria-hidden />
                                     )}
                                   </>
                                 ) : (
@@ -1003,13 +1366,15 @@ export default function ChatAssistant({ onDomainChange }) {
                               </div>
 
                               {message.role === "user" && (
-                                <div className="mt-2 -mb-1 flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="mt-2 -mb-1 flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                                        aria-label={copiedId === message.id ? "Copied" : "Copy message"}
+                                        aria-pressed={copiedId === message.id}
+                                        className="h-8 w-8 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
                                         onClick={() => copyMessage(message.id, message.content)}
                                       >
                                         {copiedId === message.id ? (
@@ -1017,24 +1382,26 @@ export default function ChatAssistant({ onDomainChange }) {
                                         ) : (
                                           <SoftCopy className="h-3.5 w-3.5" />
                                         )}
-                                        <span className="sr-only">Copy</span>
+                                        <span className="sr-only">{copiedId === message.id ? "Copied" : "Copy"}</span>
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      {copiedId === message.id ? "Copied" : "Copy"}
+                                      {copiedId === message.id ? "Copied!" : "Copy"}
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
                               )}
 
                               {message.role === "assistant" && (
-                                <div className="mt-2 -mb-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="mt-2 -mb-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7 rounded-full"
+                                        aria-label={copiedId === message.id ? "Copied" : "Copy response"}
+                                        aria-pressed={copiedId === message.id}
+                                        className="h-8 w-8 rounded-full transition-colors"
                                         onClick={() => copyMessage(message.id, message.content)}
                                       >
                                         {copiedId === message.id ? (
@@ -1042,11 +1409,11 @@ export default function ChatAssistant({ onDomainChange }) {
                                         ) : (
                                           <SoftCopy className="h-3.5 w-3.5" />
                                         )}
-                                        <span className="sr-only">Copy</span>
+                                        <span className="sr-only">{copiedId === message.id ? "Copied" : "Copy response"}</span>
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      {copiedId === message.id ? "Copied" : "Copy"}
+                                      {copiedId === message.id ? "Copied!" : "Copy"}
                                     </TooltipContent>
                                   </Tooltip>
                                   <Tooltip>
@@ -1054,16 +1421,18 @@ export default function ChatAssistant({ onDomainChange }) {
                                       <Button
                                         variant="ghost"
                                         size="icon"
+                                        aria-label={saved ? "Remove from saved" : "Save this response"}
+                                        aria-pressed={saved}
                                         className={cn(
-                                          "h-7 w-7 rounded-full",
-                                          saved && "text-primary opacity-100"
+                                          "h-8 w-8 rounded-full transition-colors",
+                                          saved && "text-primary"
                                         )}
                                         onClick={() => toggleSave(message.content)}
                                       >
                                         <HeartBookmark
-                                          className={cn("h-3.5 w-3.5 transition-all", saved && "scale-110")}
+                                          className={cn("h-3.5 w-3.5 transition-transform duration-200", saved && "scale-110")}
                                         />
-                                        <span className="sr-only">{saved ? "Unsave" : "Save"}</span>
+                                        <span className="sr-only">{saved ? "Remove from saved" : "Save response"}</span>
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>{saved ? "Saved" : "Save"}</TooltipContent>
@@ -1086,7 +1455,7 @@ export default function ChatAssistant({ onDomainChange }) {
                                             aria-label="Helpful"
                                             aria-pressed={feedbackMap[message.id] === "up"}
                                           >
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill={feedbackMap[message.id] === "up" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill={feedbackMap[message.id] === "up" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                                               <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
                                               <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
                                             </svg>
@@ -1108,7 +1477,7 @@ export default function ChatAssistant({ onDomainChange }) {
                                             aria-label="Not helpful"
                                             aria-pressed={feedbackMap[message.id] === "down"}
                                           >
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill={feedbackMap[message.id] === "down" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill={feedbackMap[message.id] === "down" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                                               <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
                                               <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
                                             </svg>
@@ -1157,15 +1526,11 @@ export default function ChatAssistant({ onDomainChange }) {
                               selectedDomain === "Legal" && (
                               <LegalTimeline messageContent={message.content} />
                             )}
-                            {/* Inline disclaimer for Legal / Government Schemes responses */}
+                            {/* Inline footnote — shown only on the first real assistant message */}
                             {message.role === "assistant" &&
                               !message.id?.startsWith("welcome-") &&
-                              (selectedDomain === "Legal" || selectedDomain === "Government Schemes") && (
-                              <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground/60 italic pl-0.5">
-                                {selectedDomain === "Legal"
-                                  ? "For informational purposes only — not a substitute for advice from a qualified lawyer."
-                                  : "Eligibility criteria may vary. Verify details at the official scheme portal before applying."}
-                              </p>
+                              msgIdx === firstRealAssistantIdx && (
+                              <InlineFootnote domain={selectedDomain} />
                             )}
                             {message.role === "assistant" && message.webSearched && (
                               <span
@@ -1199,7 +1564,8 @@ export default function ChatAssistant({ onDomainChange }) {
                           )}
                         </div>
                       );
-                    })}
+                    });
+                    })()}
                     {isLoading && !streamingMsgId && (
                       <div className="flex items-end gap-3 justify-start animate-slide-in-left">
                         <Avatar className="h-9 w-9 ring-2 ring-primary/30">
@@ -1207,15 +1573,15 @@ export default function ChatAssistant({ onDomainChange }) {
                             <BlossomLogo className="h-5 w-5" />
                           </AvatarFallback>
                         </Avatar>
-                        <div className="rounded-2xl rounded-bl-md px-4 py-3 text-sm bg-card border border-border/40 petal-shadow">
-                          <div className="flex items-center gap-1.5">
-                            {[0, 1, 2].map((i) => (
-                              <span
-                                key={i}
-                                className="h-2 w-2 rounded-full bg-primary/60"
-                                style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }}
-                              />
-                            ))}
+                        <div className="max-w-[84%] rounded-[1.4rem] border border-border/40 bg-card/90 px-4 py-3.5 shadow-sm">
+                          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-muted-foreground/70">
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                            Thinking
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            <div className="skeleton h-2.5 w-36 rounded-full" />
+                            <div className="skeleton h-2.5 w-4/5 rounded-full" />
+                            <div className="skeleton h-2.5 w-2/3 rounded-full" />
                           </div>
                         </div>
                       </div>
@@ -1223,23 +1589,7 @@ export default function ChatAssistant({ onDomainChange }) {
                     <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
-
-                {messageCount <= 1 && !isLoading && (
-                  <div className="mt-4 px-1">
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <div className="h-px flex-1 bg-border/40" />
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-medium">
-                        Suggested
-                      </p>
-                      <div className="h-px flex-1 bg-border/40" />
-                    </div>
-                    <QuickReplies
-                      prompts={currentPersona.quickReplies}
-                      onSelect={(p) => sendTextMessage(p)}
-                      disabled={isLoading}
-                    />
-                  </div>
-                )}
+                )} {/* end hero / message view */}
 
                 <div className="mt-4">
                   {/* Hidden file input for document attachment */}
@@ -1353,9 +1703,6 @@ export default function ChatAssistant({ onDomainChange }) {
                         </div>
                       </div>
 
-                      <p className="mt-1.5 text-center text-[10px] text-muted-foreground/50">
-                        Press Enter or tap Send
-                      </p>
                     </form>
                   </Form>
                 </div>
@@ -1402,9 +1749,12 @@ export default function ChatAssistant({ onDomainChange }) {
               onNew={startNewChat}
             />
 
-            <EligibilityChecker open={eligOpen} onOpenChange={setEligOpen} />
+            <Suspense fallback={null}>
+              {eligOpen && <EligibilityChecker open={eligOpen} onOpenChange={setEligOpen} />}
+            </Suspense>
           </CardContent>
         </Card>
+        <MoodCheckIn onMoodChange={setMood} />
       </div>
 
     </TooltipProvider>

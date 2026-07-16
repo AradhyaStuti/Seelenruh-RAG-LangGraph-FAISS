@@ -146,13 +146,14 @@ async def stream_run(
     lang:          str,
     outer_context: str,
     confidence:    str = "None",
+    fast_mode:     bool = False,
     _via_bag:      Optional[dict] = None,
 ):
     """Async generator — analyze+prepare first, then stream compose."""
     from ai import groq_client, ollama_client, anthropic_client
     from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
 
-    analysis    = await _analyze({"query": query, "history": history, "fast_mode": False})
+    analysis    = await _analyze({"query": query, "history": history, "fast_mode": fast_mode})
     preparation = await _prepare({
         "query": query, "retrieved": retrieved,
         "scheme_analysis": analysis["scheme_analysis"],

@@ -178,17 +178,29 @@ export function summarizeConversation(messages, opts = {}) {
   });
 }
 
-export async function fetchAllSummaries() {
+export async function fetchAllSummaries(signal) {
   const token = getToken();
   if (!token) return { summaries: [] };
+  // 10-second timeout so a slow server doesn't block app hydration
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 10_000);
+  const merged = signal
+    ? new AbortController()
+    : controller;
+  if (signal) {
+    signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
   try {
     const res = await fetch("/api/summary/all", {
       headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
     });
     if (!res.ok) return { summaries: [] };
     return await res.json();
   } catch {
     return { summaries: [] };
+  } finally {
+    clearTimeout(tid);
   }
 }
 

@@ -76,19 +76,21 @@ export function OfflineBanner() {
     <div
       role="alert"
       aria-live="assertive"
-      className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2.5 px-4 py-2.5 text-sm font-medium shadow-lg transition-all duration-300"
+      aria-atomic="true"
+      className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2.5 px-4 py-2.5 text-sm font-medium shadow-lg animate-slide-down"
       style={{ background: config.bg, color: "#fff" }}
     >
       <span
         className="inline-block h-2 w-2 rounded-full bg-white/70 animate-pulse shrink-0"
         aria-hidden
       />
-      {config.msg}
+      <span>{config.msg}</span>
       {config.showRetry && (
         <button
           type="button"
           onClick={check}
-          className="ml-2 rounded-full px-3 py-0.5 text-xs font-semibold bg-white/20 hover:bg-white/30 transition"
+          aria-label="Retry connection"
+          className="ml-2 rounded-full px-3 py-1 text-xs font-semibold bg-white/20 hover:bg-white/30 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-1"
         >
           Retry
         </button>

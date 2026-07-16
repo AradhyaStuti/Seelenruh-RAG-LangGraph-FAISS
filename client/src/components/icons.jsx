@@ -7,23 +7,27 @@ const defaults = {
   strokeWidth: 1.6,
   strokeLinecap: "round",
   strokeLinejoin: "round",
+  "aria-hidden": "true",
+  focusable: "false",
 };
 
 export function BlossomLogo(props) {
   const angles = [-60, -30, 0, 30, 60];
+  const blueBase = "#2563EB";
+  const blueGlow = "#93C5FD";
   return (
     <svg {...defaults} {...props}>
       <defs>
         <linearGradient id="lotusFill" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.95" />
+          <stop offset="0%" stopColor={blueGlow} stopOpacity="0.95" />
+          <stop offset="100%" stopColor={blueBase} stopOpacity="0.95" />
         </linearGradient>
       </defs>
 
       {/* water line beneath the lotus */}
       <path
         d="M3 19c2 1.2 5 1.8 9 1.8s7-.6 9-1.8"
-        stroke="hsl(var(--primary))"
+        stroke={blueBase}
         strokeOpacity="0.45"
         fill="none"
       />
@@ -35,7 +39,7 @@ export function BlossomLogo(props) {
           d="M0,-9 C2.4,-5 2.4,-1 0,2 C-2.4,-1 -2.4,-5 0,-9 Z"
           transform={`translate(12 16) rotate(${deg})`}
           fill="url(#lotusFill)"
-          stroke="hsl(var(--primary))"
+          stroke={blueBase}
           strokeOpacity="0.55"
           strokeWidth="1"
         />
@@ -46,8 +50,8 @@ export function BlossomLogo(props) {
         cx="12"
         cy="16"
         r="1.6"
-        fill="hsl(var(--card))"
-        stroke="hsl(var(--primary))"
+        fill="#F8FBFF"
+        stroke={blueBase}
         strokeOpacity="0.7"
       />
     </svg>

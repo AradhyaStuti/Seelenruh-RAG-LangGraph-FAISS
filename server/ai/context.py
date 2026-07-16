@@ -1,8 +1,4 @@
-"""Trim chat history to fit within a token budget before sending to the LLM.
-
-cl100k tends to slightly overcount vs. Llama's tokeniser, which is fine —
-gives us a small safety margin. Default budget is 6000 tokens for history.
-"""
+"""Trim older chat history so the prompt stays within a token budget."""
 import os
 from logger import get_logger
 
@@ -41,7 +37,7 @@ def trim_history(
     budget: int = MAX_HISTORY_TOKENS,
     keep_last: int = 2,
 ) -> list[dict]:
-    """Drop oldest messages until history fits in `budget` tokens. Always keeps the last `keep_last`."""
+    """Drop older messages until the history fits within the requested budget."""
     if not history:
         return history
 

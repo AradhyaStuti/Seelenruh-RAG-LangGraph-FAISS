@@ -36,7 +36,7 @@ _HINGLISH_MARKERS = re.compile(
 )
 
 _HINGLISH_THRESHOLD = 2
-_GERMAN_THRESHOLD = 1
+_GERMAN_THRESHOLD = 2  # Require ≥2 keyword hits — single common words like "und"/"ist" appear in transliterated text
 
 
 def detect_language(text: str) -> str:

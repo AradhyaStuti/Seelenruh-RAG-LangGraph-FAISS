@@ -1,11 +1,10 @@
-# Graph flow:
-#   START → load_memory → classify → route → retrieve → maybe_search → generate → save_memory → END
+# Main graph flow: START → load_memory → classify → route → retrieve → maybe_search → generate → save_memory → END.
 #
-# Domain dispatch (all invisible to user):
-#   "Mental Health"      → usha_graph     (Usha multi-agent)
-#   "Legal"              → legal_graph    (Umang multi-agent)
-#   "Government Schemes" → aarogya_graph  (Aarogya multi-agent)
-#   "Safety"             → raksha_graph   (Raksha multi-agent)
+# Domain dispatch is kept internal to the app:
+#   "Mental Health"      → usha_graph
+#   "Legal"              → legal_graph
+#   "Government Schemes" → aarogya_graph
+#   "Safety"             → raksha_graph
 import asyncio
 import re
 from typing import Optional, TypedDict
@@ -191,7 +190,11 @@ async def _route(state: ChatState) -> dict:
 
 async def _retrieve(state: ChatState) -> dict:
     try:
-        hits = await retriever.retrieve(state["query"], domain=state["routed_domain"])
+        hits = await retriever.retrieve(
+            state["query"],
+            domain=state["routed_domain"],
+            history=state.get("history", []),
+        )
         ids = [f"{h['id']}({h.get('rerank_score', h['score']):.2f})" for h in hits]
         if ids:
             log.info("retrieve", domain=state["routed_domain"], hits=", ".join(ids))
@@ -433,7 +436,8 @@ async def stream_run(
         # Fallback — should not normally happen
         stream_gen = responder.stream_respond(
             query=query, intent=routed_domain, emotion=state.get("emotion", "neutral"),
-            lang=lang, history=history, retrieved=retrieved, context=context, _via_bag=via_bag,
+            lang=lang, history=history, retrieved=retrieved, context=context,
+            fast_mode=fast_mode, _via_bag=via_bag,
         )
 
     async for token in stream_gen:

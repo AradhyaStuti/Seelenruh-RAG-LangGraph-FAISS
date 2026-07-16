@@ -474,10 +474,6 @@ def get_review_note(doc_type: DocumentType, status: ReviewStatus, last_verified:
             f"Active legislation verified within the annual review window.{lv_str}",
         (DocumentType.SCHOLARSHIP, ReviewStatus.NEEDS_REVIEW):
             f"Scholarship eligibility and deadlines change every academic cycle. Verify at scholarships.gov.in.{lv_str}",
-        (ReviewStatus.SUPERSEDED, ReviewStatus.SUPERSEDED):  # catch-all
-            "This document may have been replaced by a newer version. Please verify at the official source.",
-        (ReviewStatus.DEPRECATED, ReviewStatus.DEPRECATED):
-            "This document has been retired and may no longer be applicable.",
     }
 
     # Look up specific combination first, then fallback

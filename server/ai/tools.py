@@ -172,6 +172,7 @@ async def web_search(query: str, max_results: int = 4) -> list[dict]:
     if len(brave_results) >= MIN_RESULTS_BEFORE_FALLBACK:
         ddg_task.cancel()
         wiki_task.cancel()
+        await asyncio.gather(ddg_task, wiki_task, return_exceptions=True)
         log.info("web_search complete", results=len(brave_results), source="Brave")
         return brave_results
 

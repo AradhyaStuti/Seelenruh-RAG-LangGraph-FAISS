@@ -9,6 +9,29 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+# Verified 1800/1860 numbers sourced from FALLBACK_LINKS and _LEGAL_KNOWLEDGE.
+# These are real helplines that must NOT be flagged as unverified.
+_VERIFIED_TOLL_FREE: frozenset[str] = frozenset({
+    "18602662345",    # Vandrevala Foundation (Mental Health, 24x7)
+    "1800119176",     # NCPCR (child rights) / 1800-11-9176
+    "1800114000",     # Consumer helpline / 1800-11-4000
+    "1800111555",     # MGNREGA helpline / 1800-111-555
+    "1800110001",     # Kisan helpline / 1800-11-0001
+    "1800111800",     # Common alternate consumer helpline
+})
+
+_TOLL_FREE_RE = re.compile(r'\b(1800[-\s]?\d{6,9}|1860[-\s]?\d{6,9})\b')
+
+
+def _has_unverified_toll_free(text: str) -> bool:
+    """True if text contains a 1800/1860 number NOT in _VERIFIED_TOLL_FREE."""
+    for m in _TOLL_FREE_RE.finditer(text):
+        normalized = re.sub(r'[-\s]', '', m.group(0))
+        if normalized not in _VERIFIED_TOLL_FREE:
+            return True
+    return False
+
+
 # error-level — these cause a disclaimer to be appended
 _FAIL_PATTERNS: list[tuple[re.Pattern, str]] = [
     # Overpromising outcomes
@@ -36,11 +59,6 @@ _FAIL_PATTERNS: list[tuple[re.Pattern, str]] = [
             re.IGNORECASE,
         ),
         "Foreign law: German law reference in Indian legal response",
-    ),
-    # Fabricated / banned helpline numbers
-    (
-        re.compile(r"\b(1800[-\s]?\d{6,9}|1860[-\s]?\d{6,9})\b"),
-        "Unverified toll-free number: do not cite unless from FALLBACK_LINKS",
     ),
     # Citing IPC sections that don't exist (> 511)
     (
@@ -136,6 +154,14 @@ def check_response(text: str, category: str = "*") -> QualityResult:
                 severity="error",
                 category="*",
             ))
+
+    # Toll-free check — uses allowlist so verified helplines (Vandrevala, NCPCR, etc.) are not flagged
+    if _has_unverified_toll_free(text):
+        issues.append(QualityIssue(
+            pattern_desc="Unverified toll-free number: do not cite unless from FALLBACK_LINKS",
+            severity="error",
+            category="*",
+        ))
 
     for pattern, description, pat_category in _WARN_PATTERNS:
         if pat_category != "*" and pat_category.lower() != category.lower():

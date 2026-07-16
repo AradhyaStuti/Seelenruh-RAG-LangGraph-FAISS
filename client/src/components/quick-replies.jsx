@@ -10,12 +10,13 @@ export function QuickReplies({ prompts, onSelect, disabled, className }) {
           type="button"
           disabled={disabled}
           onClick={() => onSelect(p)}
-          style={{ animationDelay: `${i * 50}ms` }}
+          style={{ animationDelay: `${i * 55}ms` }}
           className={cn(
-            "rounded-lg border border-[#CBD5E1] bg-white px-3.5 py-1.5 text-xs font-medium",
-            "text-[#0F172A] transition-all duration-150 animate-fade-in",
-            "hover:border-[#1E3A8A] hover:bg-[#EFF6FF] hover:text-[#1E3A8A]",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
+            "rounded-full border border-border/55 bg-card/75 px-4 py-1.5 text-xs font-medium",
+            "text-foreground/70 transition-all duration-200 animate-fade-in",
+            "hover:border-primary/50 hover:bg-primary/8 hover:text-primary hover:-translate-y-px",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+            "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           )}
         >
           {p}

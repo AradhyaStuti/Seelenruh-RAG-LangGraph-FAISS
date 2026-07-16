@@ -315,7 +315,7 @@ Family / Criminal — domestic violence
 
 ## What You Can Do
 1. **Contact a Protection Officer:** Every district has a Protection Officer under PWDVA — they file the Domestic Incident Report (DIR) for free.
-2. **Call iCall / Vandrevala helpline (9999 666 555)** — confidential counselling if you need to talk first.
+2. **Call iCall (9152987821) or Vandrevala Foundation (1860-2662-345)** — confidential counselling; iCall is free and staffed by trained counsellors.
 3. **File an application in Magistrate's Court** — for Protection Order, Residence Order, and Maintenance. This can be done without a lawyer (the Protection Officer can assist).
 4. **Go to the nearest police station** — domestic violence is cognizable; police must assist.
 

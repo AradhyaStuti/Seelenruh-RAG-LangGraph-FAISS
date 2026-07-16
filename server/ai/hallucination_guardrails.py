@@ -53,7 +53,8 @@ KNOWN_ACTS: dict[str, dict] = {
     # Other important acts
     "right to information act": {"max_section": 31, "aliases": ["rti act", "rti act 2005"]},
     "legal services authorities act": {"max_section": 28, "aliases": ["legal aid act", "nalsa act"]},
-    "national commission for protection of child rights act": {"max_section": 32, "aliases": ["ncpcr act", "pocso act", "protection of children from sexual offences act"]},
+    "national commission for protection of child rights act": {"max_section": 32, "aliases": ["ncpcr act", "ncpcr 2005"]},
+    "protection of children from sexual offences act": {"max_section": 46, "aliases": ["pocso act", "pocso", "pocso 2012"]},
     "narcotic drugs and psychotropic substances act": {"max_section": 82, "aliases": ["ndps act", "ndps act 1985"]},
     "arbitration and conciliation act": {"max_section": 87, "aliases": ["arbitration act", "arbitration act 1996"]},
     "insolvency and bankruptcy code": {"max_section": 358, "aliases": ["ibc", "ibc 2016", "bankruptcy code"]},

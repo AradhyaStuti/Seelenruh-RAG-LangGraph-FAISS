@@ -112,8 +112,7 @@ async def chat_endpoint(request: Request, req: ChatRequest,
 @chat_limit("15/minute")
 async def audio_endpoint(request: Request, req: ChatRequest,
                          user: dict = Depends(verified_user)) -> ChatResponse:
-    # Voice response: honour explicit language choice; only default to "en" for auto-detect
-    # since Whisper transcribes to text and the responder needs a concrete lang instruction.
+    # If the client leaves language on auto, use English so the downstream prompt has a concrete instruction.
     if req.lang == "auto":
         req = req.model_copy(update={"lang": "en"})
     return await _handle(req, user, fast_mode=True)

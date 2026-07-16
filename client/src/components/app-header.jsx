@@ -1,13 +1,14 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { BlossomLogo, BreathLungs, HeartBookmark } from "@/components/icons";
 import { LangToggle } from "@/components/lang-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { BreathingCompanion } from "@/components/breathing-companion";
-import { SavedMomentsDrawer } from "@/components/saved-moments";
-import { SignOutDialog } from "@/components/sign-out-dialog";
-import { ChangePasswordDialog } from "@/components/change-password";
+
+const BreathingCompanion = lazy(() => import("@/components/breathing-companion").then(m => ({ default: m.BreathingCompanion })));
+const SavedMomentsDrawer = lazy(() => import("@/components/saved-moments").then(m => ({ default: m.SavedMomentsDrawer })));
+const SignOutDialog       = lazy(() => import("@/components/sign-out-dialog").then(m => ({ default: m.SignOutDialog })));
+const ChangePasswordDialog = lazy(() => import("@/components/change-password").then(m => ({ default: m.ChangePasswordDialog })));
 import { getUser, subscribe } from "@/lib/auth";
 import { verifyAdminKey, setAdminKey } from "@/lib/adminApi";
 import { cn } from "@/lib/utils";
@@ -73,7 +74,7 @@ function AccountMenu({ user, onSignOut, onChangePassword }) {
               onClick={() => { setOpen(false); onChangePassword(); }}
               className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-foreground/80 hover:bg-primary/8 hover:text-foreground transition-colors text-left"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
@@ -84,7 +85,7 @@ function AccountMenu({ user, onSignOut, onChangePassword }) {
               onClick={() => { setOpen(false); onSignOut(); }}
               className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-foreground/80 hover:bg-primary/8 hover:text-foreground transition-colors text-left"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
@@ -131,7 +132,7 @@ function AdminKeyDialog({ open, onClose, onSuccess }) {
       <div className="w-full max-w-sm mx-4 rounded-3xl border border-border/40 bg-card/95 backdrop-blur-xl petal-shadow p-6 space-y-4">
         <div className="flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary" aria-hidden="true" focusable="false">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
@@ -191,11 +192,7 @@ export function AppHeader({ onAdminClick }) {
       <header className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-5">
         <div className="group flex min-w-0 items-center gap-2 sm:gap-3 cursor-default">
           <div className="relative shrink-0">
-            <div
-              className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-primary/40 via-accent/30 to-secondary/40 blur-lg opacity-80 transition-all duration-700 group-hover:opacity-100 group-hover:blur-xl"
-              aria-hidden
-            />
-            <div className="relative h-10 w-10 sm:h-12 sm:w-12 rounded-3xl bg-gradient-to-br from-card via-card/90 to-primary/10 ring-1 ring-primary/25 petal-shadow flex items-center justify-center transition-transform duration-500 group-hover:-rotate-[8deg] group-hover:scale-105">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-3xl bg-gradient-to-br from-card via-card/90 to-primary/10 ring-1 ring-primary/25 petal-shadow flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:ring-primary/45">
               <BlossomLogo className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
           </div>
@@ -269,10 +266,12 @@ export function AppHeader({ onAdminClick }) {
         </div>
       </header>
 
-      <BreathingCompanion open={breatheOpen} onOpenChange={setBreatheOpen} />
-      <SavedMomentsDrawer open={savedOpen} onOpenChange={setSavedOpen} />
-      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} user={user} />
-      <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
+      <Suspense fallback={null}>
+        {breatheOpen && <BreathingCompanion open={breatheOpen} onOpenChange={setBreatheOpen} />}
+        {savedOpen   && <SavedMomentsDrawer open={savedOpen}   onOpenChange={setSavedOpen}   />}
+        {signOutOpen && <SignOutDialog      open={signOutOpen} onOpenChange={setSignOutOpen} user={user} />}
+        {changePwOpen && <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />}
+      </Suspense>
       <AdminKeyDialog
         open={adminKeyOpen}
         onClose={() => setAdminKeyOpen(false)}

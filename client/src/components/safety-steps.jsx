@@ -57,7 +57,7 @@ export function SafetySteps({ text }) {
 
   return (
     <div className="mb-3 space-y-1.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary/80 dark:text-primary/70">
         <SoftSiren className="h-3.5 w-3.5" />
         Action steps
       </div>
@@ -65,13 +65,13 @@ export function SafetySteps({ text }) {
         {steps.map((s, i) => (
           <li
             key={`${s.n}-${i}`}
-            className="flex items-start gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/5 px-3 py-2"
+            className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2"
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/25">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary/90 ring-1 ring-primary/25">
               <span className="text-[12px] font-semibold">{i + 1}</span>
             </div>
             <div className="min-w-0 flex-1 pt-0.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-rose-700/80 dark:text-rose-300/80">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-primary/80">
                 {iconFor(s.body)}
                 Step {i + 1}
               </div>

@@ -1990,7 +1990,7 @@ def build_composer_messages(
         )
     if follow_up:
         analysis_lines.append(
-            f"Key question still missing — if not already answered in conversation, ask this ONE question: {follow_up}"
+            f"Key question still missing — if not already answered in conversation, ask this ONE question and NO others: {follow_up}"
         )
 
     # Confidence — guide caution level

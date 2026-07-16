@@ -44,7 +44,9 @@ export function RoutingTrace({ routing }) {
         aria-expanded={open}
         className="inline-flex items-center gap-1 rounded-full border border-border/50 bg-background/40 px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
       >
-        <span aria-hidden>✦</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
         Why {persona || "this reply"}?
       </button>
 

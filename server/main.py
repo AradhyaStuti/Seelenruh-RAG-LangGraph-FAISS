@@ -1,4 +1,4 @@
-"""FastAPI entry point. uvicorn main:app --reload --port 5000"""
+"""FastAPI entry point for the Seelenruh backend."""
 import asyncio
 import re
 import time
@@ -149,7 +149,7 @@ if _CLIENT_DIST.is_dir():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        # serve the file if it exists, otherwise fall back to index.html for SPA routing
+        # Serve the requested file if it exists; otherwise return the SPA entry point.
         if full_path:
             try:
                 candidate = (_CLIENT_DIST / full_path).resolve()

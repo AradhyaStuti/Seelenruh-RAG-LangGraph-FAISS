@@ -3,12 +3,12 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const PIPELINE_STAGES = [
-  { id: "embed",  label: "Embed",       icon: "⚡", desc: "Query vectorised" },
-  { id: "faiss",  label: "FAISS",       icon: "🔍", desc: "Dense vector search" },
-  { id: "bm25",   label: "BM25",        icon: "📝", desc: "Keyword search" },
-  { id: "fusion", label: "RRF Fusion",  icon: "🔀", desc: "Score combination" },
-  { id: "rerank", label: "Rerank",      icon: "🏆", desc: "Cross-encoder rerank" },
-  { id: "llm",    label: "LLM",         icon: "✨", desc: "Answer generation" },
+  { id: "embed",  label: "Embed",       desc: "Query vectorised" },
+  { id: "faiss",  label: "FAISS",       desc: "Dense vector search" },
+  { id: "bm25",   label: "BM25",        desc: "Keyword search" },
+  { id: "fusion", label: "RRF Fusion",  desc: "Score combination" },
+  { id: "rerank", label: "Rerank",      desc: "Cross-encoder rerank" },
+  { id: "llm",    label: "LLM",         desc: "Answer generation" },
 ];
 
 const CONF = {
@@ -48,10 +48,15 @@ function QualityBadge({ label, value, ok = null }) {
     : ok === false
     ? "bg-red-500/10 text-red-700 dark:text-red-300 ring-red-500/25"
     : "bg-muted/40 text-muted-foreground ring-border/40";
-  const dot = ok === true ? "🟢" : ok === false ? "🔴" : "⚫";
+  const dotCls = ok === true
+    ? "bg-emerald-500"
+    : ok === false
+    ? "bg-red-500"
+    : "bg-muted-foreground/40";
   return (
     <span className={cn(base, cls)} title={label}>
-      {dot} {value ?? label}
+      <span className={cn("inline-block h-1.5 w-1.5 rounded-full shrink-0", dotCls)} aria-hidden />
+      {value ?? label}
     </span>
   );
 }
@@ -93,7 +98,6 @@ function AnimatedPipeline({ active, hasRetrieval }) {
               )}
               title={s.desc}
             >
-              <span aria-hidden>{s.icon}</span>
               {s.label}
               {cur && (
                 <span className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
@@ -268,8 +272,13 @@ export function ExplainabilityPanel({
                       className="rounded-xl border border-border/30 bg-card/50 px-2.5 py-2 space-y-1"
                     >
                       <div className="flex items-start gap-2">
-                        <span className="shrink-0 text-[13px] mt-0.5" aria-hidden>
-                          {src.documentType === "Act" ? "📋" : src.documentType === "Scheme" ? "🏛️" : "📄"}
+                        <span className="shrink-0 text-muted-foreground/50 mt-0.5" aria-hidden>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                          </svg>
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground/85 leading-snug truncate">

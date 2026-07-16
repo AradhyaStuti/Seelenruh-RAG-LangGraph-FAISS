@@ -89,50 +89,56 @@ export function SavedMomentsDrawer({ open, onOpenChange, refreshKey }) {
             </div>
           </div>
 
-          <div className="px-4 pb-4 max-h-[60vh] overflow-y-auto">
+          {/* aria-live region announces copy feedback to screen readers */}
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {copiedId ? "Copied to clipboard" : ""}
+          </div>
+
+          <div className="px-4 pb-4 max-h-[65vh] overflow-y-auto overscroll-contain">
             {moments.length === 0 ? (
-              <div className="text-center py-10 px-4">
-                <div className="mx-auto h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-                  <HeartBookmark className="h-6 w-6 text-muted-foreground/60" />
+              <div className="text-center py-12 px-4">
+                <div className="mx-auto h-14 w-14 rounded-2xl bg-muted/40 flex items-center justify-center mb-4">
+                  <HeartBookmark className="h-6 w-6 text-muted-foreground/50" />
                 </div>
-                <p className="text-sm text-foreground/80 font-medium">No saved messages yet</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tap the heart on any reply to keep it here.
+                <p className="text-sm text-foreground/75 font-medium">No saved messages yet</p>
+                <p className="text-xs text-muted-foreground/65 mt-1 leading-relaxed max-w-[220px] mx-auto">
+                  Tap the heart icon on any assistant reply to save it here.
                 </p>
               </div>
             ) : (
-              <ul className="space-y-2.5">
+              <ul className="space-y-2.5" aria-label="Saved messages">
                 {moments.map((m) => (
                   <li
                     key={m.id}
-                    className="group rounded-2xl border border-border/40 bg-card/60 p-3.5 hover:border-primary/40 transition-all"
+                    className="group rounded-2xl border border-border/40 bg-card/60 p-3.5 hover:border-primary/35 hover:bg-card/80 transition-all duration-150"
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-primary/80 font-medium">
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary/60" aria-hidden />
                         {m.persona} · {m.domain}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/70">
+                      <span className="text-[10px] text-muted-foreground/60">
                         {new Date(m.savedAt).toLocaleDateString(undefined, {
                           month: "short",
                           day: "numeric",
                         })}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-foreground/90 leading-relaxed break-anywhere">
                       {m.content}
                     </p>
-                    <div className="mt-2.5 flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <div className="mt-2.5 flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150">
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => handleCopy(m.id, m.content)}
-                        className="h-7 text-xs gap-1"
+                        aria-label={copiedId === m.id ? "Copied" : `Copy message from ${m.persona}`}
+                        className="h-8 min-w-[60px] text-xs gap-1 transition-colors"
                       >
                         {copiedId === m.id ? (
                           <>
                             <SoftCheck className="h-3.5 w-3.5 text-emerald-600" />
-                            Copied
+                            <span className="text-emerald-600 font-medium">Copied</span>
                           </>
                         ) : (
                           <>
@@ -145,7 +151,8 @@ export function SavedMomentsDrawer({ open, onOpenChange, refreshKey }) {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleRemove(m.id)}
-                        className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                        aria-label={`Remove saved message from ${m.persona}`}
+                        className="h-8 min-w-[60px] text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors"
                       >
                         Remove
                       </Button>
