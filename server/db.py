@@ -31,6 +31,7 @@ async def connect() -> bool:
         await _db["messages"].create_index([("userId", 1), ("sessionId", 1)])
         await _db["messages"].create_index("createdAt", expireAfterSeconds=90 * 24 * 3600)
         await _db["users"].create_index("email", unique=True)
+        await _db["users"].create_index("emailHash", sparse=True)
         await _db["revoked_tokens"].create_index("jti", unique=True)
         await _db["revoked_tokens"].create_index("expiresAt", expireAfterSeconds=3600)
         await _db["summaries"].create_index(
@@ -64,6 +65,8 @@ async def connect() -> bool:
         await _db["user_memory"].create_index("userId", unique=True)
         await _db["login_attempts"].create_index("email", unique=True)
         await _db["login_attempts"].create_index("updatedAt", expireAfterSeconds=15 * 60)
+        await _db["injection_attempts"].create_index("ts", expireAfterSeconds=90 * 24 * 3600)
+        await _db["injection_attempts"].create_index("userId")
         host = (_client.address or ("?", 0))[0]
         log.info("MongoDB connected", db=MONGODB_DB, host=host)
         return True

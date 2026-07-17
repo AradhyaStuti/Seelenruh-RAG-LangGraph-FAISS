@@ -1,12 +1,14 @@
 """Chat, audio, transcribe, history, and streaming endpoints."""
 import json
 import re
+from datetime import datetime, timezone
 from typing import AsyncIterator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from ai import stt
+from ai.provider import _AllProvidersFailed, _OFFLINE_RESPONSE
 import db
 import graph
 from schemas import ChatRequest, ChatResponse, TranscribeRequest, TranscribeResponse
@@ -16,23 +18,76 @@ from logger import get_logger
 
 log = get_logger("chat")
 
+# ---------------------------------------------------------------------------
+# Prompt injection detection
+# Patterns cover: direct instruction override, persona replacement, jailbreaks,
+# data-exfiltration probes, indirect injection via retrieved content signals,
+# and encoded / obfuscated variants.
+# ---------------------------------------------------------------------------
 _INJECTION_PATTERNS = [
+    # Classic instruction override
     re.compile(r"ignore\s+(previous|above|all|your)\s+instructions", re.I),
-    re.compile(r"you\s+are\s+now\s+(a\s+)?(?!umang|usha|aarogya|raksha)", re.I),
     re.compile(r"forget\s+(you\s+are|your\s+instructions|all\s+previous)", re.I),
-    re.compile(r"act\s+as\s+(a\s+)?(different|new|another|unrestricted|evil)", re.I),
+    re.compile(r"disregard\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|context|rules?)", re.I),
+    re.compile(r"override\s+(your\s+)?(instructions?|rules?|guidelines?|safety)", re.I),
+    re.compile(r"new\s+(instructions?|rules?|system\s+prompt|directive):", re.I),
+    # Persona replacement — but allow legitimate persona names
+    re.compile(r"you\s+are\s+now\s+(a\s+)?(?!umang|usha|aarogya|raksha)", re.I),
+    re.compile(r"act\s+as\s+(a\s+)?(different|new|another|unrestricted|evil|unfiltered)", re.I),
+    re.compile(r"pretend\s+(you\s+are|to\s+be)\s+(not\s+an?\s+ai|human|unrestricted|without\s+restrictions?)", re.I),
+    re.compile(r"roleplay\s+as\s+(an?\s+)?(unrestricted|evil|unethical|different)", re.I),
+    re.compile(r"your\s+(true|real|hidden|actual)\s+(self|identity|nature|instructions?)", re.I),
+    # Jailbreak keywords
     re.compile(r"\bsystem\s+prompt\b", re.I),
     re.compile(r"\bjailbreak\b", re.I),
-    re.compile(r"\bDAN\b"),  # "Do Anything Now" jailbreak
+    re.compile(r"\bDAN\b"),                         # "Do Anything Now"
+    re.compile(r"\bAIM\b"),                         # "Always Intelligent and Machiavellian"
+    re.compile(r"\bGPT-?4chan\b", re.I),
     re.compile(r"developer\s+mode", re.I),
-    re.compile(r"disable\s+(safety|filter|guard|restriction)", re.I),
-    re.compile(r"pretend\s+(you\s+are|to\s+be)\s+(not\s+an?\s+ai|human|unrestricted)", re.I),
+    re.compile(r"maintenance\s+mode", re.I),
+    re.compile(r"god\s+mode", re.I),
+    # Safety / filter disabling
+    re.compile(r"disable\s+(safety|filter|guard|restriction|content\s+policy)", re.I),
+    re.compile(r"bypass\s+(safety|filter|guard|restriction|censorship)", re.I),
+    re.compile(r"without\s+(restrictions?|filters?|guidelines?|ethical\s+considerations?)", re.I),
+    re.compile(r"no\s+(restrictions?|filters?|rules?|guidelines?|limitations?|ethics)", re.I),
+    # Data exfiltration probes
+    re.compile(r"(print|show|reveal|output|repeat|leak|dump)\s+(your\s+)?(system\s+prompt|instructions?|context|training|guidelines?)", re.I),
+    re.compile(r"what\s+(are\s+your\s+)?(system\s+prompt|instructions?|hidden\s+rules?)", re.I),
+    re.compile(r"tell\s+me\s+(your\s+)?(system\s+prompt|instructions?|guidelines?)", re.I),
+    # Token manipulation / prompt injection via special markers
+    re.compile(r"<\|?(system|im_start|im_end|endoftext|startoftext)\|?>", re.I),
+    re.compile(r"\[INST\]|\[/INST\]|<<SYS>>|<</SYS>>", re.I),  # Llama-style delimiters
+    # Indirect / second-order injection signals ("the document says to ignore...")
+    re.compile(r"(the\s+)?(document|text|article|page|source|result)\s+says?\s+to\s+ignore", re.I),
+    re.compile(r"according\s+to\s+(the\s+)?(document|text)\s*[,:]\s*ignore", re.I),
 ]
 
 
 def _is_injection(text: str) -> bool:
-    """Return True if the query looks like a prompt injection attempt."""
+    """Return True if *text* looks like a prompt injection attempt."""
     return any(p.search(text) for p in _INJECTION_PATTERNS)
+
+
+async def _log_injection_attempt(
+    query: str,
+    user_id: str,
+    session_id: str,
+    domain: str,
+) -> None:
+    """Persist injection attempt to MongoDB for security auditing (best-effort)."""
+    if not db.is_connected():
+        return
+    try:
+        await db._db["injection_attempts"].insert_one({
+            "userId": user_id,
+            "sessionId": session_id,
+            "domain": domain,
+            "querySnippet": query[:200],
+            "ts": datetime.now(timezone.utc),
+        })
+    except Exception as err:
+        log.warning("injection audit log failed", error=str(err))
 
 
 # Groq Whisper accepts up to ~25 MB; we cap at 10 MB base64 (≈ 7.5 MB raw)
@@ -42,10 +97,12 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 
 async def _handle(req: ChatRequest, user: dict, fast_mode: bool = False) -> ChatResponse:
+    session_id = (req.sessionId and req.sessionId.strip()) or user["id"]
     if _is_injection(req.query):
+        log.warning("injection attempt blocked", user_id=user["id"], domain=req.domain)
+        await _log_injection_attempt(req.query, user["id"], session_id, req.domain)
         raise HTTPException(status_code=400, detail="Your message contains content that cannot be processed.")
     history = [m.model_dump() for m in req.history]
-    session_id = (req.sessionId and req.sessionId.strip()) or user["id"]
 
     try:
         result = await graph.run(
@@ -57,6 +114,25 @@ async def _handle(req: ChatRequest, user: dict, fast_mode: bool = False) -> Chat
             session_id=session_id,
             fast_mode=fast_mode,
         )
+    except _AllProvidersFailed:
+        # All LLM providers are down — return a helpful offline message instead of 500
+        log.error("all providers down — returning offline response", domain=req.domain)
+        result = {
+            "response": _OFFLINE_RESPONSE,
+            "isEmergency": False,
+            "via": "offline-fallback",
+            "routedDomain": req.domain,
+            "emotion": "neutral",
+            "retrievedIds": [],
+            "sources": [],
+            "citedIndices": [],
+            "confidence": "None",
+            "confidenceReasoning": "AI providers are temporarily unavailable.",
+            "goal": None,
+            "memorySummary": None,
+            "webSearched": False,
+            "routing": {},
+        }
     except Exception as err:
         log.error("graph.run failed", error=str(err), domain=req.domain)
         raise HTTPException(status_code=500, detail="I'm having trouble reaching my AI right now. Please try again in a moment.")
@@ -158,6 +234,8 @@ async def chat_stream_endpoint(
         emotion: Optional[str] = None
         is_emergency = False
         if _is_injection(req.query):
+            log.warning("injection attempt blocked (stream)", user_id=user["id"], domain=req.domain)
+            await _log_injection_attempt(req.query, user["id"], session_id, req.domain)
             yield f"data: {json.dumps({'error': 'Your message contains content that cannot be processed.'})}\n\n"
             return
         done_event: dict = {}
@@ -176,6 +254,19 @@ async def chat_stream_endpoint(
                     is_emergency = bool(event.get("isEmergency", False))
                     done_event = event
                 yield f"data: {json.dumps(event)}\n\n"
+        except _AllProvidersFailed:
+            log.error("all providers down — streaming offline response", domain=req.domain)
+            # Emit the offline response as a normal token + done event so the
+            # client renders it as an assistant message instead of an error overlay.
+            _offline_token = json.dumps({"token": _OFFLINE_RESPONSE})
+            yield f"data: {_offline_token}\n\n"
+            _offline_done = json.dumps({
+                "done": True, "response": _OFFLINE_RESPONSE,
+                "isEmergency": False, "via": "offline-fallback",
+                "confidence": "None", "sources": [],
+            })
+            yield f"data: {_offline_done}\n\n"
+            return
         except Exception as err:
             log.error("stream graph.run failed", error=str(err), domain=req.domain)
             _err_msg = json.dumps({"error": "I\u2019m having trouble reaching my AI right now. Please try again in a moment."})

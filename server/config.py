@@ -46,14 +46,24 @@ ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
-# Optional: SMTP for sending password-reset and verification emails.
-# If unset, tokens are logged to server console (dev mode).
+# Email sending — three options in priority order:
+#   1. Resend (recommended free tier — https://resend.com, 100 emails/day free)
+#      Set RESEND_API_KEY + SMTP_FROM (your from-address, must be a verified domain).
+#   2. SMTP (any provider: Gmail, Outlook, Mailgun, etc.)
+#      Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM.
+#   3. Dev fallback: tokens logged to server console (no emails sent).
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
+SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER or "noreply@seelenruh.app")
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5173")
+
+# Optional: field-level encryption for sensitive MongoDB fields (name, email).
+# Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+# When unset, values are stored as plaintext (existing behaviour unchanged).
+FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY", "")
 
 _DEV_JWT_SECRET = "change-me-in-production-please"
 JWT_SECRET = os.getenv("JWT_SECRET", _DEV_JWT_SECRET)

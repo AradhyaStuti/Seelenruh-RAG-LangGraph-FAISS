@@ -1,5 +1,7 @@
 # Two-stage retrieval: FAISS dense + BM25 sparse hybrid, cross-encoder reranking.
 import asyncio
+import hashlib
+from functools import lru_cache
 import re
 import time
 from typing import Optional
@@ -15,10 +17,75 @@ from rag import embedder, reranker
 from rag.knowledge import CHUNKS
 from rag.knowledge_meta import enrich_chunk
 from rag.store import VectorStore
-from config import RETRIEVAL_TOP_K, RETRIEVAL_OVERFETCH
+from config import RETRIEVAL_TOP_K, RETRIEVAL_OVERFETCH, GROQ_MODEL_FAST
 from logger import get_logger
 
 log = get_logger("retriever")
+
+
+# ---------------------------------------------------------------------------
+# Query embedding cache — avoids re-encoding the same processed query string.
+# 512 unique queries ≈ ~10 MB RAM at 384 dims × float32.
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=512)
+def _embed_query_cached(query: str) -> tuple:
+    """Synchronous embed — wrapped with lru_cache on the final query string.
+
+    Returns a tuple (not numpy array) so lru_cache can hash it.
+    The retrieval code converts back to ndarray with embedder.to_array().
+    """
+    vec = embedder.embed_one(f"query: {query}")
+    return tuple(vec.tolist())
+
+
+# ---------------------------------------------------------------------------
+# Query rewriting — expand short / ambiguous queries before retrieval.
+# Uses the fast 8B model so latency is minimal (~150 ms on Groq).
+# Skipped when:
+#   • query is already ≥ 8 words (specific enough)
+#   • provider call fails (falls back to original query silently)
+# ---------------------------------------------------------------------------
+
+_REWRITE_SYSTEM = (
+    "You are a retrieval query expander for Seelenruh, an Indian mental health, "
+    "legal aid, government schemes, and women's safety assistant. "
+    "Your only job: rewrite the user's short or ambiguous query into a clear, "
+    "specific retrieval query (1–2 sentences) that will match the most relevant "
+    "documents in the knowledge base. "
+    "Output ONLY the rewritten query text — no explanation, no preamble, no quotes."
+)
+
+
+async def _rewrite_query(query: str, domain: Optional[str]) -> str:
+    """Return an expanded version of *query* suitable for vector retrieval.
+
+    Returns the original query unchanged on any error or if the query is
+    already specific enough (≥ 8 tokens).
+    """
+    tokens = query.split()
+    if len(tokens) >= 8:
+        return query
+
+    domain_hint = f" Domain context: {domain}." if domain else ""
+    try:
+        from ai.provider import chat as _provider_chat
+        result = await _provider_chat(
+            model=GROQ_MODEL_FAST,
+            temperature=0.0,
+            max_tokens=80,
+            messages=[
+                {"role": "system", "content": _REWRITE_SYSTEM + domain_hint},
+                {"role": "user", "content": query},
+            ],
+        )
+        rewritten = result["content"].strip()
+        if rewritten and len(rewritten) > len(query):
+            log.debug("query_rewritten", original=query, rewritten=rewritten)
+            return rewritten
+    except Exception as err:
+        log.debug("query_rewrite_failed", error=str(err))
+    return query
 
 
 # Single-token Hinglish → English (processed per token in _normalize_query)
@@ -509,6 +576,33 @@ def _dedup(hits: list[dict]) -> list[dict]:
     return out
 
 
+def _apply_staleness_penalty(results: list[dict]) -> list[dict]:
+    """Penalise stale chunks so fresh sources rank higher.
+
+    Deprecated/Superseded chunks stay in results (the LLM can still use them)
+    but their rerank_score drops so fresh chunks bubble up ahead of them.
+    We never completely remove stale chunks — sometimes they are the only
+    source and the user still needs the information with a caveat.
+    """
+    for chunk in results:
+        status = chunk.get("reviewStatus", "")
+        if status == "Deprecated":
+            chunk["score"] = float(chunk.get("score", 0.5)) * 0.5
+            if "rerank_score" in chunk:
+                chunk["rerank_score"] = float(chunk["rerank_score"]) - 3.0
+            chunk["stale_penalty_applied"] = True
+        elif status == "Superseded":
+            chunk["score"] = float(chunk.get("score", 0.5)) * 0.7
+            if "rerank_score" in chunk:
+                chunk["rerank_score"] = float(chunk["rerank_score"]) - 1.5
+            chunk["stale_penalty_applied"] = True
+        elif status == "NeedsReview":
+            # Mild nudge — needs-review chunks are probably still useful
+            if "rerank_score" in chunk:
+                chunk["rerank_score"] = float(chunk["rerank_score"]) - 0.4
+    return results
+
+
 async def retrieve(
     query: str,
     *,
@@ -526,13 +620,19 @@ async def retrieve(
     # Normalise Hinglish (phrase pass + per-token pass)
     retrieval_query = _normalize_query(retrieval_query)
 
+    # Query rewriting — expand short / ambiguous queries via fast LLM call
+    retrieval_query = await _rewrite_query(retrieval_query, domain)
+
     # Domain-specific keyword expansion
     if domain == "Legal":
         retrieval_query = _expand_legal_query(retrieval_query)
     elif domain == "Government Schemes":
         retrieval_query = _expand_scheme_query(retrieval_query)
 
-    qv = await asyncio.to_thread(embedder.embed_one, f"query: {retrieval_query}")
+    # Use the LRU-cached embed to skip re-encoding repeated queries
+    import numpy as np
+    qv = await asyncio.to_thread(_embed_query_cached, retrieval_query)
+    qv = np.array(qv, dtype="float32")
     fetch_k = _overfetch_k(k, domain)
 
     # Dense retrieval (FAISS)
@@ -549,5 +649,10 @@ async def retrieve(
         results = await reranker.rerank(retrieval_query, candidates, k=k)
     else:
         results = candidates[:k]
+
+    # Apply staleness penalty and re-sort so fresh chunks surface first
+    results = _apply_staleness_penalty(results)
+    if any(c.get("stale_penalty_applied") for c in results):
+        results.sort(key=lambda c: c.get("rerank_score", c.get("score", 0.0)), reverse=True)
 
     return _dedup(results)

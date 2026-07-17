@@ -11,6 +11,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from config import JWT_SECRET, JWT_ALG, JWT_ACCESS_TTL_MINUTES, JWT_REFRESH_TTL_DAYS
+import crypto
 import db
 from logger import get_logger
 
@@ -145,29 +146,60 @@ async def create_user(*, email: str, name: str, password: str) -> dict:
     existing = await find_user_by_email(email)
     if existing:
         raise EmailAlreadyRegistered(email)
-    user = {
-        "email": email,
-        "name": name.strip() or email.split("@")[0],
+
+    display_name = name.strip() or email.split("@")[0]
+    user: dict = {
         "password": hashed,
         "createdAt": datetime.now(timezone.utc),
         "emailVerified": True,
     }
+
+    if crypto.is_enabled():
+        # Store encrypted email + name; keep HMAC hash for indexed lookup
+        user["email"] = crypto.encrypt(email)
+        user["emailHash"] = crypto.email_hash(email)
+        user["name"] = crypto.encrypt(display_name)
+    else:
+        user["email"] = email
+        user["name"] = display_name
+
     if db.is_connected():
         result = await db.users().insert_one(user)
         user["_id"] = str(result.inserted_id)
     else:
         user["_id"] = email
         _memory_users[email] = user
+
+    # Always return plaintext values to callers
+    user["email"] = email
+    user["name"] = display_name
     return user
+
+
+def _decrypt_user(u: dict) -> dict:
+    """Decrypt encrypted fields in a MongoDB user document (in-place copy)."""
+    if u is None:
+        return u
+    u = dict(u)
+    u["_id"] = str(u["_id"])
+    if crypto.is_enabled():
+        u["email"] = crypto.decrypt(u.get("email", ""))
+        u["name"] = crypto.decrypt(u.get("name", ""))
+    return u
 
 
 async def find_user_by_email(email: str) -> Optional[dict]:
     email = email.lower().strip()
     if db.is_connected():
-        u = await db.users().find_one({"email": email})
-        if u:
-            u["_id"] = str(u["_id"])
-        return u
+        if crypto.is_enabled():
+            # Primary lookup via hash index; fall back to plaintext (migration path)
+            h = crypto.email_hash(email)
+            u = await db.users().find_one({"emailHash": h})
+            if u is None:
+                u = await db.users().find_one({"email": email})
+        else:
+            u = await db.users().find_one({"email": email})
+        return _decrypt_user(u) if u else None
     return _memory_users.get(email)
 
 

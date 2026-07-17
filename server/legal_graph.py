@@ -1,5 +1,6 @@
 """Umang's LangGraph sub-graph: analyze → prepare → compose. Invoked for Legal domain."""
 from typing import Optional, TypedDict
+import re
 
 from langgraph.graph import StateGraph, START, END
 
@@ -7,10 +8,46 @@ from ai import legal_agents
 from ai.provider import chat, _ollama_up, _is_fallback_worthy
 from ai.quality_checker import check_response, append_quality_note
 from ai.hallucination_guardrails import validate_citations, build_guardrail_note
+from ai.grounding import maybe_add_grounding_note
 from config import GROQ_MODEL_SMART
 from logger import get_logger
 
 log = get_logger("legal_graph")
+
+# ---------------------------------------------------------------------------
+# German / EU / Austrian / Swiss law citation detector
+# ---------------------------------------------------------------------------
+_FOREIGN_LAW_RE = re.compile(
+    r"\b("
+    # German civil/criminal/constitutional codes
+    r"BGB|StGB|GG|ZPO|HGB|InsO|VwGO|GmbHG|AktG|AO|UStG|EStG|BRAO|BAG|BVerfG"
+    r"|Bürgerliches Gesetzbuch|Strafgesetzbuch|Grundgesetz|Zivilprozessordnung"
+    r"|Handelsgesetzbuch|Bundesrecht|Landesrecht"
+    # EU law
+    r"|DSGVO|GDPR|EU-Recht|Europarecht|EU-Verordnung|EU-Richtlinie"
+    r"|Artikel \d+ DSGVO|Richtlinie \d+/\d+/EU"
+    # Austrian law
+    r"|ABGB|öStGB|österreichisches Recht|nach österreichischem"
+    # Swiss law
+    r"|OR \(Obligationenrecht\)|ZGB|Schweizer Recht|nach Schweizer"
+    # Explicit phrases
+    r"|nach deutschem Recht|nach deutschem Gesetz|in Deutschland gilt"
+    r"|deutsches Gesetz|deutsches Recht|bundesrepublikanisch"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_GERMAN_LAW_CORRECTION_NOTE = (
+    "\n\n---\n"
+    "**Hinweis:** Diese Antwort wurde auf indisches Recht geprüft. "
+    "Seelenruh beantwortet Fragen ausschließlich nach **indischem Recht** (Indian law). "
+    "Bitte konsultieren Sie einen deutschen/österreichischen/Schweizer Anwalt "
+    "für Fragen zum Recht Ihres Landes."
+)
+
+
+def _contains_foreign_law(text: str) -> bool:
+    return bool(_FOREIGN_LAW_RE.search(text))
 
 # STATE
 class LegalState(TypedDict, total=False):
@@ -157,6 +194,39 @@ async def _compose(state: LegalState) -> dict:
         messages=messages,
     )
     response_text = result["content"]
+
+    # German law guard — force one regeneration if foreign law was cited
+    if _contains_foreign_law(response_text):
+        log.warning("german_law_detected_in_response", attempt=1)
+        correction_messages = messages + [
+            {"role": "assistant", "content": response_text},
+            {
+                "role": "user",
+                "content": (
+                    "WICHTIG: Die Antwort enthält deutsches/österreichisches/EU-Recht. "
+                    "Das ist falsch. Seelenruh arbeitet NUR mit INDISCHEM Recht. "
+                    "Bitte schreibe die Antwort komplett neu — verwende ausschließlich "
+                    "indische Gesetze (z.B. IPC/BNS, CrPC/BNSS, Consumer Protection Act, "
+                    "RTI Act, NALSA-Rechtshilfe usw.). "
+                    "Kein BGB, StGB, DSGVO, GG oder EU-Recht."
+                ),
+            },
+        ]
+        try:
+            corrected = await chat(
+                model=GROQ_MODEL_SMART,
+                temperature=0.2,
+                max_tokens=max_tokens,
+                messages=correction_messages,
+            )
+            response_text = corrected["content"]
+            if _contains_foreign_law(response_text):
+                log.warning("german_law_still_present_after_correction", appending_disclaimer=True)
+                response_text += _GERMAN_LAW_CORRECTION_NOTE
+        except Exception as err:
+            log.warning("german_law_correction_failed", error=str(err))
+            response_text += _GERMAN_LAW_CORRECTION_NOTE
+
     category = state.get("case_analysis", {}).get("category", "*")
 
     # Post-response quality gates (non-streaming path only)
@@ -177,6 +247,10 @@ async def _compose(state: LegalState) -> dict:
             category=category,
         )
         response_text += build_guardrail_note(guardrail_result)
+
+    # Grounding check: flag section/article numbers not found in retrieved chunks
+    retrieved = state.get("retrieved", [])
+    response_text = maybe_add_grounding_note(response_text, retrieved)
 
     return {"response": response_text, "via": result["via"]}
 
@@ -309,4 +383,8 @@ async def stream_run(
     result = await chat(model=GROQ_MODEL_SMART, temperature=0.3, max_tokens=900, messages=messages)
     if _via_bag is not None:
         _via_bag["via"] = result.get("via", "fallback-legal")
-    yield result["content"]
+    content = result["content"]
+    if _contains_foreign_law(content):
+        log.warning("german_law_detected_in_fallback_stream", appending_disclaimer=True)
+        content += _GERMAN_LAW_CORRECTION_NOTE
+    yield content
