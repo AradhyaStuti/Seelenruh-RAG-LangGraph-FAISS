@@ -133,6 +133,14 @@ const domainConfig = {
   },
 };
 
+// Per-domain card accent colors — independent of the active theme so each
+// card always shows its own identity regardless of which persona is selected.
+const DOMAIN_COLORS = {
+  "Mental Health":      { bg: "rgba(124,185,232,0.09)", border: "rgba(124,185,232,0.32)", iconBg: "rgba(124,185,232,0.18)", iconColor: "#4A90E2", dot: "#7CB9E8" },
+  "Legal":              { bg: "rgba(201,179,138,0.09)", border: "rgba(201,179,138,0.32)", iconBg: "rgba(201,179,138,0.18)", iconColor: "#A88C5D", dot: "#C9B38A" },
+  "Government Schemes": { bg: "rgba(143,201,163,0.09)", border: "rgba(143,201,163,0.32)", iconBg: "rgba(143,201,163,0.18)", iconColor: "#5EA87A", dot: "#8FC9A3" },
+  "Safety":             { bg: "rgba(232,124,124,0.09)", border: "rgba(232,124,124,0.32)", iconBg: "rgba(232,124,124,0.18)", iconColor: "#C85A5A", dot: "#E87C7C" },
+};
 
 const formatTime = (ts) => {
   try {
@@ -612,7 +620,7 @@ export default function ChatAssistant({ onDomainChange }) {
     reader.readAsText(file);
   };
 
-  const composeQuery = (text) => (mood && selectedDomain === "usha" ? moodHints[mood] + text : text);
+  const composeQuery = (text) => (mood && selectedDomain === "Mental Health" ? moodHints[mood] + text : text);
 
   const sendTextMessage = async (text) => {
     const trimmed = text.trim();
@@ -841,7 +849,7 @@ export default function ChatAssistant({ onDomainChange }) {
                   <button
                     type="button"
                     onClick={() => { setChatView(false); startNewChat(); }}
-                    className="shrink-0 rounded-full p-1.5 text-muted-foreground/60 hover:bg-muted hover:text-foreground transition-colors"
+                    className="shrink-0 rounded-full p-2 text-muted-foreground/50 hover:bg-muted/70 hover:text-foreground transition-all duration-200 hover:scale-105"
                     aria-label="Back to persona selection"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -850,14 +858,21 @@ export default function ChatAssistant({ onDomainChange }) {
                   </button>
                   {(() => {
                     const { icon: Icon, persona, subtitle } = currentPersona;
+                    const dc = DOMAIN_COLORS[selectedDomain];
                     return (
                       <>
-                        <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0">
-                          <Icon className="h-5 w-5 text-primary/80" />
+                        <div
+                          className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ring-1"
+                          style={{ background: dc.iconBg, borderColor: dc.border, border: `1px solid ${dc.border}` }}
+                        >
+                          <Icon className="h-5 w-5" style={{ color: dc.iconColor }} />
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-sm text-foreground/90 leading-tight">{persona}</p>
-                          <p className="text-[11px] text-muted-foreground/65 leading-snug truncate">{subtitle}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-sm text-foreground/90 leading-tight">{persona}</p>
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground/60 leading-snug truncate">{subtitle}</p>
                         </div>
                       </>
                     );
@@ -1021,59 +1036,83 @@ export default function ChatAssistant({ onDomainChange }) {
 
                 {!chatView ? (
                   <div className="min-h-[54vh] sm:min-h-[58vh] rounded-[1.65rem] border border-border/45 bg-gradient-to-br from-card/90 via-card/70 to-background/70 p-4 sm:p-6 shadow-[0_18px_70px_rgba(15,23,42,0.08)]">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-2.8 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
-                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                            Seelenruh • {currentPersona.persona}
+                    <div className="flex flex-col gap-5">
+                      {/* Hero heading */}
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
+                              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                            </span>
+                            {currentPersona.persona} is online
                           </div>
-                          <div>
-                            <p className="font-headline text-xl font-semibold text-foreground/90">
-                              How can Seelenruh help today?
-                            </p>
-                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground/80 max-w-2xl">
-                              {currentPersona.description}
-                            </p>
+                          <div className="flex items-center gap-1.5 rounded-full border border-border/35 bg-background/60 px-3 py-1 text-[10px] font-medium text-muted-foreground/70">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                            EN • HI • Hinglish • DE
                           </div>
                         </div>
-                        <div className="rounded-full border border-border/40 bg-background/70 px-3 py-1.5 text-[11px] font-medium text-muted-foreground/80">
-                          English • Hindi • Hinglish • German
+                        <div>
+                          <h2 className="font-headline text-2xl sm:text-3xl font-semibold tracking-tight">
+                            How can{" "}
+                            <span className="text-gradient">Seelenruh</span>
+                            {" "}help today?
+                          </h2>
+                          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground/75 max-w-xl">
+                            {currentPersona.subtitle}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {personaCards.map(([name, config]) => {
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {personaCards.map(([name, config], cardIdx) => {
                           const Icon = config.icon;
                           const active = selectedDomain === name;
+                          const dc = DOMAIN_COLORS[name];
                           return (
                             <button
                               key={name}
                               type="button"
                               onClick={() => handlePersonaSelect(name)}
+                              style={{
+                                animationDelay: `${cardIdx * 60}ms`,
+                                ...(active ? { background: dc.bg, borderColor: dc.border, boxShadow: `0 8px 32px ${dc.dot}30`, transform: "translateY(-2px) scale(1.01)" } : {}),
+                              }}
                               className={cn(
-                                "group rounded-[1.35rem] border p-2.5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
-                                active
-                                  ? "border-primary/35 bg-gradient-to-br from-primary/12 to-primary/5 shadow-[0_12px_40px_rgba(124,185,232,0.16)]"
-                                  : "border-border/45 bg-background/60 hover:border-primary/25"
+                                "group relative rounded-2xl border p-4 text-left card-hover overflow-hidden animate-card-enter focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                active ? "" : "border-border/45 bg-card/60 hover:bg-card/90"
                               )}
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex min-w-0 items-center gap-2.5">
-                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
-                                    <Icon className="h-4 w-4" />
+                              {/* Subtle corner glow on active */}
+                              {active && (
+                                <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full opacity-30 blur-xl" style={{ background: dc.dot }} />
+                              )}
+                              <div className="relative flex items-start gap-3">
+                                <div
+                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform duration-300 group-hover:scale-110"
+                                  style={{ background: dc.iconBg, ringColor: dc.border, border: `1px solid ${dc.border}` }}
+                                >
+                                  <Icon className="h-5 w-5" style={{ color: dc.iconColor }} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-semibold text-foreground/90 leading-tight">{config.persona}</p>
+                                    <svg
+                                      width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                      className="shrink-0 text-muted-foreground/30 transition-all duration-300 group-hover:text-foreground/60 group-hover:translate-x-0.5"
+                                      style={active ? { color: dc.iconColor } : {}}
+                                      aria-hidden
+                                    >
+                                      <path d="M5 12h14M12 5l7 7-7 7" />
+                                    </svg>
                                   </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-foreground/90">{config.persona}</p>
-                                    <p className="text-[11px] leading-relaxed text-muted-foreground/70">{config.description}</p>
+                                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground/65 line-clamp-2">{config.description}</p>
+                                  <div className="mt-2 flex items-center gap-1.5">
+                                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: dc.dot }} />
+                                    <span className="text-[10px] font-medium" style={{ color: dc.iconColor, opacity: 0.8 }}>{DOMAIN_SHORT[name]}</span>
                                   </div>
                                 </div>
-                                <span className={cn(
-                                  "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
-                                  active ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-                                )}>
-                                  {active ? "Active" : "Open"}
-                                </span>
                               </div>
                             </button>
                           );
@@ -1427,15 +1466,18 @@ export default function ChatAssistant({ onDomainChange }) {
                             <BlossomLogo className="h-5 w-5" />
                           </AvatarFallback>
                         </Avatar>
-                        <div className="max-w-[84%] rounded-[1.4rem] border border-border/40 bg-card/90 px-4 py-3.5 shadow-sm">
-                          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-muted-foreground/70">
-                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                            Thinking
-                          </div>
-                          <div className="mt-3 space-y-2">
-                            <div className="skeleton h-2.5 w-36 rounded-full" />
-                            <div className="skeleton h-2.5 w-4/5 rounded-full" />
-                            <div className="skeleton h-2.5 w-2/3 rounded-full" />
+                        <div className="rounded-[1.4rem] border border-border/40 bg-card/90 px-5 py-4 shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5">
+                              {[0, 1, 2].map((i) => (
+                                <span
+                                  key={i}
+                                  className="typing-dot"
+                                  style={{ animationDelay: `${i * 0.18}s` }}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground/55 font-medium">{currentPersona.persona} is thinking…</span>
                           </div>
                         </div>
                       </div>
