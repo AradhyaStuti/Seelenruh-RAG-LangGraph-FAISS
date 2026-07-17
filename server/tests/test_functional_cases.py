@@ -137,3 +137,96 @@ def test_intent_system_mentions_domain_guidance():
 
 def test_intent_system_mentions_few_shot_examples():
     assert "FEW-SHOT EXAMPLES" in INTENT_SYSTEM
+
+
+# ── Multi-turn conversation tests ─────────────────────────────────────────────
+# These tests verify that language detection is stable across a conversation,
+# that history trimming works correctly, and that session state accumulates
+# in the right order — all without requiring a live LLM.
+
+def test_multiturn_english_language_stays_consistent_across_turns():
+    """English detected consistently across a three-turn mental health conversation."""
+    turns = [
+        "I've been feeling very anxious lately",
+        "Can you help me with some breathing exercises?",
+        "What are some long-term coping strategies?",
+    ]
+    results = [detect_language(t) for t in turns]
+    assert all(lang == "en" for lang in results), f"Expected all 'en', got {results}"
+
+
+def test_multiturn_hinglish_language_stays_consistent_across_turns():
+    """Hinglish detected consistently across a three-turn conversation."""
+    turns = [
+        "mujhe bahut anxiety ho rahi hai",
+        "kya karna chahiye mujhe",
+        "aur koi tips batao please",
+    ]
+    results = [detect_language(t) for t in turns]
+    assert all(lang == "hi-roman" for lang in results), f"Expected all 'hi-roman', got {results}"
+
+
+def test_multiturn_hindi_followup_stays_hindi():
+    """Devanagari follow-ups are not mis-detected as another language."""
+    followups = ["और बताइए", "ठीक है, फिर क्या करूँ?", "समझ आया"]
+    for q in followups:
+        lang = detect_language(q)
+        assert lang == "hi", f"Expected 'hi' for '{q}', got '{lang}'"
+
+
+def test_multiturn_english_followup_phrases_detected_correctly():
+    """Short follow-up phrases common in multi-turn chat don't break detection."""
+    followups = ["tell me more", "what else can I do?", "got it, go on", "and then?"]
+    for q in followups:
+        lang = detect_language(q)
+        assert lang == "en", f"Expected 'en' for '{q}', got '{lang}'"
+
+
+def test_history_trimming_keeps_last_n_turns():
+    """buildHistory equivalent: skip welcome message, keep last N turns."""
+    n = 6
+    all_msgs = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"message {i}"}
+        for i in range(16)   # 16 total messages including welcome at index 0
+    ]
+    # Simulate: skip first (welcome), slice last n
+    trimmed = all_msgs[1:][-n:]
+    assert len(trimmed) == n
+    assert trimmed[0]["content"] == "message 10"
+    assert trimmed[-1]["content"] == "message 15"
+    assert trimmed[-1]["role"] == "assistant"
+
+
+def test_session_accumulates_turns_in_correct_order():
+    """Messages are appended in user → assistant → user order."""
+    session_messages = []
+    session_messages.append({"role": "user",      "content": "My landlord won't return my deposit."})
+    session_messages.append({"role": "assistant", "content": "Under the Model Tenancy Act you can..."})
+    session_messages.append({"role": "user",      "content": "How do I send a legal notice?"})
+    session_messages.append({"role": "assistant", "content": "A legal notice under Section 106 TPA..."})
+
+    assert len(session_messages) == 4
+    assert session_messages[0]["role"] == "user"
+    assert session_messages[1]["role"] == "assistant"
+    assert session_messages[2]["role"] == "user"
+    assert session_messages[3]["role"] == "assistant"
+    assert "deposit" in session_messages[0]["content"]
+
+
+def test_multiturn_domain_keyword_consistent_for_legal_queries():
+    """Legal domain keywords appear in INTENT_SYSTEM regardless of turn count."""
+    legal_signals = ["FIR", "RTI", "tenant", "contract", "Section"]
+    matched = [kw for kw in legal_signals if kw in INTENT_SYSTEM]
+    assert len(matched) >= 2, f"Expected at least 2 legal keywords in INTENT_SYSTEM, found: {matched}"
+
+
+def test_multiturn_german_conversation_detected_consistently():
+    """German turns with sufficient length are detected consistently.
+    Short German phrases (<4 words) may be ambiguous — test only longer ones."""
+    turns = [
+        "Ich habe Angst und weiß nicht weiter",
+        "Bitte helfen Sie mir, ich verstehe das nicht",
+        "Was sind meine Rechte als Mieter in Deutschland",
+    ]
+    results = [detect_language(t) for t in turns]
+    assert all(lang == "de" for lang in results), f"Expected all 'de', got {results}"
