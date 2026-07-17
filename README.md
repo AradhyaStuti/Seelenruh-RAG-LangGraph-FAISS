@@ -7,7 +7,6 @@ sdk: docker
 app_port: 7860
 pinned: false
 ---
-
 # Seelenruh
 
 Seelenruh is my final year B.Tech project — a conversational assistant aimed at Indian users who often don't know where to turn when they need mental health support, legal guidance, help navigating government schemes, or emergency safety information.
@@ -32,6 +31,7 @@ The app routes user messages to one of four personas:
 ## Features
 
 ### Chat
+
 - Persona-based routing with a dedicated chat window per persona. Clicking a persona card opens its chat window; a back arrow returns to the selection screen.
 - Streaming responses token by token via SSE.
 - Quick reply prompts shown when you open a persona's chat for the first time.
@@ -41,8 +41,11 @@ The app routes user messages to one of four personas:
 - Copy, save (bookmark), and thumbs up/down feedback on any response.
 - Export conversation as a text file.
 - Attach a document (.txt, .md, .pdf, .docx, .csv) to provide as context for your next message.
+- Voice input — mic button in the chat bar records audio and transcribes it via Groq Whisper STT; fills the input field automatically.
+- Read aloud — speaker button on every assistant message plays the response via ElevenLabs TTS (gTTS fallback); click again to stop.
 
 ### Retrieval
+
 - Hybrid retrieval: FAISS vector search + BM25 keyword search combined with reciprocal rank fusion.
 - Cross-encoder reranking before the final response.
 - Confidence scoring (High / Medium / Low / None) shown per response.
@@ -53,24 +56,30 @@ The app routes user messages to one of four personas:
 ### Persona-specific tools
 
 **Usha (Mental Health)**
+
 - Mood check-in button in the toolbar. Pick from five moods (Joyful, Calm, Tired, Anxious, Sad); shows an affirmation and a practical tip. Mood history tracked over 14 days with a streak counter. Mood context only influences Usha — it does not leak into other personas.
 - Breathing companion: three guided patterns (Calm 4-6, Box 4-4-4-4, 4-7-8) with animated visual guidance. Accessible from the header.
 
 **Umang (Legal)**
+
 - Embedded legal timelines for salary recovery, eviction, consumer complaints, and divorce — shows steps, typical duration, documents needed, and approximate costs.
 
 **Aarogya (Government Schemes)**
+
 - Eligibility checker tool: fill in state, age, income, student/farmer status and get matched schemes instantly without hitting the LLM. Lazy-loaded, opens as a modal from the chat toolbar.
 
 **Raksha (Safety)**
+
 - Emergency contacts bar (Police 100, Fire 101, Ambulance 102, Women's helpline 1091) appears automatically when emergency language is detected.
 
 ### Language
+
 - English, Hindi, Hinglish, and German supported.
 - Language toggle in the header; the selected language is sent to the backend and the persona responds accordingly.
 - When chatting in German, a translate button appears on each assistant response — click to see an English translation inline, click again to hide.
 
 ### Account
+
 - Email/password signup and login with email verification.
 - Forgot password and reset password flow via email token.
 - Change password from the account menu (Ctrl+Shift+Q opens sign out).
@@ -78,29 +87,31 @@ The app routes user messages to one of four personas:
 - Account deletion with confirmation.
 
 ### Saved moments
+
 - Bookmark any response with the heart icon.
 - View all saved responses in the Saved drawer from the header.
 - Copy or delete saved entries.
 
 ### Explainability
+
 - Every response shows a "Why?" panel that visualises the RAG pipeline: Embed → FAISS → BM25 → RRF → Rerank → LLM.
 - Routing trace shows which domain was selected and why.
 - Source panel shows which knowledge chunks were retrieved and cited.
 
 ## Tech stack
 
-| Layer | Tools |
-|---|---|
-| Frontend | React 18, Vite, Tailwind CSS, Radix UI, shadcn/ui |
-| Backend | Python 3.10, FastAPI, LangGraph |
-| LLM providers | Groq (primary), Anthropic, Ollama (fallbacks) |
-| Embeddings | intfloat/multilingual-e5-small |
-| Retrieval | FAISS + BM25 + cross-encoder reranker |
-| Database | MongoDB Atlas |
-| Auth | PyJWT + bcrypt |
-| TTS | ElevenLabs (primary), gTTS (fallback) |
-| STT | Groq Whisper |
-| Deployment | Docker, Hugging Face Spaces |
+| Layer         | Tools                                             |
+| ------------- | ------------------------------------------------- |
+| Frontend      | React 18, Vite, Tailwind CSS, Radix UI, shadcn/ui |
+| Backend       | Python 3.10, FastAPI, LangGraph                   |
+| LLM providers | Groq (primary), Anthropic, Ollama (fallbacks)     |
+| Embeddings    | intfloat/multilingual-e5-small                    |
+| Retrieval     | FAISS + BM25 + cross-encoder reranker             |
+| Database      | MongoDB Atlas                                     |
+| Auth          | PyJWT + bcrypt                                    |
+| TTS           | ElevenLabs (primary), gTTS (fallback)             |
+| STT           | Groq Whisper                                      |
+| Deployment    | Docker, Hugging Face Spaces                       |
 
 ## Architecture
 
@@ -128,14 +139,14 @@ cp .env.example server/.env
 
 Fill in the required values before running:
 
-| Variable | Required | Description |
-|---|---|---|
-| `GROQ_API_KEY` | Yes | Groq API key for LLM + Whisper STT |
-| `JWT_SECRET` | Yes | Secret for signing JWTs |
-| `MONGODB_URI` | Yes | MongoDB Atlas connection string |
-| `ANTHROPIC_API_KEY` | No | Fallback LLM provider |
-| `OLLAMA_URL` | No | Local Ollama instance URL |
-| `ELEVENLABS_KEY` | No | TTS provider (gTTS used if absent) |
+| Variable              | Required | Description                        |
+| --------------------- | -------- | ---------------------------------- |
+| `GROQ_API_KEY`      | Yes      | Groq API key for LLM + Whisper STT |
+| `JWT_SECRET`        | Yes      | Secret for signing JWTs            |
+| `MONGODB_URI`       | Yes      | MongoDB Atlas connection string    |
+| `ANTHROPIC_API_KEY` | No       | Fallback LLM provider              |
+| `OLLAMA_URL`        | No       | Local Ollama instance URL          |
+| `ELEVENLABS_KEY`    | No       | TTS provider (gTTS used if absent) |
 
 ## Usage
 
@@ -189,13 +200,6 @@ A few things that were harder than expected:
 - The retrieval layer occasionally misses edge cases — especially for very specific scheme eligibility questions or obscure legal provisions.
 - Email sending (verification, password reset) requires SMTP credentials which aren't set up in the demo deployment.
 - This is not a substitute for professional legal or medical advice, and the app says so explicitly.
-
-## Future work
-
-- Voice interface — TTS and Whisper STT are already wired into the backend, but there's no polished mic UI in the frontend yet.
-- Better test coverage, especially for multi-turn conversations.
-- More consistent handling of state-specific legal variations (rent control, stamp duty, etc.).
-- Broader scheme coverage beyond the central government schemes currently in the knowledge base.
 
 ## Acknowledgements
 
