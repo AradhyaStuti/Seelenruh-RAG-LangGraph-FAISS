@@ -611,7 +611,7 @@ export default function ChatAssistant({ onDomainChange }) {
     reader.readAsText(file);
   };
 
-  const composeQuery = (text) => (mood ? moodHints[mood] + text : text);
+  const composeQuery = (text) => (mood && selectedDomain === "usha" ? moodHints[mood] + text : text);
 
   const sendTextMessage = async (text) => {
     const trimmed = text.trim();
@@ -1076,6 +1076,20 @@ export default function ChatAssistant({ onDomainChange }) {
                       </div>
                     )}
                     {(isEmergency || preEmergency) && <EmergencyContacts />}
+                    {messageCount <= 1 && !isLoading && heroPrompts.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1 pb-2">
+                        {heroPrompts.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => sendTextMessage(prompt)}
+                            className="rounded-full border border-primary/25 bg-primary/8 px-3.5 py-1.5 text-[12px] text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/40 transition-all duration-200 text-left"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {visibleMessages.map((message, msgIdx) => {
                       const saved = savedIds.has(message.content);
                       return (
@@ -1370,7 +1384,7 @@ export default function ChatAssistant({ onDomainChange }) {
 
                 {moodOpen && (
                   <div className="mt-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-                    <MoodCheckIn onMoodChange={(m) => { setMood(m); setMoodOpen(false); }} />
+                    <MoodCheckIn onMoodChange={setMood} />
                   </div>
                 )}
 
