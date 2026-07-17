@@ -56,7 +56,41 @@ async def chat(**opts) -> dict:
         except Exception as err:
             log.error("anthropic fallback failed", error=str(err))
 
-    raise RuntimeError("All LLM providers failed. Please try again later.")
+    raise _AllProvidersFailed()
+
+
+# ---------------------------------------------------------------------------
+# Graceful offline response — returned instead of a 500 error when every
+# provider is down. Gives users actionable guidance and emergency contacts.
+# ---------------------------------------------------------------------------
+
+class _AllProvidersFailed(RuntimeError):
+    """Sentinel so callers can distinguish a provider outage from a logic error."""
+    def __init__(self):
+        super().__init__("All LLM providers are currently unavailable.")
+
+
+_OFFLINE_RESPONSE = (
+    "I'm temporarily unable to connect to my AI systems right now. "
+    "All of Seelenruh's AI providers appear to be unavailable at this moment.\n\n"
+    "**While you wait, here are some immediate resources:**\n\n"
+    "- **Mental health crisis (India):** iCall — 9152987821 | Tele-MANAS — 14416 | Vandrevala — 1860-2662-345\n"
+    "- **Emergency (India):** Police / Ambulance / Fire — 112\n"
+    "- **Women's helpline (India):** 181\n"
+    "- **Cyber crime (India):** 1930 or cybercrime.gov.in\n"
+    "- **NALSA (free legal aid):** 15100\n\n"
+    "Please try sending your message again in a moment. "
+    "If the issue persists, the service may be experiencing a temporary outage."
+)
+
+
+async def chat_safe(**opts) -> dict:
+    """Like `chat()` but returns a graceful offline message instead of raising when all providers fail."""
+    try:
+        return await chat(**opts)
+    except _AllProvidersFailed:
+        log.error("all providers down — returning offline response")
+        return {"content": _OFFLINE_RESPONSE, "via": "offline-fallback"}
 
 
 async def chat_json(**opts) -> dict:
