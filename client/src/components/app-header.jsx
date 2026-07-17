@@ -2,11 +2,9 @@ import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { BlossomLogo, BreathLungs, HeartBookmark } from "@/components/icons";
 import { LangToggle } from "@/components/lang-toggle";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SavedMomentsDrawer } from "@/components/saved-moments";
 import { getUser, subscribe } from "@/lib/auth";
-import { verifyAdminKey, setAdminKey } from "@/lib/adminApi";
 import { cn } from "@/lib/utils";
 
 const BreathingCompanion = lazy(() => import("@/components/breathing-companion").then(m => ({ default: m.BreathingCompanion })));
@@ -99,100 +97,11 @@ function AccountMenu({ user, onSignOut, onChangePassword }) {
   );
 }
 
-function AdminKeyDialog({ open, onClose, onSuccess }) {
-  const [key, setKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!key.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const ok = await verifyAdminKey(key.trim());
-      if (ok) {
-        setAdminKey(key.trim());
-        onSuccess();
-        setKey("");
-      } else {
-        setError("Invalid admin key.");
-      }
-    } catch {
-      setError("Could not reach the server.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="w-full max-w-sm mx-4 rounded-3xl border border-border/40 bg-card/95 backdrop-blur-xl petal-shadow p-6 space-y-4">
-        <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary" aria-hidden="true" focusable="false">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-semibold">Admin Access</p>
-            <p className="text-[11px] text-muted-foreground">Enter your admin key to continue</p>
-          </div>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="relative">
-            <Input
-              type={showKey ? "text" : "password"}
-              placeholder="Admin key"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              autoFocus
-              className="rounded-xl pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowKey((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showKey ? "Hide key" : "Show key"}
-            >
-              {showKey ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {error && <p className="text-[11px] text-red-500">{error}</p>}
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={onClose} className="flex-1 rounded-xl" disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1 rounded-xl" disabled={loading || !key.trim()}>
-              {loading ? "Checking…" : "Enter"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-export function AppHeader({ onAdminClick }) {
+export function AppHeader() {
   const [breatheOpen, setBreatheOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
-  const [adminKeyOpen, setAdminKeyOpen] = useState(false);
   const [user, setUser] = useState(() => getUser());
 
   useEffect(() => subscribe(() => setUser(getUser())), []);
@@ -229,23 +138,6 @@ export function AppHeader({ onAdminClick }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setAdminKeyOpen(true)}
-                aria-label="Admin panel"
-                className="rounded-full hover:bg-primary/10 hover:text-primary transition opacity-40 hover:opacity-100"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
-                </svg>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Admin panel</TooltipContent>
-          </Tooltip>
           <LangToggle />
 
           <Tooltip>
@@ -294,11 +186,6 @@ export function AppHeader({ onAdminClick }) {
         {signOutOpen && <SignOutDialog      open={signOutOpen} onOpenChange={setSignOutOpen} user={user} />}
         {changePwOpen && <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />}
       </Suspense>
-      <AdminKeyDialog
-        open={adminKeyOpen}
-        onClose={() => setAdminKeyOpen(false)}
-        onSuccess={() => { setAdminKeyOpen(false); onAdminClick?.(); }}
-      />
     </>
   );
 }
