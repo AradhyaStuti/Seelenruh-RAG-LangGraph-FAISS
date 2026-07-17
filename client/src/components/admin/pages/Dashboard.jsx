@@ -22,6 +22,12 @@ import {
   rollbackIndex,
 } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DEMO_ANALYTICS,
+  DEMO_STATUS,
+  DEMO_AUDIT_LOG,
+  DEMO_SNAPSHOTS,
+} from "@/lib/adminDemoData";
 
 function Skeleton({ className }) {
   return (
@@ -117,10 +123,17 @@ export default function Dashboard({ adminKey }) {
         fetchAuditLog(10),
         fetchSnapshots(),
       ]);
-      if (ana.status === "fulfilled")   setAnalytics(ana.value);
-      if (sts.status === "fulfilled")   setStatus(sts.value);
-      if (audit.status === "fulfilled") setAuditLog(Array.isArray(audit.value) ? audit.value : (audit.value?.logs || []));
-      if (snaps.status === "fulfilled") setSnapshots(Array.isArray(snaps.value) ? snaps.value : (snaps.value?.snapshots || []));
+      const anaVal  = ana.status  === "fulfilled" ? ana.value  : null;
+      const stsVal  = sts.status  === "fulfilled" ? sts.value  : null;
+      const auditVal = audit.status === "fulfilled" ? audit.value : null;
+      const snapsVal = snaps.status === "fulfilled" ? snaps.value : null;
+
+      setAnalytics(anaVal ?? DEMO_ANALYTICS);
+      setStatus(stsVal ?? DEMO_STATUS);
+      const auditArr = Array.isArray(auditVal) ? auditVal : (auditVal?.logs || []);
+      setAuditLog(auditArr.length > 0 ? auditArr : DEMO_AUDIT_LOG);
+      const snapsArr = Array.isArray(snapsVal) ? snapsVal : (snapsVal?.snapshots || []);
+      setSnapshots(snapsArr.length > 0 ? snapsArr : DEMO_SNAPSHOTS);
     } catch {
       toast({ title: "Failed to load dashboard", variant: "destructive" });
     } finally {

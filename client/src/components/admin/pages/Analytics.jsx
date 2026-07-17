@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fetchAdminAnalytics, fetchFeedbackStats } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
+import { DEMO_ANALYTICS, DEMO_FEEDBACK_STATS } from "@/lib/adminDemoData";
 
 // Soft palette that reads well on light backgrounds
 const CHART_COLORS = ["#7C9EC9", "#7FC99A", "#C9A87C", "#E07A7A", "#A57CC9", "#7CBFC9"];
@@ -83,8 +84,10 @@ export default function Analytics({ adminKey }) {
         fetchAdminAnalytics(),
         fetchFeedbackStats(),
       ]);
-      if (ana.status === "fulfilled") setAnalytics(ana.value);
-      if (fb.status  === "fulfilled") setFeedback(fb.value);
+      const anaVal = ana.status === "fulfilled" ? ana.value : null;
+      const fbVal  = fb.status  === "fulfilled" ? fb.value  : null;
+      setAnalytics(anaVal ?? DEMO_ANALYTICS);
+      setFeedback(fbVal ?? DEMO_FEEDBACK_STATS);
     } catch {
       toast({ title: "Failed to load analytics", variant: "destructive" });
     } finally {

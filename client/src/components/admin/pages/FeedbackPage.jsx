@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fetchFeedbackStats, exportFeedbackUrl } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
+import { DEMO_FEEDBACK_STATS } from "@/lib/adminDemoData";
 
 function Skeleton({ className }) {
   return <div className={cn("animate-pulse rounded-lg bg-muted/50", className)} />;
@@ -67,8 +68,8 @@ export default function FeedbackPage({ adminKey }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchFeedbackStats();
-      setStats(data);
+      const data = await fetchFeedbackStats().catch(() => null);
+      setStats(data ?? DEMO_FEEDBACK_STATS);
     } catch (err) {
       toast({ title: "Failed to load feedback stats", description: err?.message, variant: "destructive" });
     } finally {

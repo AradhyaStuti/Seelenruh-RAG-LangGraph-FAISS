@@ -23,6 +23,7 @@ import {
   uploadDocument,
 } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
+import { DEMO_DOCUMENTS } from "@/lib/adminDemoData";
 
 const DOMAINS = ["Mental Health", "Legal", "Government Schemes", "Safety"];
 const LANGUAGES = ["en", "hi", "mr", "ta", "te", "bn", "gu", "kn", "ml", "pa"];
@@ -339,8 +340,9 @@ export default function KnowledgeBase({ adminKey }) {
       const params = {};
       if (domainFilter) params.domain = domainFilter;
       if (typeFilter)   params.file_type = typeFilter;
-      const data = await fetchDocuments(params);
-      setDocs(Array.isArray(data) ? data : (data?.documents || []));
+      const data = await fetchDocuments(params).catch(() => null);
+      const arr = Array.isArray(data) ? data : (data?.documents || []);
+      setDocs(arr.length > 0 ? arr : DEMO_DOCUMENTS);
     } catch (err) {
       toast({ title: "Failed to load documents", description: err?.message, variant: "destructive" });
     } finally {

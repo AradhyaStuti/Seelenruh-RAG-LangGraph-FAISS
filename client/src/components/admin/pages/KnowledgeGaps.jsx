@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fetchKnowledgeGaps, updateKnowledgeGap } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
+import { DEMO_KNOWLEDGE_GAPS } from "@/lib/adminDemoData";
 
 const STATUS_OPTS = [
   { value: "",        label: "All Statuses" },
@@ -82,8 +83,11 @@ export default function KnowledgeGaps({ adminKey }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchKnowledgeGaps(statusFilter || undefined);
-      setGaps(Array.isArray(data) ? data : (data?.gaps || []));
+      const data = await fetchKnowledgeGaps(statusFilter || undefined).catch(() => null);
+      const arr = Array.isArray(data) ? data : (data?.gaps || []);
+      const filtered = arr.length > 0 ? arr
+        : DEMO_KNOWLEDGE_GAPS.filter((g) => !statusFilter || g.status === statusFilter);
+      setGaps(filtered);
       setPage(1);
     } catch (err) {
       toast({ title: "Failed to load knowledge gaps", description: err?.message, variant: "destructive" });
