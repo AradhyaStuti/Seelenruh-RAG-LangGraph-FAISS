@@ -176,6 +176,7 @@ export default function ChatAssistant({ onDomainChange }) {
 
   const [chatView, setChatView] = useState(false);
   const [moodOpen, setMoodOpen] = useState(false);
+  const [translationMap, setTranslationMap] = useState({});
   const [pendingDomain, setPendingDomain] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
@@ -778,6 +779,26 @@ export default function ChatAssistant({ onDomainChange }) {
   const personaCards = Object.entries(domainConfig);
   const heroPrompts = currentPersona?.quickReplies?.slice(0, 4) || [];
 
+  const translateMessage = async (msgId, text) => {
+    // Toggle off if already translated
+    if (translationMap[msgId]?.text) {
+      setTranslationMap((prev) => { const n = { ...prev }; delete n[msgId]; return n; });
+      return;
+    }
+    setTranslationMap((prev) => ({ ...prev, [msgId]: { loading: true } }));
+    try {
+      const plain = text.replace(/[#*`_~[\]]/g, "").slice(0, 500);
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(plain)}&langpair=de|en`
+      );
+      const data = await res.json();
+      const translated = data?.responseData?.translatedText || "Translation unavailable.";
+      setTranslationMap((prev) => ({ ...prev, [msgId]: { text: translated } }));
+    } catch {
+      setTranslationMap((prev) => ({ ...prev, [msgId]: { text: "Could not translate." } }));
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="space-y-4">
@@ -1285,9 +1306,51 @@ export default function ChatAssistant({ onDomainChange }) {
                                       </Tooltip>
                                     </>
                                   )}
+
+                                  {/* Translate button — only in German mode */}
+                                  {lang === "de" && !message.streaming && !message.id?.startsWith("welcome-") && (
+                                    <>
+                                      <div className="w-px h-4 bg-border/50 mx-0.5" />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className={cn(
+                                              "h-7 w-7 rounded-full transition-all",
+                                              translationMap[message.id]?.text && "text-primary bg-primary/8"
+                                            )}
+                                            onClick={() => translateMessage(message.id, message.content)}
+                                            aria-label="Translate to English"
+                                          >
+                                            {translationMap[message.id]?.loading ? (
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin" aria-hidden>
+                                                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                              </svg>
+                                            ) : (
+                                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                                <path d="M5 8l6 6" /><path d="M4 14l6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="M22 22l-5-10-5 10" /><path d="M14 18h6" />
+                                              </svg>
+                                            )}
+                                            <span className="sr-only">Translate</span>
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          {translationMap[message.id]?.text ? "Hide translation" : "Translate to English"}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>
+                            {/* Translation panel */}
+                            {translationMap[message.id]?.text && (
+                              <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70 mb-1">English translation</p>
+                                <p className="text-xs text-foreground/80 leading-relaxed">{translationMap[message.id].text}</p>
+                              </div>
+                            )}
                             {/* Sources / citations panel */}
                             {message.role === "assistant" &&
                               !message.streaming &&
