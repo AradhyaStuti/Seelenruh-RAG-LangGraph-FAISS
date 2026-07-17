@@ -309,6 +309,20 @@ export function LoginScreen() {
                   </div>
                 )}
 
+                {/* Email delivery notice — shown on signup and forgot-password */}
+                {(mode === "signup" || mode === "forgot") && (
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-200/60 bg-amber-50/70 px-3 py-2.5 text-[11px] text-amber-700/90 leading-relaxed">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>
+                      {mode === "signup"
+                        ? "Email verification is not available in the demo deployment — you can still sign in without verifying."
+                        : "Email delivery is not configured in the demo. Password reset links are logged server-side only."}
+                    </span>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   disabled={
