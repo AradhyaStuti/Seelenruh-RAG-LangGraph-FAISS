@@ -784,7 +784,6 @@ export default function ChatAssistant({ onDomainChange }) {
   const remaining = useMemo(() => 4000 - (inputValue?.length ?? 0), [inputValue]);
   const currentPersona = domainConfig[selectedDomain];
   const sessionCount = currentDomainState.sessions.length;
-  const personaCards = Object.entries(domainConfig);
   const heroPrompts = currentPersona?.quickReplies?.slice(0, 4) || [];
 
   const translateMessage = async (msgId, text) => {
@@ -813,34 +812,39 @@ export default function ChatAssistant({ onDomainChange }) {
         <Card className="w-full rounded-[2rem] glass-strong petal-shadow transition-all duration-500 overflow-hidden border-border/40">
           <CardContent className="pt-5 px-3 sm:px-5 pb-5">
             <Tabs value={selectedDomain} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto bg-transparent p-0 gap-2">
-                {Object.entries(domainConfig).map(([name, { icon: Icon, persona }]) => (
-                  <TabsTrigger
-                    key={name}
-                    value={name}
-                    className={cn(
-                      "group relative flex-col py-4 rounded-2xl border border-border/45 bg-card/55 backdrop-blur transition-all duration-300",
-                      "data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/85",
-                      "data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border-primary/30",
-                      "hover:-translate-y-0.5 hover:shadow-sm hover:border-border/70 hover:bg-card/80",
-                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    )}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={cn(
-                        "h-9 w-9 rounded-xl flex items-center justify-center ring-1 transition-all duration-300",
-                        "bg-primary/8 ring-primary/15 text-primary/70",
-                        "group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:ring-primary-foreground/25 group-data-[state=active]:text-primary-foreground"
-                      )}>
-                        <Icon className="h-[18px] w-[18px] transition-transform duration-300 group-hover:scale-110 group-data-[state=active]:scale-105" />
+              <TabsList className="grid w-full grid-cols-4 h-auto bg-background/40 p-1.5 gap-1.5 rounded-2xl border border-border/40 backdrop-blur-sm">
+                {Object.entries(domainConfig).map(([name, { icon: Icon, persona }]) => {
+                  const dc = DOMAIN_COLORS[name];
+                  const active = selectedDomain === name;
+                  return (
+                    <TabsTrigger
+                      key={name}
+                      value={name}
+                      style={active ? { background: dc.bg, borderColor: dc.border, boxShadow: `0 4px 16px ${dc.dot}25` } : {}}
+                      className={cn(
+                        "group flex-col gap-1.5 py-3 px-1 rounded-xl border transition-all duration-250",
+                        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                        active
+                          ? "border-[inherit] shadow-sm"
+                          : "border-transparent hover:border-border/40 hover:bg-card/60"
+                      )}
+                    >
+                      <div
+                        className="h-8 w-8 rounded-lg flex items-center justify-center ring-1 mx-auto transition-transform duration-200 group-hover:scale-110"
+                        style={active
+                          ? { background: dc.iconBg, borderColor: dc.border, border: `1px solid ${dc.border}` }
+                          : { background: "hsl(var(--muted)/0.6)", border: "1px solid transparent" }
+                        }
+                      >
+                        <Icon className="h-4 w-4" style={{ color: active ? dc.iconColor : undefined }} />
                       </div>
-                      <div className="text-center leading-tight">
-                        <p className="font-semibold text-[13px]">{persona}</p>
-                        <p className="text-[10px] mt-0.5 opacity-50 group-data-[state=active]:opacity-75">{DOMAIN_SHORT[name]}</p>
+                      <div className="text-center leading-none">
+                        <p className="font-semibold text-[12px]" style={active ? { color: dc.iconColor } : {}}>{persona}</p>
+                        <p className="text-[9px] mt-0.5 text-muted-foreground/50">{DOMAIN_SHORT[name]}</p>
                       </div>
-                    </div>
-                  </TabsTrigger>
-                ))}
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
 
               {/* Persona identity row — visible when in chat view */}
@@ -1035,92 +1039,73 @@ export default function ChatAssistant({ onDomainChange }) {
                 </div>
 
                 {!chatView ? (
-                  <div className="min-h-[54vh] sm:min-h-[58vh] rounded-[1.65rem] border border-border/45 bg-gradient-to-br from-card/90 via-card/70 to-background/70 p-4 sm:p-6 shadow-[0_18px_70px_rgba(15,23,42,0.08)]">
-                    <div className="flex flex-col gap-5">
-                      {/* Hero heading */}
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
-                            <span className="relative flex h-2 w-2">
-                              <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
-                              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  (() => {
+                    const { icon: Icon } = currentPersona;
+                    const dc = DOMAIN_COLORS[selectedDomain];
+                    return (
+                      <div className="min-h-[54vh] sm:min-h-[58vh] rounded-[1.65rem] border border-border/45 bg-gradient-to-br from-card/90 via-card/70 to-background/70 p-5 sm:p-8 shadow-[0_18px_70px_rgba(15,23,42,0.08)] flex flex-col justify-between animate-card-enter">
+                        {/* Persona hero */}
+                        <div className="flex flex-col items-center text-center gap-4 pt-4 sm:pt-6">
+                          {/* Big persona icon */}
+                          <div
+                            className="relative h-20 w-20 rounded-3xl flex items-center justify-center ring-2 shadow-lg"
+                            style={{ background: dc.bg, borderColor: dc.border, border: `2px solid ${dc.border}`, boxShadow: `0 12px 48px ${dc.dot}35` }}
+                          >
+                            <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-25 blur-2xl pointer-events-none" style={{ background: dc.dot }} />
+                            <Icon className="h-10 w-10 relative z-10" style={{ color: dc.iconColor }} />
+                            {/* Online dot */}
+                            <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-card flex items-center justify-center">
+                              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping opacity-75" />
                             </span>
-                            {currentPersona.persona} is online
                           </div>
-                          <div className="flex items-center gap-1.5 rounded-full border border-border/35 bg-background/60 px-3 py-1 text-[10px] font-medium text-muted-foreground/70">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                            EN • HI • Hinglish • DE
-                          </div>
-                        </div>
-                        <div>
-                          <h2 className="font-headline text-2xl sm:text-3xl font-semibold tracking-tight">
-                            How can{" "}
-                            <span className="text-gradient">Seelenruh</span>
-                            {" "}help today?
-                          </h2>
-                          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground/75 max-w-xl">
-                            {currentPersona.subtitle}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {personaCards.map(([name, config], cardIdx) => {
-                          const Icon = config.icon;
-                          const active = selectedDomain === name;
-                          const dc = DOMAIN_COLORS[name];
-                          return (
-                            <button
-                              key={name}
-                              type="button"
-                              onClick={() => handlePersonaSelect(name)}
-                              style={{
-                                animationDelay: `${cardIdx * 60}ms`,
-                                ...(active ? { background: dc.bg, borderColor: dc.border, boxShadow: `0 8px 32px ${dc.dot}30`, transform: "translateY(-2px) scale(1.01)" } : {}),
-                              }}
-                              className={cn(
-                                "group relative rounded-2xl border p-4 text-left card-hover overflow-hidden animate-card-enter focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                active ? "" : "border-border/45 bg-card/60 hover:bg-card/90"
-                              )}
-                            >
-                              {/* Subtle corner glow on active */}
-                              {active && (
-                                <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full opacity-30 blur-xl" style={{ background: dc.dot }} />
-                              )}
-                              <div className="relative flex items-start gap-3">
-                                <div
-                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform duration-300 group-hover:scale-110"
-                                  style={{ background: dc.iconBg, ringColor: dc.border, border: `1px solid ${dc.border}` }}
+                          <div>
+                            <h2 className="font-headline text-2xl sm:text-3xl font-semibold tracking-tight">
+                              Hi, I'm{" "}
+                              <span className="text-gradient">{currentPersona.persona}</span>
+                            </h2>
+                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground/70 max-w-sm mx-auto">
+                              {currentPersona.subtitle}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setChatView(true)}
+                            className="mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            style={{ background: dc.iconBg, color: dc.iconColor, border: `1px solid ${dc.border}` }}
+                          >
+                            Start chatting
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Quick-start prompts */}
+                        {currentPersona.quickReplies?.length > 0 && (
+                          <div className="mt-6">
+                            <p className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/45 mb-3">
+                              Try asking
+                            </p>
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {currentPersona.quickReplies.map((prompt) => (
+                                <button
+                                  key={prompt}
+                                  type="button"
+                                  onClick={() => sendTextMessage(prompt)}
+                                  className="rounded-full border px-3.5 py-1.5 text-[12px] transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  style={{ borderColor: dc.border, color: dc.iconColor, background: dc.bg }}
                                 >
-                                  <Icon className="h-5 w-5" style={{ color: dc.iconColor }} />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-semibold text-foreground/90 leading-tight">{config.persona}</p>
-                                    <svg
-                                      width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                                      className="shrink-0 text-muted-foreground/30 transition-all duration-300 group-hover:text-foreground/60 group-hover:translate-x-0.5"
-                                      style={active ? { color: dc.iconColor } : {}}
-                                      aria-hidden
-                                    >
-                                      <path d="M5 12h14M12 5l7 7-7 7" />
-                                    </svg>
-                                  </div>
-                                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground/65 line-clamp-2">{config.description}</p>
-                                  <div className="mt-2 flex items-center gap-1.5">
-                                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: dc.dot }} />
-                                    <span className="text-[10px] font-medium" style={{ color: dc.iconColor, opacity: 0.8 }}>{DOMAIN_SHORT[name]}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
+                                  {prompt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                    </div>
-                  </div>
+                    );
+                  })()
                 ) : (
                 <ScrollArea className="h-[52vh] sm:h-[58vh] pr-2">
                   <div className="space-y-6">
