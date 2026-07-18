@@ -1,12 +1,25 @@
 """Email sender — three backends in priority order:
 
 1. Resend HTTP API  — set RESEND_API_KEY  (free tier: 100 emails/day, no extra package)
-2. SMTP/STARTTLS    — set SMTP_HOST + SMTP_USER + SMTP_PASSWORD  (Gmail, Outlook, etc.)
-3. Console fallback — dev mode when no provider is configured (tokens logged, not sent)
+2. SMTP             — set SMTP_HOST + SMTP_USER + SMTP_PASSWORD
+                      • port 465 → SSL  (Gmail: smtp.gmail.com:465)
+                      • port 587 → STARTTLS (Gmail: smtp.gmail.com:587, SendGrid, etc.)
+                      Uses Python built-in smtplib — no extra package required.
+3. Console fallback — tokens logged to stdout when no provider is configured (dev mode)
 
-HTML emails are sent so links are clickable on all email clients.
+Gmail setup (recommended for most deployments):
+  SMTP_HOST=smtp.gmail.com
+  SMTP_PORT=587
+  SMTP_USER=your-gmail@gmail.com
+  SMTP_PASSWORD=<16-char App Password from https://myaccount.google.com/apppasswords>
+  SMTP_FROM=your-gmail@gmail.com
+  APP_BASE_URL=https://your-app-domain.com
 """
 import asyncio
+import smtplib
+import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import httpx
 
@@ -53,6 +66,16 @@ def _html_wrap(subject: str, body_html: str) -> str:
 </html>"""
 
 
+def _build_mime(*, from_addr: str, to: str, subject: str, body_text: str, body_html: str) -> MIMEMultipart:
+    msg = MIMEMultipart("alternative")
+    msg["From"]    = _sanitize_header(from_addr)
+    msg["To"]      = _sanitize_header(to)
+    msg["Subject"] = _sanitize_header(subject)
+    msg.attach(MIMEText(body_text, "plain", "utf-8"))
+    msg.attach(MIMEText(body_html, "html",  "utf-8"))
+    return msg
+
+
 # ---------------------------------------------------------------------------
 # Backend 1: Resend HTTP API
 # ---------------------------------------------------------------------------
@@ -67,7 +90,7 @@ async def _send_resend(*, to: str, subject: str, body_text: str, body_html: str)
                 "Content-Type": "application/json",
             },
             json={
-                "from": SMTP_FROM,
+                "from": SMTP_FROM or "onboarding@resend.dev",
                 "to": [to],
                 "subject": subject,
                 "text": body_text,
@@ -75,50 +98,43 @@ async def _send_resend(*, to: str, subject: str, body_text: str, body_html: str)
             },
         )
     if r.status_code not in (200, 201):
-        raise RuntimeError(f"Resend API error {r.status_code}: {r.text[:200]}")
+        raise RuntimeError(f"Resend API error {r.status_code}: {r.text[:300]}")
 
 
 # ---------------------------------------------------------------------------
-# Backend 2: SMTP/STARTTLS
+# Backend 2: SMTP via built-in smtplib (no extra package needed)
 # ---------------------------------------------------------------------------
+
+def _send_smtp_sync(*, to: str, subject: str, body_text: str, body_html: str) -> None:
+    """Synchronous SMTP send. Auto-selects SSL (port 465) or STARTTLS (other ports)."""
+    from_addr = SMTP_FROM or SMTP_USER
+    if not from_addr:
+        raise RuntimeError("SMTP_FROM or SMTP_USER must be set.")
+
+    msg = _build_mime(from_addr=from_addr, to=to, subject=subject, body_text=body_text, body_html=body_html)
+
+    ctx = ssl.create_default_context()
+
+    if SMTP_PORT == 465:
+        # Implicit SSL
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx, timeout=15) as server:
+            if SMTP_USER and SMTP_PASSWORD:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(from_addr, [to], msg.as_string())
+    else:
+        # STARTTLS (port 587 or custom)
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.ehlo()
+            server.starttls(context=ctx)
+            server.ehlo()
+            if SMTP_USER and SMTP_PASSWORD:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(from_addr, [to], msg.as_string())
+
 
 async def _send_smtp(*, to: str, subject: str, body_text: str, body_html: str) -> None:
-    """Send via SMTP with STARTTLS. Requires aiosmtplib (optional dep)."""
-    try:
-        import aiosmtplib
-    except ImportError:
-        log.warning("aiosmtplib not installed — add it to requirements.txt for SMTP support")
-        raise RuntimeError("aiosmtplib not installed")
-
-    safe_to = _sanitize_header(to)
-    safe_subject = _sanitize_header(subject)
-    from_addr = SMTP_FROM or SMTP_USER
-
-    # Multipart MIME: plain text + HTML
-    boundary = "==_seelenruh_boundary_=="
-    message = (
-        f"From: {from_addr}\r\n"
-        f"To: {safe_to}\r\n"
-        f"Subject: {safe_subject}\r\n"
-        f"MIME-Version: 1.0\r\n"
-        f"Content-Type: multipart/alternative; boundary=\"{boundary}\"\r\n"
-        f"\r\n"
-        f"--{boundary}\r\n"
-        f"Content-Type: text/plain; charset=utf-8\r\n\r\n"
-        f"{body_text}\r\n"
-        f"--{boundary}\r\n"
-        f"Content-Type: text/html; charset=utf-8\r\n\r\n"
-        f"{body_html}\r\n"
-        f"--{boundary}--\r\n"
-    )
-    await aiosmtplib.send(
-        message,
-        hostname=SMTP_HOST,
-        port=SMTP_PORT,
-        username=SMTP_USER,
-        password=SMTP_PASSWORD,
-        start_tls=True,
-    )
+    """Async wrapper — runs smtplib in a thread pool so it doesn't block the event loop."""
+    await asyncio.to_thread(_send_smtp_sync, to=to, subject=subject, body_text=body_text, body_html=body_html)
 
 
 # ---------------------------------------------------------------------------
@@ -126,9 +142,10 @@ async def _send_smtp(*, to: str, subject: str, body_text: str, body_html: str) -
 # ---------------------------------------------------------------------------
 
 def _log_fallback(*, to: str, subject: str, body_text: str) -> None:
-    """No email provider configured — print token to server console (dev mode only)."""
-    log.info(
-        "DEV MODE — email not sent (configure RESEND_API_KEY or SMTP_HOST to enable)",
+    log.warning(
+        "EMAIL NOT SENT — no provider configured. "
+        "Set RESEND_API_KEY or SMTP_HOST+SMTP_USER+SMTP_PASSWORD in server/.env "
+        "to enable real email delivery.",
         to=to,
         subject=subject,
         body=body_text,
@@ -149,15 +166,58 @@ async def _dispatch(*, to: str, subject: str, body_text: str, body_html: str) ->
         except Exception as err:
             log.warning("Resend failed, trying SMTP", error=str(err))
 
-    if SMTP_HOST:
+    if SMTP_HOST and SMTP_USER and SMTP_PASSWORD:
         try:
             await _send_smtp(to=to, subject=subject, body_text=body_text, body_html=body_html)
-            log.info("email sent via SMTP", to=to, subject=subject)
+            log.info("email sent via SMTP", to=to, subject=subject, host=SMTP_HOST, port=SMTP_PORT)
             return
         except Exception as err:
-            log.warning("SMTP failed, falling back to console log", error=str(err))
+            log.error(
+                "SMTP delivery failed — falling back to console log. "
+                "Check SMTP_HOST / SMTP_USER / SMTP_PASSWORD in your .env.",
+                error=str(err), host=SMTP_HOST, port=SMTP_PORT, user=SMTP_USER,
+            )
 
     _log_fallback(to=to, subject=subject, body_text=body_text)
+
+
+async def send_test_email(*, to: str) -> dict:
+    """Send a test email and return a result dict (used by admin test endpoint)."""
+    subject = "Seelenruh — email test"
+    body_text = "This is a test email from Seelenruh. If you received it, email delivery is working."
+    body_html = _html_wrap(subject, """
+        <p style="font-size:16px;color:#333;margin:0 0 16px;">Email delivery test</p>
+        <p style="font-size:14px;color:#555;margin:0 0 8px;line-height:1.6;">
+          This test email was sent from your Seelenruh instance.<br>
+          If you received it, email delivery is configured correctly.
+        </p>
+    """)
+
+    provider = None
+    error = None
+
+    if RESEND_API_KEY:
+        try:
+            await _send_resend(to=to, subject=subject, body_text=body_text, body_html=body_html)
+            provider = "resend"
+        except Exception as err:
+            error = f"Resend: {err}"
+
+    if not provider and SMTP_HOST and SMTP_USER and SMTP_PASSWORD:
+        try:
+            await _send_smtp(to=to, subject=subject, body_text=body_text, body_html=body_html)
+            provider = f"smtp ({SMTP_HOST}:{SMTP_PORT})"
+        except Exception as err:
+            error = f"SMTP: {err}"
+
+    if not provider:
+        return {
+            "ok": False,
+            "provider": None,
+            "error": error or "No email provider configured (set RESEND_API_KEY or SMTP_HOST+SMTP_USER+SMTP_PASSWORD)",
+        }
+
+    return {"ok": True, "provider": provider, "to": to}
 
 
 # ---------------------------------------------------------------------------

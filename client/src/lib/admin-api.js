@@ -243,3 +243,7 @@ export const triggerCrawler = () => adminPost("/api/admin/crawler/trigger");
 // Audit Log
 export const fetchAuditLog = (limit = 100) =>
   adminGet("/api/admin/audit", { limit });
+
+// Email test
+export const testEmail = (to) =>
+  adminPost("/api/admin/email-test", {}, { to });

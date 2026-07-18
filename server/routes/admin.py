@@ -534,6 +534,20 @@ async def list_crawler_sources(
     return {"sources": sources, "count": len(sources)}
 
 
+@router.post("/email-test")
+@limiter.limit("3/minute")
+async def test_email(
+    request: Request,
+    to: str = Query(..., description="Address to send the test email to"),
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """Send a test email and return which provider delivered it (or the error)."""
+    _check_key(x_admin_key)
+    import mailer
+    result = await mailer.send_test_email(to=to)
+    return result
+
+
 @router.post("/crawler/trigger")
 @limiter.limit("5/minute")
 async def trigger_crawler(

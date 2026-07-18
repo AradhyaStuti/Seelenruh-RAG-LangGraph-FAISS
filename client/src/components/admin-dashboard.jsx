@@ -14,7 +14,7 @@ import {
   fetchKnowledgeGaps, updateKnowledgeGap,
   fetchSnapshots, rollbackIndex,
   fetchCrawlerSources, triggerCrawler,
-  fetchAuditLog,
+  fetchAuditLog, testEmail,
 } from "@/lib/admin-api";
 
 // ---------------------------------------------------------------------------
@@ -945,6 +945,91 @@ function AuditTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Tab: Email
+// ---------------------------------------------------------------------------
+function EmailTab() {
+  const [to, setTo] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const handleTest = async () => {
+    if (!to.trim()) { setError("Enter a recipient email address."); return; }
+    setSending(true);
+    setError("");
+    setResult(null);
+    try {
+      const res = await testEmail(to.trim());
+      setResult(res);
+    } catch (e) { setError(e.message); }
+    finally { setSending(false); }
+  };
+
+  return (
+    <div>
+      <SectionTitle>Email Delivery</SectionTitle>
+
+      {/* Config status */}
+      <div className="rounded-2xl border border-border/50 p-4 mb-5 space-y-2 text-sm">
+        <p className="font-medium text-foreground/80 mb-2">Current configuration</p>
+        <p className="text-[12px] text-muted-foreground">
+          Email is sent via <strong>Resend API</strong> (if <code className="text-xs bg-muted px-1 rounded">RESEND_API_KEY</code> is set)
+          or <strong>SMTP</strong> (if <code className="text-xs bg-muted px-1 rounded">SMTP_HOST + SMTP_USER + SMTP_PASSWORD</code> are set).
+          If neither is configured, emails are only printed to the server console.
+        </p>
+        <div className="mt-3 rounded-xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground space-y-1 font-mono">
+          <p><strong>Gmail setup (recommended):</strong></p>
+          <p>SMTP_HOST=smtp.gmail.com</p>
+          <p>SMTP_PORT=587</p>
+          <p>SMTP_USER=your-gmail@gmail.com</p>
+          <p>SMTP_PASSWORD={"<16-char App Password>"}</p>
+          <p>SMTP_FROM=your-gmail@gmail.com</p>
+          <p>APP_BASE_URL=https://your-app.hf.space</p>
+          <p className="text-amber-600 mt-1 font-sans not-italic">
+            ⚠ Use an App Password, NOT your regular Gmail password.<br />
+            Enable at: myaccount.google.com/apppasswords (needs 2FA turned on)
+          </p>
+        </div>
+      </div>
+
+      {/* Test send */}
+      <div className="rounded-2xl border border-border/50 p-4 space-y-3">
+        <p className="text-sm font-semibold">Send a test email</p>
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="recipient@example.com"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleTest()}
+          />
+          <Button onClick={handleTest} disabled={sending || !to.trim()} size="sm">
+            {sending ? <Spinner /> : "Send test"}
+          </Button>
+        </div>
+        <ErrMsg msg={error} />
+        {result && (
+          <div className={cn(
+            "rounded-xl px-4 py-3 text-sm",
+            result.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"
+          )}>
+            {result.ok ? (
+              <p>✓ Test email delivered via <strong>{result.provider}</strong> to <strong>{result.to}</strong>. Check your inbox.</p>
+            ) : (
+              <div>
+                <p className="font-medium mb-1">Delivery failed</p>
+                <p className="text-[12px]">{result.error}</p>
+                <p className="text-[11px] mt-2 opacity-70">Check SMTP/Resend credentials in server/.env and restart the server.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Admin Key Gate
 // ---------------------------------------------------------------------------
 function AdminKeyGate({ onSuccess }) {
@@ -1005,6 +1090,7 @@ const TABS = [
   { id: "gaps",       label: "Gaps" },
   { id: "crawler",    label: "Crawler" },
   { id: "index",      label: "Index" },
+  { id: "email",      label: "Email" },
   { id: "audit",      label: "Audit Log" },
 ];
 
@@ -1094,6 +1180,7 @@ export function AdminDashboard({ onClose }) {
               {activeTab === "gaps"      && <GapsTab />}
               {activeTab === "crawler"   && <CrawlerTab />}
               {activeTab === "index"     && <IndexTab />}
+              {activeTab === "email"     && <EmailTab />}
               {activeTab === "audit"     && <AuditTab />}
             </div>
           </div>
