@@ -44,9 +44,10 @@ server/rag/.cache/
 # uploaded files
 server/uploads/
 
-# eval run snapshots — keep the canonical run only, ignore experiments
+# eval run snapshots — keep canonical + named baselines run, ignore experiments
 server/results/*.json
 !server/results/canonical.json
+!server/results/baselines_test_20260718_103703.json
 eval_results.json
 
 # Claude Code internal

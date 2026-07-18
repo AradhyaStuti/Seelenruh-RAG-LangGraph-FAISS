@@ -1,0 +1,50 @@
+{
+  "tool": "eval_baselines.py",
+  "split": "test",
+  "timestamp": "2026-07-18T10:37:03.203739+00:00",
+  "n": 50,
+  "rows": [
+    {
+      "name": "A. FULL (rerank + persona-domain filter, k=5)  PROD",
+      "n": 50,
+      "p1": 0.76,
+      "mrr": 0.8606666666666666,
+      "p50_ms": 49.51584339141846,
+      "mean_ms": 53.46879005432129,
+      "cross_domain_top1": 0,
+      "retrieves": true
+    },
+    {
+      "name": "B. VANILLA_RAG (bi-encoder only, no filter, k=5)",
+      "n": 50,
+      "p1": 0.68,
+      "mrr": 0.8050000000000002,
+      "p50_ms": 44.04747486114502,
+      "mean_ms": 44.02199745178223,
+      "cross_domain_top1": 6,
+      "retrieves": true
+    },
+    {
+      "name": "C. SINGLE_PERSONA (rerank, no domain filter, k=5)",
+      "n": 50,
+      "p1": 0.68,
+      "mrr": 0.8050000000000002,
+      "p50_ms": 43.67625713348389,
+      "mean_ms": 43.76924514770508,
+      "cross_domain_top1": 6,
+      "retrieves": true
+    },
+    {
+      "name": "D. ZERO_SHOT_LLM (no RAG, model weights only)",
+      "n": 6,
+      "p1": null,
+      "mrr": null,
+      "p50_ms": 903.0660390853882,
+      "mean_ms": 1035.3025992711384,
+      "cross_domain_top1": null,
+      "retrieves": false,
+      "keyword_coverage": 1.0,
+      "keyword_misses": []
+    }
+  ]
+}

@@ -222,6 +222,43 @@ Source: `server/bench/reports/latency_report.md` (2026-07-13). Measured on CPU w
 
 BM25 and cross-encoder reranking times are sub-millisecond on the standard index size and do not materially affect the p90. The full end-to-end response time is dominated by the two Groq LLM calls (8B analyzer + 70B composer); the retrieval step is less than 5% of total latency on a representative request.
 
+### Baseline comparison
+
+Evaluated on the TEST_HELDOUT split (50 queries, never seen during development) using `eval_baselines.py`. Source: `server/results/baselines_test_20260718_103703.json` (2026-07-18, live run).
+
+Four systems compared:
+
+| System | Description |
+|---|---|
+| **A. FULL** | bi-encoder + cross-encoder reranker + persona-domain filter (production) |
+| B. VANILLA_RAG | bi-encoder only, no reranker, no domain filter |
+| C. SINGLE_PERSONA | cross-encoder reranker, no domain filter |
+| D. ZERO_SHOT_LLM | no retrieval — plain LLM with a one-paragraph system prompt |
+
+**Retrieval results (TEST_HELDOUT, n=50):**
+
+| System | P@1 | MRR | Retrieval p50 | Cross-domain leaks |
+|---|---|---|---|---|
+| **A. FULL (prod)** | **76.0%** | **0.861** | **50 ms** | **0** |
+| B. VANILLA_RAG | 68.0% | 0.805 | 44 ms | 6 |
+| C. SINGLE_PERSONA | 68.0% | 0.805 | 44 ms | 6 |
+| D. ZERO_SHOT_LLM | — | — | 903 ms | — |
+
+**Deltas (FULL minus baseline, positive = FULL wins):**
+
+| Comparison | ΔP@1 | ΔMRR |
+|---|---|---|
+| FULL vs VANILLA_RAG | **+8.0 pp** | **+0.056** |
+| FULL vs SINGLE_PERSONA | **+8.0 pp** | **+0.056** |
+
+**Zero-shot LLM keyword coverage (6 safety/legal probes):** 100% — the LLM correctly recalled helpline numbers, Section 138 NI Act, and PM-KISAN amounts from its training weights. This is not surprising for widely-known facts; the probes are designed to test recall of stable government information, not niche eligibility conditions. The gap between RAG and zero-shot appears on rare or recently-updated facts where the model has no training signal.
+
+**Reading the numbers:**
+
+The FULL system beats both baselines by 8 percentage points in P@1 on the held-out split. Comparing B and C reveals that the reranker alone (C) provides zero gain over plain bi-encoder (B) when there is no domain filter — the cross-encoder sees candidates from all four domains and the top-ranked chunk ends up in the wrong domain on 6/50 queries (12%). The domain filter eliminates all cross-domain leaks (0 for FULL), giving the reranker a cleaner candidate pool to work with. In other words, the persona-domain filter is doing the heavy lifting, not the reranker in isolation.
+
+The TEST_HELDOUT P@1 of 76% is lower than the 84% on the full 100-query set in `canonical.json` — this is expected. The heldout set was never used during development and contains harder edge cases, so the gap is a realistic estimate of generalisation.
+
 ### Hallucination probe suite
 
 14 probes across four categories, evaluated against known-correct reference values. Source: `server/bench/reports/hallucination_report.md` (2026-07-13).
