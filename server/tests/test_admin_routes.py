@@ -17,7 +17,46 @@ import types
 
 _fake_config = types.ModuleType("config")
 _fake_config.ADMIN_KEY = "test-key"
-sys.modules.setdefault("config", _fake_config)
+_fake_config.MONGODB_URI = ""
+_fake_config.MONGODB_DB = "test"
+_fake_config.JWT_SECRET = "test-jwt-secret"
+_fake_config.JWT_ALG = "HS256"
+_fake_config.JWT_ACCESS_TTL_MINUTES = 15
+_fake_config.JWT_REFRESH_TTL_DAYS = 30
+_fake_config.GROQ_API_KEY = ""
+_fake_config.GROQ_MODEL_SMART = "llama-3.3-70b-versatile"
+_fake_config.GROQ_MODEL_FAST = "llama-3.1-8b-instant"
+_fake_config.GROQ_MODEL_WHISPER = "whisper-large-v3-turbo"
+_fake_config.ANTHROPIC_API_KEY = ""
+_fake_config.ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
+_fake_config.ELEVENLABS_KEY = ""
+_fake_config.ELEVENLABS_VOICE_ID = ""
+_fake_config.EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
+_fake_config.RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+_fake_config.RERANKER_ENABLED = False
+_fake_config.RETRIEVAL_TOP_K = 5
+_fake_config.RETRIEVAL_OVERFETCH = 15
+_fake_config.BRAVE_SEARCH_KEY = ""
+_fake_config.TAVILY_API_KEY = ""
+_fake_config.SERPAPI_KEY = ""
+_fake_config.RESEND_API_KEY = ""
+_fake_config.SMTP_HOST = ""
+_fake_config.SMTP_PORT = 587
+_fake_config.SMTP_USER = ""
+_fake_config.SMTP_PASSWORD = ""
+_fake_config.SMTP_FROM = "noreply@seelenruh.app"
+_fake_config.APP_BASE_URL = "http://localhost:5173"
+_fake_config.FIELD_ENCRYPTION_KEY = ""
+_fake_config.OLLAMA_URL = "http://localhost:11434"
+_fake_config.OLLAMA_MODEL = "llama3.2:3b"
+_fake_config.ADMIN_KEY = "test-key"
+_fake_config.REDIS_URL = ""
+_fake_config.SEELENRUH_ENV = "test"
+_fake_config.LOG_LEVEL = "INFO"
+_fake_config.MAX_LOGIN_ATTEMPTS = 10
+_fake_config.CLIENT_ORIGIN = ""
+_fake_config.PORT = 5000
+sys.modules["config"] = _fake_config  # force override so functional tests share same stub
 
 for _mod in ["structlog", "sentence_transformers", "faiss", "pdfplumber", "docx"]:
     sys.modules.setdefault(_mod, MagicMock())
