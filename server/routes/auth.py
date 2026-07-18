@@ -34,7 +34,12 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def _public_user(user: dict) -> dict:
-    return {"id": user["_id"], "email": user["email"], "name": user.get("name", "")}
+    return {
+        "id": user["_id"],
+        "email": user["email"],
+        "name": user.get("name", ""),
+        "emailVerified": bool(user.get("emailVerified", False)),
+    }
 
 
 @router.post("/signup", response_model=AuthResponse)

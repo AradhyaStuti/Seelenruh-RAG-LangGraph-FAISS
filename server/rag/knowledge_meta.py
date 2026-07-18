@@ -552,9 +552,21 @@ def compute_weighted_score(chunk: dict) -> float:
 
 def compute_confidence(hits: list[dict]) -> str:
     """Multi-factor confidence: "High" | "Medium" | "Low" | "None". Legal domain uses tighter thresholds."""
+    label, _ = compute_confidence_with_reasoning(hits)
+    return label
+
+
+def compute_confidence_with_reasoning(hits: list[dict]) -> tuple[str, str]:
+    """
+    Multi-factor confidence with a brief human-readable explanation.
+
+    Returns (label, reasoning) where:
+      label     — "High" | "Medium" | "Low" | "None"
+      reasoning — 1-2 sentence explanation shown in the UI tooltip / API response.
+    """
     rag_hits = [h for h in hits if not str(h.get("id", "")).startswith("web_")]
     if not rag_hits:
-        return "None"
+        return "None", "No knowledge-base sources were retrieved for this answer."
 
     # Cross-document agreement bonus: more independent sources → higher confidence
     unique_authorities = len({h.get("sourceAuthority", "unknown") for h in rag_hits})
@@ -565,21 +577,62 @@ def compute_confidence(hits: list[dict]) -> str:
     scores = [compute_weighted_score(h) + agreement_bonus for h in top_hits]
     avg_score = sum(scores) / len(scores)
 
+    # Gather human-readable factors for the reasoning string
+    top = top_hits[0]
+    authority_str = top.get("sourceAuthority", SourceAuthority.UNKNOWN.value)
+    status_str    = top.get("reviewStatus",    ReviewStatus.UNKNOWN.value)
+    stale_any     = any(h.get("stale_penalty_applied") for h in rag_hits)
+    needs_review  = any(h.get("reviewStatus") == ReviewStatus.NEEDS_REVIEW.value for h in top_hits)
+    source_label  = top.get("source") or top.get("topic") or "knowledge base"
+
     # Domain-aware thresholds: legal hits carry domain="Legal" from the knowledge base
     is_legal = any(str(h.get("domain", "")).lower() == "legal" for h in rag_hits)
     if is_legal:
-        # Higher bar for Legal: wrong confidence here can misdirect someone's legal rights
         if avg_score >= 0.80:
-            return "High"
-        if avg_score >= 0.60:
-            return "Medium"
-        return "Low"
+            label = "High"
+        elif avg_score >= 0.60:
+            label = "Medium"
+        else:
+            label = "Low"
+    else:
+        if avg_score >= 0.72:
+            label = "High"
+        elif avg_score >= 0.52:
+            label = "Medium"
+        else:
+            label = "Low"
 
-    if avg_score >= 0.72:
-        return "High"
-    if avg_score >= 0.52:
-        return "Medium"
-    return "Low"
+    # Build a concise, non-technical reasoning string
+    parts: list[str] = []
+
+    if unique_authorities >= 3:
+        parts.append(f"{unique_authorities} independent sources agree")
+    elif unique_authorities == 2:
+        parts.append("2 independent sources corroborate this")
+    else:
+        parts.append(f"Single source: {source_label}")
+
+    if authority_str == SourceAuthority.AUTHORITATIVE.value:
+        parts.append("primary legislation or apex court source")
+    elif authority_str == SourceAuthority.OFFICIAL.value:
+        parts.append("official government source")
+    elif authority_str == SourceAuthority.INSTITUTIONAL.value:
+        parts.append("institutional source")
+    elif authority_str == SourceAuthority.SECONDARY.value:
+        parts.append("secondary/reference source — verify independently")
+
+    if stale_any:
+        parts.append("one or more sources may be outdated")
+    elif needs_review:
+        parts.append("some sources are due for periodic re-verification")
+    elif status_str == ReviewStatus.VERIFIED.value:
+        parts.append("content recently verified")
+
+    if is_legal and label != "High":
+        parts.append("legal answers use a higher accuracy bar")
+
+    reasoning = "; ".join(parts).capitalize() + "."
+    return label, reasoning
 
 
 def build_source_meta(chunk: dict) -> dict:

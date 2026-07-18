@@ -30,12 +30,19 @@ log = get_logger("graph")
 _CITATION_RE = re.compile(r"\[(\d+)\]")
 
 _TONE_HINTS = {
-    "sad":      "The user seems sad or low. Be especially gentle, warm, and present. Don't rush to solutions.",
-    "angry":    "The user seems frustrated or angry. Acknowledge their feeling first before any information.",
-    "scared":   "The user seems scared or anxious. Be calm, grounding, and reassuring before anything else.",
-    "confused": "The user seems confused. Be clear, structured, and patient — no jargon.",
-    "happy":    "The user seems positive. Match their energy while staying helpful.",
-    "neutral":  "",
+    # Original 6 states
+    "sad":         "The user is sad or grieving. Be warm, slow, and present. No rush to fix — sit with them first.",
+    "angry":       "The user is angry or feels wronged. Acknowledge the anger and the reason behind it BEFORE giving information. Don't argue or minimise.",
+    "scared":      "The user is scared. Be calm, grounding, concrete. Address the fear before anything else. Short sentences.",
+    "confused":    "The user is confused or overwhelmed by information. Be very clear and structured. Define terms. One step at a time. No jargon.",
+    "happy":       "The user is in a positive or relieved state. Match their warmth. Be encouraging without being patronising.",
+    "neutral":     "The user has no strong emotional signal. Be helpful, clear, and concise.",
+    # Expanded states
+    "hopeless":    "The user is in despair — they may feel nothing will change or there is no point. Do NOT immediately jump to solutions. First acknowledge the weight of what they feel. Then, gently, offer one small foothold. Never say 'things will get better' without grounding it in something concrete.",
+    "overwhelmed": "The user feels like too much is happening at once. Be calm and ordered. Help them narrow down to ONE thing. Do not give a long list of advice — that will make it worse. One concrete next step only.",
+    "anxious":     "The user is anxious — worried about something specific or generally fearful. Be steady, not alarmed. Acknowledge the worry first. Then offer grounding or one practical action. Avoid uncertainty — be specific wherever possible.",
+    "frustrated":  "The user is frustrated — blocked, unheard, or repeatedly failing. Validate that the situation IS frustrating before offering help. Don't play devil's advocate. Don't suggest they're doing something wrong unless asked.",
+    "numb":        "The user feels emotionally numb or disconnected — often harder to reach than sadness. Don't try to make them feel. Be gentle and present. Ask a single soft question. Don't pressure them to open up. Numbness sometimes needs space, not solutions.",
 }
 
 
@@ -73,25 +80,63 @@ class ChatState(TypedDict, total=False):
     retrieved: list[dict]
     retrieved_ids: list[str]
     web_results: list[dict]
+    # Classification extras
+    secondary_emotion: Optional[str]
     # Generation
     fast_mode: bool
     response: str
     via: str
 
 
-def _build_context(state: ChatState) -> str:
-    """Assemble the CONVERSATION CONTEXT block injected into the system prompt."""
+def _build_context(state: ChatState, confidence: str = "None", web_searched: bool = False) -> str:
+    """Assemble the CONVERSATION CONTEXT block injected into every persona's system prompt.
+
+    Includes: domain, emotion + secondary, tone guidance, conversation depth,
+    confidence level, memory, emotional arc, active goal, language, and safety flags.
+    """
     emotion = state.get("emotion", "neutral")
+    secondary_emotion = state.get("secondary_emotion")
     tone_hint = _TONE_HINTS.get(emotion, "")
+
+    # Conversation depth — helps personas calibrate pacing and avoid repetition
+    n_turns = len(state.get("history", [])) // 2  # rough turn count
 
     ctx_parts = [
         f"Domain: {state.get('routed_domain', state.get('domain', 'Mental Health'))}.",
-        f"User emotion: {emotion}.",
+        f"User emotion: {emotion}" + (f" (secondary: {secondary_emotion})" if secondary_emotion else "") + ".",
     ]
-    if state.get("reasoning"):
-        ctx_parts.append(f"Intent reasoning: {state['reasoning']}.")
+
+    if state.get("lang") and state["lang"] != "auto":
+        ctx_parts.append(f"Detected language: {state['lang']}.")
+
     if tone_hint:
         ctx_parts.append(f"Tone guidance: {tone_hint}")
+
+    if secondary_emotion and secondary_emotion in _TONE_HINTS:
+        sec_hint = _TONE_HINTS[secondary_emotion]
+        ctx_parts.append(f"Secondary emotion context: {sec_hint}")
+
+    if state.get("reasoning"):
+        ctx_parts.append(f"Intent reasoning: {state['reasoning']}.")
+
+    # Conversation depth signal
+    if n_turns >= 3:
+        ctx_parts.append(
+            f"This is turn {n_turns + 1} of an ongoing conversation. "
+            "Do NOT repeat advice or information already given. Build on what has been said."
+        )
+
+    # Confidence awareness — low confidence = acknowledge limits, ask if needed
+    if confidence in ("Low", "None"):
+        ctx_parts.append(
+            f"Knowledge confidence: {confidence}. "
+            "Your knowledge base has limited information on this exact topic. "
+            "Be honest about uncertainty. Prefer asking a clarifying question over fabricating details. "
+            "Cite what you do know, then tell the user where to verify."
+            + (" Web search was used to supplement." if web_searched else "")
+        )
+    elif confidence == "High" and web_searched:
+        ctx_parts.append("High-confidence RAG result supplemented with current web sources.")
 
     user_memory = state.get("user_memory")
     if user_memory:
@@ -106,23 +151,37 @@ def _build_context(state: ChatState) -> str:
         )
 
     emotion_arc = state.get("emotion_arc", [])
-    if emotion_arc:
-        ctx_parts.append(f"Emotional arc (recent): {' → '.join(emotion_arc[-5:])}")
+    if len(emotion_arc) >= 3:
+        # Only mention arc when it shows a meaningful trend
+        ctx_parts.append(f"Emotional arc (recent turns): {' → '.join(emotion_arc[-6:])}")
+        # Detect worsening trend
+        crisis_states = {"hopeless", "numb", "scared"}
+        if emotion_arc and emotion_arc[-1] in crisis_states:
+            ctx_parts.append(
+                "TREND FLAG: The emotional arc shows a worsening pattern. "
+                "Be especially attentive and consider gently checking in on their safety."
+            )
 
     active_goal = state.get("active_goal") or state.get("detected_goal")
     if active_goal:
         ctx_parts.append(
             f"User's current goal: '{active_goal}'. "
-            "Keep this in mind and proactively guide progress toward it."
+            "Proactively guide progress toward this goal in your response."
         )
 
-    # If emergency flag is set but routed to Legal (not Panic), surface a safety note
-    # so the legal persona knows to address danger before diving into law.
-    if state.get("emergency") and state.get("routed_domain") == "Legal":
-        ctx_parts.append(
-            "SAFETY FLAG: The user's message contains signals of danger or distress. "
-            "Address immediate safety before discussing legal procedure."
-        )
+    # Emergency / safety flags
+    if state.get("emergency"):
+        routed = state.get("routed_domain", "")
+        if routed == "Legal":
+            ctx_parts.append(
+                "SAFETY FLAG: Emergency signals detected. "
+                "Address immediate physical safety BEFORE discussing legal procedure."
+            )
+        elif routed in ("Mental Health", "Government Schemes"):
+            ctx_parts.append(
+                "SAFETY FLAG: This message contains crisis or emergency signals. "
+                "Prioritise safety and provide crisis resources (iCall 9152987821, Tele-MANAS 14416)."
+            )
 
     return " ".join(ctx_parts)
 
@@ -161,6 +220,7 @@ async def _classify(state: ChatState) -> dict:
             "reasoning": i["reasoning"],
             "emergency": i["intent"] == "Panic" or i["emergency"],
             "emotion": "neutral",
+            "secondary_emotion": None,
             "detected_goal": None,
         }
 
@@ -180,6 +240,7 @@ async def _classify(state: ChatState) -> dict:
         "reasoning": i["reasoning"],
         "emergency": i["intent"] == "Panic" or i["emergency"],
         "emotion": e["emotion"] if isinstance(e, dict) and e else "neutral",
+        "secondary_emotion": e.get("secondary") if isinstance(e, dict) and e else None,
         "detected_goal": goal if isinstance(goal, str) else None,
     }
 
@@ -210,13 +271,16 @@ async def _maybe_search(state: ChatState) -> dict:
 
     hits = state.get("retrieved", [])
     top_score = float(hits[0].get("rerank_score", hits[0].get("score", 0.0))) if hits else 0.0
+    conf = _confidence_from(hits)
 
-    if not needs_web_search(
+    should_search = needs_web_search(
         state["query"],
         n_hits=len(hits),
         top_score=top_score,
         domain=state.get("domain", ""),
-    ):
+    ) or conf in ("Low", "None")
+
+    if not should_search:
         return {"web_results": []}
 
     log.info("web search triggered", query=state["query"][:60])
@@ -263,10 +327,10 @@ _DOMAIN_GRAPHS = {
 
 async def _generate(state: ChatState) -> dict:
     retrieved = _merge_web_results(state)
-    context   = _build_context(state)
-    domain    = state.get("routed_domain", "Mental Health")
     rag_hits  = state.get("retrieved", [])
     conf      = _confidence_from(rag_hits)
+    context   = _build_context(state, confidence=conf, web_searched=bool(state.get("web_results")))
+    domain    = state.get("routed_domain", "Mental Health")
 
     _common = dict(
         query=state["query"],
@@ -317,9 +381,8 @@ async def _save_memory(state: ChatState) -> dict:
                 {"role": "assistant", "content": state.get("response", "")},
             ]
             persona = _PERSONA_NAMES.get(state.get("routed_domain", "Mental Health"), "assistant")
-            summary = await memory_flow.build_rolling_summary(all_messages, persona)
-
             old_arc = state.get("emotion_arc", [])
+            summary = await memory_flow.build_rolling_summary(all_messages, persona, emotion_arc=old_arc)
             emotion = state.get("emotion", "neutral")
             new_arc = [*old_arc[-9:], emotion]
 
@@ -357,6 +420,10 @@ def _build_sources(hits: list[dict]) -> list[dict]:
 
 def _confidence_from(hits: list[dict]) -> str:
     return knowledge_meta.compute_confidence(hits)
+
+
+def _confidence_with_reasoning(hits: list[dict]) -> tuple[str, str]:
+    return knowledge_meta.compute_confidence_with_reasoning(hits)
 
 
 _builder = StateGraph(ChatState)
@@ -410,13 +477,13 @@ async def stream_run(
     state.update(await _maybe_search(state))
 
     retrieved = _merge_web_results(state)
-    context = _build_context(state)     # shared helper — includes tone hints
+    conf, conf_reason = _confidence_with_reasoning(state.get("retrieved", []))
+    context = _build_context(state, confidence=conf, web_searched=bool(state.get("web_results")))
 
     collected: list[str] = []
     via_bag = {"via": "stream"}
 
     routed_domain = state.get("routed_domain", "Mental Health")
-    conf     = _confidence_from(state.get("retrieved", []))
     _skw = dict(
         query=query, history=history, retrieved=retrieved,
         emotion=state.get("emotion", "neutral"), lang=lang,
@@ -448,6 +515,7 @@ async def stream_run(
     rag_hits = state.get("retrieved", [])
     cited = _cited_indices(full_response, len(rag_hits))
     goal = state.get("detected_goal") or state.get("active_goal")
+    _conf_label, _conf_reason = conf, conf_reason
 
     state["response"] = full_response
     asyncio.create_task(_save_memory(state))
@@ -462,7 +530,8 @@ async def stream_run(
         "retrievedIds": state.get("retrieved_ids", []),
         "sources": _build_sources(rag_hits),
         "citedIndices": cited,
-        "confidence": _confidence_from(rag_hits),
+        "confidence": _conf_label,
+        "confidenceReasoning": _conf_reason,
         "goal": goal,
         "memorySummary": state.get("memory_summary"),
         "webSearched": bool(state.get("web_results")),
@@ -502,6 +571,7 @@ async def run(
     response_text = final.get("response", "")
     cited = _cited_indices(response_text, len(rag_hits))
     goal = final.get("detected_goal") or final.get("active_goal")
+    _conf_label, _conf_reason = _confidence_with_reasoning(rag_hits)
 
     return {
         "response": response_text,
@@ -512,7 +582,8 @@ async def run(
         "retrievedIds": final.get("retrieved_ids", []),
         "sources": _build_sources(rag_hits),
         "citedIndices": cited,
-        "confidence": _confidence_from(rag_hits),
+        "confidence": _conf_label,
+        "confidenceReasoning": _conf_reason,
         "goal": goal,
         "memorySummary": final.get("memory_summary"),
         "webSearched": bool(final.get("web_results")),

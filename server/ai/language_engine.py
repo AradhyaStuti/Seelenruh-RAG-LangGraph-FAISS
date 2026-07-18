@@ -23,15 +23,39 @@ _GERMAN_MARKERS = re.compile(
 _GERMAN_CHARS = re.compile(r"[äöüßÄÖÜ]")
 
 # Hinglish markers — Roman-script Hindi words
+# Expanded to catch casual, emotional, and crisis-adjacent vocabulary
 _HINGLISH_MARKERS = re.compile(
     r"\b(mujhe|mera|meri|mere|hamara|hamari|aap|aapka|tumhara|kya|kyun|"
-    r"kaise|kab|kahan|nahi|nhi|haan|hoon|hai|hain|tha|thi|the|kar|karo|"
-    r"karein|chahiye|chahta|chahti|please|bata|batao|bataye|dena|lena|"
-    r"paisa|paise|rupay|rupaye|lakhs|crore|ghar|makan|zameen|jagah|"
+    r"kaise|kab|kahan|nahi|nhi|nahi|nahin|haan|hoon|hai|hain|tha|thi|the|"
+    r"kar|karo|karein|chahiye|chahta|chahti|chahte|"
+    # Asking / explaining
+    r"bata|batao|bataye|dena|lena|dijiye|dijie|"
+    # Emotional / wellbeing
+    r"thakan|thakaan|thaka|pareshan|dukhi|udaas|rona|roya|ro|"
+    r"darr|darra|dar|akela|akeli|dost|pyaar|nafrat|gussa|tension|"
+    r"stress|anxious|depressed|ghabrana|ghabrahat|"
+    # Urgency / immediacy
+    r"abhi|abhi abhi|jaldi|turant|aaj|kal|parso|"
+    r"bahut|bohot|bohat|bilkul|"
+    # Money / work
+    r"paisa|paise|rupay|rupaye|rupee|lakhs|crore|"
+    r"naukri|salary|boss|company|kaam|karna|kaam dhanda|"
+    # Housing / property
+    r"ghar|makan|zameen|jagah|kiraya|rent|malik|landlord|"
+    # Legal / safety
     r"police|court|vakeel|wakeel|judge|case|FIR|notice|kanoon|qanoon|"
-    r"malik|landlord|kiraya|rent|naukri|salary|boss|company|kaam|karna|"
-    r"matlab|samajh|samajhna|bol|bolo|suno|dekho|yaar|bhai|didi|sir|"
-    r"madam|ji|haan ji|theek|thik|bilkul|zaroor|zaruri|problem|issue)\b",
+    r"darj|complaint|shikayat|"
+    # Conversation fillers / pronouns
+    r"matlab|samajh|samajhna|bol|bolo|suno|dekho|"
+    r"yaar|bhai|didi|sis|bro|sir|madam|ji|bhai sahab|"
+    # Agreement / certainty
+    r"theek|thik|theek hai|haan ji|zaroor|zaruri|"
+    # Problem framing
+    r"problem|issue|dikkat|mushkil|pareshani|"
+    # Question words (Hinglish style)
+    r"kya hua|kya hai|kaisa|kaisi|kaiku|kyunki|isliye|toh|toh phir|"
+    # Actions / requests
+    r"chahiye kya|help karo|batao na|suno na|dekho na)\b",
     re.IGNORECASE,
 )
 
@@ -62,36 +86,48 @@ def detect_language(text: str) -> str:
 _LANG_INSTRUCTIONS: dict[str, str] = {
     "en": (
         "Respond in plain, professional English. "
-        "Explain legal terms briefly when first used. "
-        "Use simple sentences; avoid Latin maxims unless essential."
+        "Explain legal and bureaucratic terms briefly when first used — never assume the user knows them. "
+        "Use simple, direct sentences. Avoid jargon, Latin maxims, and hedging language like 'it is worth noting'. "
+        "When giving practical steps, number them clearly. "
+        "All laws and schemes referenced must be Indian."
     ),
     "hi": (
-        "उत्तर स्वाभाविक आधुनिक हिंदी में दें। "
-        "कानूनी शब्द जैसे 'FIR', 'Labour Commissioner', 'Consumer Forum' को English में ही रखें — "
-        "इनका हिंदी अनुवाद न करें। "
-        "संस्कृतनिष्ठ या पुरातन हिंदी से बचें। "
-        "सभी कानून भारतीय हैं — किसी विदेशी कानून का उल्लेख न करें।"
+        "उत्तर स्वाभाविक, आधुनिक हिंदी में दें — वैसी हिंदी जो आज बोली जाती है। "
+        "कानूनी और सरकारी शब्द जैसे 'FIR', 'RTI', 'Labour Commissioner', 'Consumer Forum', "
+        "'Aadhaar', 'BPL', 'OBC', 'Section' को अंग्रेज़ी में ही रखें — इनका हिंदी अनुवाद न करें। "
+        "संस्कृतनिष्ठ, पुरातन, या अखबारी हिंदी से बचें। "
+        "वाक्य छोटे और स्पष्ट रखें। "
+        "सभी कानून और योजनाएँ भारतीय हैं — किसी विदेशी कानून का उल्लेख न करें। "
+        "helplines हमेशा हिंदी में दें: जैसे 'आप 112 पर कॉल कर सकते हैं'।"
     ),
     "hi-roman": (
-        "Respond in conversational Hinglish (Roman-script Hindi mixed with English). "
-        "Write the way a helpful educated friend would speak — natural, not textbook. "
-        "Keep legal terms like 'FIR', 'Section', 'Labour Commissioner', 'Consumer Forum' in English. "
-        "Example tone: 'Aapko pehle Labour Commissioner ke paas jaana chahiye, court baad mein.' "
-        "Do NOT switch to Devanagari script. Do NOT use archaic Hindi. "
-        "All laws referenced must be Indian laws."
+        "Respond in conversational Hinglish — Roman-script Hindi naturally mixed with English. "
+        "Write the way a helpful, educated friend would speak, not like a textbook or government notice. "
+        "Keep technical terms in English: 'FIR', 'Section', 'RTI', 'Labour Commissioner', 'Consumer Forum', "
+        "'Aadhaar', 'BPL', 'OBC', 'helpline', 'portal'. "
+        "Short, punchy sentences. Numbers and amounts in digits (₹5,000, not 'paanch hazaar rupaye'). "
+        "Example tone: 'Aapko pehle Labour Commissioner ke paas jaana chahiye — court baad mein. "
+        "Complaint free hoti hai aur fast bhi.' "
+        "Do NOT switch to Devanagari script mid-response. Do NOT use archaic Urdu-heavy Hindi. "
+        "All laws and schemes referenced must be Indian."
     ),
     "de": (
         "CRITICAL — LANGUAGE AND JURISDICTION RULES FOR GERMAN SPEAKERS:\n"
-        "1. Respond in clear, simple German (B2 level — not legal German).\n"
-        "2. ALL laws cited must be INDIAN laws. NEVER cite German, Austrian, or EU law.\n"
-        "3. Translate Indian legal terms into German context where helpful:\n"
-        "   - FIR → 'Strafanzeige bei der indischen Polizei'\n"
+        "1. Respond in clear, simple German (B2 level — everyday German, not legal or bureaucratic German).\n"
+        "2. ALL laws and schemes cited must be INDIAN laws and Indian government schemes. "
+        "NEVER cite German, Austrian, Swiss, or EU law.\n"
+        "3. Translate Indian legal terms into German explanations where helpful:\n"
+        "   - FIR → 'Strafanzeige bei der indischen Polizei (First Information Report)'\n"
         "   - Labour Commissioner → 'Indischer Arbeitskommissar'\n"
-        "   - Consumer Forum → 'Indisches Verbraucherforum'\n"
-        "   - NALSA → 'Indiens kostenloser Rechtshilfedienst (NALSA)'\n"
-        "4. If user seems unaware they are in India's legal system, gently clarify: "
-        "'Ich beantworte Ihre Frage nach INDISCHEM Recht.'\n"
-        "5. Keep section numbers in the original form (e.g., 'Section 138 Negotiable Instruments Act')."
+        "   - Consumer Forum → 'Indisches Verbraucherschiedsgericht'\n"
+        "   - NALSA → 'Indiens kostenloser Rechtshilfedienst (NALSA, Tel: 15100)'\n"
+        "   - RTI → 'Informationsfreiheitsantrag nach indischem Recht'\n"
+        "4. If user seems unaware they are in India's legal system, clarify gently once: "
+        "'Ich beantworte Ihre Frage nach INDISCHEM Recht — nicht nach deutschem oder EU-Recht.'\n"
+        "5. Keep section numbers in original form: 'Section 138 des Negotiable Instruments Act'.\n"
+        "6. Helplines: always give the Indian number with context — "
+        "'Unter 112 erreichen Sie den indischen Notruf (Polizei, Feuerwehr, Krankenwagen)'.\n"
+        "7. Use 'Sie' (formal) unless the user has clearly used 'du' first."
     ),
 }
 

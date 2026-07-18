@@ -164,6 +164,27 @@ export async function verifyEmail(token) {
   return _postRaw("/api/auth/verify-email", { token });
 }
 
+export async function resendVerification() {
+  const token = getToken();
+  if (!token) throw new Error("You're not signed in.");
+  let res;
+  try {
+    res = await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error("Can't reach the backend. Is the Python server running on port 5000?");
+  }
+  let data = null;
+  try { data = await res.json(); } catch { /* empty body ok */ }
+  if (!res.ok) {
+    const msg = data?.detail || data?.error || `HTTP ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  return data || { ok: true };
+}
+
 async function _postRaw(path, body) {
   let res;
   try {

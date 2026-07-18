@@ -4,7 +4,7 @@ import { LangToggle } from "@/components/lang-toggle";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SavedMomentsDrawer } from "@/components/saved-moments";
-import { getUser, subscribe } from "@/lib/auth";
+import { getUser, subscribe, resendVerification } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const BreathingCompanion = lazy(() => import("@/components/breathing-companion").then(m => ({ default: m.BreathingCompanion })));
@@ -97,6 +97,68 @@ function AccountMenu({ user, onSignOut, onChangePassword }) {
   );
 }
 
+function EmailVerificationBanner({ email }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [error, setError] = useState("");
+
+  if (dismissed) return null;
+
+  const handleResend = async () => {
+    setSending(true);
+    setError("");
+    try {
+      await resendVerification();
+      setSent(true);
+    } catch (err) {
+      setError(err.message || "Could not resend. Try again later.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="w-full bg-amber-50 border-b border-amber-200/70 px-4 py-2.5 flex items-center justify-between gap-3 text-amber-800 text-[12px]">
+      <div className="flex items-center gap-2 min-w-0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        {sent ? (
+          <span className="text-emerald-700 font-medium">Verification email sent to {email} — check your inbox (and spam).</span>
+        ) : error ? (
+          <span className="text-red-700">{error}</span>
+        ) : (
+          <span>Please verify your email address (<strong>{email}</strong>) to keep your account secure.</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {!sent && (
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={sending}
+            className="rounded-lg bg-amber-200/70 hover:bg-amber-300/70 px-2.5 py-1 font-medium transition-colors disabled:opacity-50"
+          >
+            {sending ? "Sending…" : "Resend email"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss email verification banner"
+          className="rounded-lg hover:bg-amber-200/60 p-1 transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AppHeader() {
   const [breatheOpen, setBreatheOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -120,6 +182,10 @@ export function AppHeader() {
 
   return (
     <>
+      {/* Email verification banner — shown only when emailVerified is explicitly false */}
+      {user && user.emailVerified === false && (
+        <EmailVerificationBanner email={user.email} />
+      )}
       <header className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-5">
         <div className="group flex min-w-0 items-center gap-2 sm:gap-3 cursor-default">
           <div className="relative shrink-0">

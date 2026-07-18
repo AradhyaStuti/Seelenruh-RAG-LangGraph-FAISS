@@ -309,17 +309,24 @@ export function LoginScreen() {
                   </div>
                 )}
 
-                {/* Email delivery notice — shown on signup and forgot-password */}
-                {(mode === "signup" || mode === "forgot") && (
-                  <div className="flex items-start gap-2 rounded-xl border border-amber-200/60 bg-amber-50/70 px-3 py-2.5 text-[11px] text-amber-700/90 leading-relaxed">
+                {/* Email tip — signup */}
+                {mode === "signup" && (
+                  <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-[11px] text-primary/80 leading-relaxed">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
-                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
                     </svg>
-                    <span>
-                      {mode === "signup"
-                        ? "Email verification is not available in the demo deployment — you can still sign in without verifying."
-                        : "Email delivery is not configured in the demo. Password reset links are logged server-side only."}
-                    </span>
+                    <span>A verification link will be sent to your email after sign-up.</span>
+                  </div>
+                )}
+                {/* Password reset tip */}
+                {mode === "forgot" && (
+                  <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-[11px] text-primary/80 leading-relaxed">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    <span>Check your inbox — the link expires in 1 hour. Also check spam.</span>
                   </div>
                 )}
 

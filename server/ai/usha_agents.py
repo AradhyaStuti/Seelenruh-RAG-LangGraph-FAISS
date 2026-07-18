@@ -141,11 +141,27 @@ def organize_chunks(retrieved: list[dict], topic_type: str) -> dict:
 # AGENT 3 — CRISIS CHECK (Python, no LLM)
 # Hard-coded override — never rely on LLM for life-safety decisions.
 _CRISIS_TRIGGER_PHRASES = [
+    # English
     "suicide", "suicidal", "kill myself", "end my life", "want to die",
     "don't want to live", "no reason to live", "hurt myself", "self-harm",
     "cutting myself", "overdose", "jump off", "hang myself",
-    "khatam kar lena chahta", "zindagi khatam", "jeena nahi chahta",
-    "mar jana chahta", "khud ko hurt",
+    "take my own life", "end it all", "not worth living", "end my pain",
+    "can't go on", "can't take it anymore", "nothing left to live for",
+    "better off dead", "better off without me", "disappear forever",
+    # Hindi (Devanagari)
+    "आत्महत्या", "मर जाना", "जीना नहीं", "खुद को मार",
+    # Hinglish / Roman Hindi (extended)
+    "khatam kar lena chahta", "khatam kar lena chahti", "zindagi khatam",
+    "jeena nahi chahta", "jeena nahi chahti", "mar jana chahta", "mar jana chahti",
+    "khud ko hurt", "khud ko khatam", "zindagi se thak gaya", "zindagi se thak gayi",
+    "marna chahta", "marna chahti", "jina nahi chahta", "jina nahi chahti",
+    "atmahatya", "khud ko khatam karna", "sab khatam karna chahta",
+    "duniya se chale jana", "is duniya mein nahi rehna chahta",
+    "koi fayda nahi jeene ka", "kya fayda jeene ka", "jeena bekaar hai",
+    "nahi rehna chahta", "nahi rehna chahti",
+    # German
+    "selbstmord", "suizid", "ich will sterben", "nicht mehr leben",
+    "mich umbringen", "mir etwas antun", "kein grund mehr zu leben",
 ]
 
 def is_crisis(query: str, emotion_analysis: dict) -> bool:

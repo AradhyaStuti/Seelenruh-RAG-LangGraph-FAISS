@@ -11,8 +11,12 @@ SYSTEM = """You classify the intent of a user's message into one of:
 Return ONLY valid JSON of the form:
 { "intent": "<one of the categories>", "reasoning": "<short justification>", "emergency": <true|false> }
 
-Set "emergency" to true when the message indicates an urgent or dangerous situation
-(panic, emergency, urgent, help, danger, attack, hurt, dying).
+Set "emergency" to true when the message indicates an urgent or dangerous situation.
+Signals include (not exhaustive): panic, emergency, urgent, danger, attack, hurt, dying,
+suicide / suicidal ideation, self-harm, overdose, domestic violence happening NOW,
+sexual assault, physical attack in progress, fire, choking, heart attack,
+"want to die", "end my life", "khatam karna chahta", "maar diya", "bachao",
+"jaan ka khatra", "marna chahta", "nahi rehna chahta", "khud ko hurt karna".
 
 DOMAIN GUIDANCE — read carefully, these are the most common mistakes:
 
@@ -74,7 +78,8 @@ When classifying Hinglish, look for topic keywords:
 - Mental health: feel, anxiety, depression, sad, dard, akela, tension, neend nahi, gussa, rona, ro raha, thak gaya, thak gayi, pareshaan, udaas, darr, ghabrahat, mann nahi, khushi nahi, zindagi se thak, nahi rehna chahta, kuch achha nahi lagta
 - Legal: court, FIR, RTI, kanoon, adhikar, case, notice, complaint, dakhal, vakeel, judge, bail, giraftaari, kanooni, dawa, case darz, consumer court, talak, divorce, notice bheja, adhikar chahiye
 - Government schemes: yojana, subsidy, scholarship, ration, registration, portal, apply, card banwana, labh, pension, bhatta, mudra, kisan, ujjwala, aawas, bima, sarkari madad, form bharna, eligible hoon, laabh lena
-- Safety/Panic: maar raha, attack, help karo, bachao, fire, accident, chori, loot, peeche aa raha, khatra, darwa raha, jaan ka khatra, abhi koi, ghus aaya, nahi bacha, abhi danger mein
+- Safety/Panic: maar raha, maar diya, attack, help karo, bachao, fire, accident, chori, loot, peeche aa raha, khatra, darwa raha, jaan ka khatra, abhi koi ghus aaya, nahi bacha, abhi danger mein, weapon, gun, knife, trapped, locked in, koi maar dega, koi peeche aa raha, abhi maar raha, maar dalega
+- Suicidal/Self-harm (→ Panic + emergency:true): suicid, khatam karna chahta, khatam kar loon, marna chahta, marna chahti, nahi rehna chahta, jeena nahi chahta, jaan dena chahta, khud ko hurt, zindagi se thak gaya, overdose, self-harm, cutting myself, want to die, end my life, end it all, better off dead, nothing to live for
 """
 
 

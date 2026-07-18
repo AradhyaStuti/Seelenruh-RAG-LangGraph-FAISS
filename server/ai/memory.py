@@ -11,7 +11,9 @@ from logger import get_logger
 log = get_logger("memory")
 
 
-async def build_rolling_summary(messages: list[dict], persona: str) -> Optional[str]:
+async def build_rolling_summary(
+    messages: list[dict], persona: str, emotion_arc: Optional[list[str]] = None
+) -> Optional[str]:
     """Compress recent messages into a short memory note (≤130 words)."""
     if len(messages) < 2:
         return None
@@ -19,6 +21,9 @@ async def build_rolling_summary(messages: list[dict], persona: str) -> Optional[
     history_text = "\n".join(
         f"{m['role'].upper()}: {m['content'][:400]}" for m in recent
     )
+    arc_note = ""
+    if emotion_arc and len(emotion_arc) >= 2:
+        arc_note = f"\nEmotion arc: {' → '.join(emotion_arc[-6:])}"
     try:
         result = await chat(
             model=GROQ_MODEL_FAST,
@@ -30,10 +35,11 @@ async def build_rolling_summary(messages: list[dict], persona: str) -> Optional[
                     "content": (
                         f"You are {persona}'s memory system. Write a concise memory note (under 130 words) covering:\n"
                         "1. The user's main situation or concern\n"
-                        "2. Their emotional tone (e.g. anxious, hopeful, frustrated)\n"
+                        "2. Their emotional trajectory (note any worsening or improvement)\n"
                         "3. Specific facts mentioned: names, locations, amounts, categories, dates\n"
                         "4. Any steps agreed on or progress made\n"
                         "Third person. Specific and factual. No bullet points. No generic filler."
+                        + arc_note
                     ),
                 },
                 {"role": "user", "content": history_text},
