@@ -156,13 +156,13 @@ def _log_fallback(*, to: str, subject: str, body_text: str) -> None:
 # Shared dispatcher
 # ---------------------------------------------------------------------------
 
-async def _dispatch(*, to: str, subject: str, body_text: str, body_html: str) -> None:
-    """Try Resend → SMTP → console fallback."""
+async def _dispatch(*, to: str, subject: str, body_text: str, body_html: str) -> bool:
+    """Try Resend → SMTP → console fallback. Returns True if email was actually sent."""
     if RESEND_API_KEY:
         try:
             await _send_resend(to=to, subject=subject, body_text=body_text, body_html=body_html)
             log.info("email sent via Resend", to=to, subject=subject)
-            return
+            return True
         except Exception as err:
             log.warning("Resend failed, trying SMTP", error=str(err))
 
@@ -170,7 +170,7 @@ async def _dispatch(*, to: str, subject: str, body_text: str, body_html: str) ->
         try:
             await _send_smtp(to=to, subject=subject, body_text=body_text, body_html=body_html)
             log.info("email sent via SMTP", to=to, subject=subject, host=SMTP_HOST, port=SMTP_PORT)
-            return
+            return True
         except Exception as err:
             log.error(
                 "SMTP delivery failed — falling back to console log. "
@@ -179,6 +179,7 @@ async def _dispatch(*, to: str, subject: str, body_text: str, body_html: str) ->
             )
 
     _log_fallback(to=to, subject=subject, body_text=body_text)
+    return False
 
 
 async def send_test_email(*, to: str) -> dict:
@@ -224,7 +225,8 @@ async def send_test_email(*, to: str) -> dict:
 # Public email functions
 # ---------------------------------------------------------------------------
 
-async def send_otp_email(*, to: str, otp: str) -> None:
+async def send_otp_email(*, to: str, otp: str) -> bool:
+    """Send OTP email. Returns True if delivered, False if no provider (console fallback)."""
     subject = "Your Seelenruh verification code"
     body_text = (
         f"Your verification code is: {otp}\n\n"
@@ -245,7 +247,7 @@ async def send_otp_email(*, to: str, otp: str) -> None:
           Never share this code with anyone.
         </p>
     """)
-    await _dispatch(to=to, subject=subject, body_text=body_text, body_html=body_html)
+    return await _dispatch(to=to, subject=subject, body_text=body_text, body_html=body_html)
 
 
 async def send_password_reset(*, to: str, token: str) -> None:

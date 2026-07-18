@@ -55,14 +55,20 @@ async def signup(request: Request, req: SignupRequest) -> dict:
         if existing and not existing.get("emailVerified", False):
             otp = f"{random.SystemRandom().randint(0, 999999):06d}"
             await db.save_otp(email=existing["email"], otp=otp, ttl_minutes=10)
-            asyncio.create_task(mailer.send_otp_email(to=existing["email"], otp=otp))
-            return {"ok": True, "pendingVerification": True, "email": existing["email"]}
+            sent = await mailer.send_otp_email(to=existing["email"], otp=otp)
+            resp: dict = {"ok": True, "pendingVerification": True, "email": existing["email"]}
+            if not sent:
+                resp["devOtp"] = otp
+            return resp
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
     # Generate 6-digit OTP and email it — user must verify before receiving tokens
     otp = f"{random.SystemRandom().randint(0, 999999):06d}"
     await db.save_otp(email=user["email"], otp=otp, ttl_minutes=10)
-    asyncio.create_task(mailer.send_otp_email(to=user["email"], otp=otp))
-    return {"ok": True, "pendingVerification": True, "email": user["email"]}
+    sent = await mailer.send_otp_email(to=user["email"], otp=otp)
+    resp = {"ok": True, "pendingVerification": True, "email": user["email"]}
+    if not sent:
+        resp["devOtp"] = otp
+    return resp
 
 
 class VerifyOtpRequest(BaseModel):
@@ -96,12 +102,14 @@ class ResendOtpRequest(BaseModel):
 async def resend_otp(request: Request, req: ResendOtpRequest) -> dict:
     """Re-send a fresh OTP to the given email (unauthenticated — user hasn't verified yet)."""
     user = await find_user_by_email(req.email)
+    resp: dict = {"ok": True}
     if user:
         otp = f"{random.SystemRandom().randint(0, 999999):06d}"
         await db.save_otp(email=user["email"], otp=otp, ttl_minutes=10)
-        asyncio.create_task(mailer.send_otp_email(to=user["email"], otp=otp))
-    # Always 200 — don't reveal whether the email is registered
-    return {"ok": True}
+        sent = await mailer.send_otp_email(to=user["email"], otp=otp)
+        if not sent:
+            resp["devOtp"] = otp
+    return resp
 
 
 @router.post("/login", response_model=AuthResponse)

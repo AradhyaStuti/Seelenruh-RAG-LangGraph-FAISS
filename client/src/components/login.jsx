@@ -66,6 +66,7 @@ export function LoginScreen() {
   const [pendingEmail, setPendingEmail] = useState("");
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [devOtp, setDevOtp] = useState(""); // shown on screen when email isn't configured
   const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
 
   const firstFieldRef = useRef(null);
@@ -132,10 +133,11 @@ export function LoginScreen() {
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0 || loading) return;
-    setError(""); setSuccess("");
+    setError(""); setSuccess(""); setDevOtp("");
     try {
-      await resendOtp(pendingEmail);
-      setSuccess("A new code has been sent to your email.");
+      const res = await resendOtp(pendingEmail);
+      setDevOtp(res?.devOtp || "");
+      setSuccess(res?.devOtp ? "" : "A new code has been sent to your email.");
       setResendCooldown(60);
     } catch {
       setError("Couldn't resend the code. Please try again.");
@@ -166,6 +168,7 @@ export function LoginScreen() {
         if (res?.pendingVerification) {
           setPendingEmail(res.email || email);
           setOtpDigits(["", "", "", "", "", ""]);
+          setDevOtp(res.devOtp || "");
           setResendCooldown(60);
           setMode("otp");
         }
@@ -297,6 +300,14 @@ export function LoginScreen() {
                   <div className="flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/80 px-3 py-2.5 text-sm text-emerald-700 animate-fade-in">
                     <CheckIcon />
                     {success}
+                  </div>
+                )}
+
+                {/* Dev fallback: show OTP on screen when no email provider is configured */}
+                {devOtp && (
+                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-center animate-fade-in">
+                    <p className="text-xs text-amber-700 mb-1.5 font-medium">Email not configured — your code is:</p>
+                    <p className="text-2xl font-bold tracking-[0.3em] text-amber-900 font-mono">{devOtp}</p>
                   </div>
                 )}
 
