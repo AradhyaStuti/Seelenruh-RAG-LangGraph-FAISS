@@ -174,6 +174,72 @@ load_memory → classify → route → retrieve → maybe_search → generate �
 
 One thing I spent a lot of time on was making sure the system doesn't make things up when it doesn't know something. The knowledge base is curated, citations are validated against the retrieved corpus before they appear in the response, and the LLM is explicitly told when its knowledge is limited so it asks clarifying questions instead of hallucinating.
 
+## Evaluation results
+
+All numbers below come from saved benchmark runs in `server/results/` and `server/bench/reports/`. Generation quality scores (faithfulness, helpfulness, persona_fit) are measured by the `eval_gen.py` framework but have no saved run yet — those numbers are excluded here.
+
+### Routing accuracy
+
+Evaluated on 100 queries (25 per domain), frozen test set, bootstrap 95% CI (1,000 resamples, seed=1729). Source: `server/results/canonical.json` (2026-05-31).
+
+| Domain | Accuracy | n |
+|---|---|---|
+| Government Schemes | 100% | 25 |
+| Legal | 100% | 25 |
+| Mental Health | 92% | 25 |
+| Safety | 88% | 25 |
+| **Overall** | **95%** (CI: 91%–99%) | **100** |
+
+The two domains where routing misses occur most are Mental Health (queries expressing distress that overlap with Safety intent) and Safety (safety-adjacent queries that the classifier routes to Mental Health). These are handled gracefully — both personas escalate to crisis resources when emergency language is present.
+
+### Retrieval
+
+Evaluated on the same 100-query set. Source: `server/bench/reports/retrieval_report.md` (2026-07-13).
+
+| Metric | Overall | Govt Schemes | Legal | Mental Health | Safety |
+|---|---|---|---|---|---|
+| P@1 | 84.0% | 96.0% | 84.0% | 72.0% | 84.0% |
+| Recall@5 | 69.3% | 63.1% | 79.2% | 70.7% | 64.3% |
+| Recall@10 | 80.6% | 77.6% | 88.6% | 79.3% | 76.8% |
+| MRR | 0.896 | 0.970 | 0.901 | 0.827 | 0.887 |
+| NDCG@5 | 0.716 | 0.702 | 0.793 | 0.683 | 0.686 |
+| NDCG@10 | 0.766 | 0.769 | 0.831 | 0.719 | 0.743 |
+| Retrieval p50 | 93 ms | 93 ms | 104 ms | 79 ms | 98 ms |
+
+Mental Health is the weakest domain for retrieval because emotional support queries are often non-specific ("I feel lost", "I don't know what to do") with no clean keyword overlap against the knowledge base. Conversely, Government Schemes retrieves well because queries tend to name specific schemes or eligibility conditions.
+
+MRR=0.90 means that on average the first relevant result appears in position 1.1, so the reranker rarely needs to rescue a buried gold chunk.
+
+### Retrieval stage latency (CPU, 30 runs)
+
+Source: `server/bench/reports/latency_report.md` (2026-07-13). Measured on CPU without GPU acceleration.
+
+| Stage | p50 | p90 | p99 |
+|---|---|---|---|
+| Query embedding | 32.5 ms | 43.5 ms | 48.0 ms |
+| FAISS ANN search | 1.0 ms | 1.4 ms | 1.7 ms |
+| **Total retrieve()** | **33.3 ms** | **45.0 ms** | **49.5 ms** |
+
+BM25 and cross-encoder reranking times are sub-millisecond on the standard index size and do not materially affect the p90. The full end-to-end response time is dominated by the two Groq LLM calls (8B analyzer + 70B composer); the retrieval step is less than 5% of total latency on a representative request.
+
+### Hallucination probe suite
+
+14 probes across four categories, evaluated against known-correct reference values. Source: `server/bench/reports/hallucination_report.md` (2026-07-13).
+
+| Probe category | Probes | Flagged |
+|---|---|---|
+| Wrong statute citation (e.g. "Section 138 IPC" for cheque bounce) | 4 | 0 |
+| Wrong helpline number | 4 | 0 |
+| Wrong scheme amount | 3 | 0 |
+| Should-refuse (diagnosis, outcome prediction, dosage) | 3 | 0 |
+| **Total** | **14** | **0 (0.0%)** |
+
+The 0% rate is against a targeted probe set, not an exhaustive one. The probes cover the failure modes I observed during development — specific hallucinated section numbers, wrong helpline digits, and scheme amounts that had changed — not the full space of possible hallucinations.
+
+### Test set composition
+
+The 100-query frozen evaluation set (`eval_data.py`) spans four languages: English, Hindi (Devanagari script), Hinglish (Roman script), and German. It includes three near-neighbour adversarial pairs (queries with similar surface form but different correct domains) and eight queries with no direct knowledge-base match (to test graceful low-confidence handling). The set is split 50/50 into DEV (used during development) and TEST_HELDOUT (run once for final numbers).
+
 ## Installation
 
 ```bash
