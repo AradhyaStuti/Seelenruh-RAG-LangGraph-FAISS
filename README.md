@@ -62,7 +62,7 @@ The app routes user messages to one of four personas:
 - Emotion arc tracking — the rolling emotional trajectory across turns (e.g. calm → anxious → hopeless) is stored per session and surfaced as a TREND FLAG when worsening.
 - Confidence-aware prompting — when RAG confidence is Low or None, the persona is explicitly told to acknowledge uncertainty and ask clarifying questions rather than fabricate details.
 - Conversation depth awareness — after turn 3, the composer is told not to repeat advice already given.
-- Dynamic knowledge updater — a background scheduler (every 24 hours) crawls 13 authoritative government sources, checksums responses, and re-ingests changed content into the knowledge base automatically.
+- Dynamic knowledge updater — a background scheduler (every 24 hours) crawls 14 authoritative government sources, checksums responses, and re-ingests changed content into the knowledge base automatically.
 
 ### Persona-specific tools
 
@@ -89,13 +89,31 @@ The app routes user messages to one of four personas:
 - Deterministic safety plans (Python dict lookup, no LLM) for 8 threat types: domestic violence, cybercrime, workplace harassment, trafficking, natural disaster, and others.
 - POCSO detection flag — automatically routes child-protection queries to relevant provisions.
 
+### Knowledge Dashboard (Admin)
+
+A full-screen admin panel accessible from the account menu → **Knowledge dashboard**. Requires `ADMIN_KEY` to unlock — the key is verified against the server and stored in sessionStorage for the browser session.
+
+Seven tabs:
+
+| Tab | What it does |
+|---|---|
+| **Overview** | Index health (live chunks, total vectors, deleted waste, compaction status), open knowledge gaps, document count, feedback stats |
+| **Chunks** | Paginated browser of all live knowledge chunks with domain filter; add new chunks via form; bulk-select and delete |
+| **Documents** | Upload .pdf / .docx / .md / .txt / .json files (max 10 MB); auto-chunked and embedded on upload; list with domain/status filter; soft delete, hard delete, restore |
+| **Gaps** | List low-confidence queries the RAG couldn't answer; mark each as solved, ignored, or reopen |
+| **Crawler** | View crawler status for all 14 government sources (last checked, last updated, errors); trigger a manual crawl cycle |
+| **Index** | List FAISS snapshots; rollback the live index by 1–5 steps |
+| **Audit Log** | Chronological log of all admin actions (ingest, delete, rollback, trigger, upload) with full detail |
+
+Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
+
 ### Security
 
 - Field-level Fernet encryption for sensitive MongoDB fields (name, email) when `FIELD_ENCRYPTION_KEY` is set. HMAC-SHA256 digest stored separately for indexed email lookups.
 - Prompt injection detection covering instruction overrides, persona replacement, jailbreak keywords, special LLM tokens (Llama delimiters), and second-order injection via retrieved documents. Attempts are logged to MongoDB for audit.
 - Account lockout after 10 consecutive failed logins (15-minute TTL). Timing-safe bcrypt comparison prevents email enumeration.
-- JWT refresh-token rotation on every use. Revoked tokens stored in MongoDB with TTL index. Password changes invalidate all previously issued refresh tokens.
-- Rate limiting on every endpoint (slowapi, Redis-backed in production): auth routes 5-10/min, chat 30/min, TTS 15/min.
+- JWT refresh-token rotation on every use. Revoked tokens stored in MongoDB with TTL index. Password changes invalidate all previously issued refresh tokens. Client-side JWT expiry check — expired tokens are cleared from localStorage before the next request.
+- Rate limiting on every endpoint (slowapi, Redis-backed in production): auth routes 5-10/min, chat 30/min, TTS 15/min, admin ingest 20/min, crawler trigger 5/min.
 - PII redaction (email, Aadhaar, PAN, credit card, phone) before any summarization call.
 
 ### Language
@@ -119,7 +137,7 @@ The app routes user messages to one of four personas:
 
 - Installable as a Progressive Web App on Android and desktop.
 - Service worker: assets cached indefinitely (cache-first), app shell uses stale-while-revalidate. API calls are never intercepted.
-- Manifest shortcuts let users launch directly into a specific persona — `?domain=mental-health`, `?domain=legal`, `?domain=schemes`, `?domain=safety`.
+- Manifest shortcuts let users launch directly into a specific persona — `?domain=mental-health`, `?domain=legal`, `?domain=schemes`, `?domain=safety`. These are parsed by the app on startup and set the initial domain.
 
 ### Explainability
 
@@ -139,7 +157,7 @@ The app routes user messages to one of four personas:
 | Web search | Brave → Tavily → DuckDuckGo → SerpAPI → Wikipedia (cascade) |
 | Database | MongoDB Atlas (motor async driver) |
 | Cache/rate limiting | Redis (optional, falls back to in-memory) |
-| Auth | PyJWT + bcrypt, field-level Fernet encryption |
+| Auth | PyJWT + bcrypt, field-level Fernet encryption (cryptography>=42.0.0) |
 | TTS | ElevenLabs (primary), gTTS (fallback) |
 | STT | Groq Whisper (whisper-large-v3-turbo) |
 | Deployment | Docker, Hugging Face Spaces, nginx reverse proxy |
@@ -152,7 +170,7 @@ The project splits into a frontend and a backend:
 - The frontend lives in `client/` and handles the chat UI, session history, saved moments, mood tracking, and breathing exercises.
 - The backend lives in `server/` and contains the FastAPI app, the LangGraph workflow, and the retrieval modules.
 
-**Main graph** — six nodes per request:
+**Main graph** — seven nodes per request:
 
 ```
 load_memory → classify → route → retrieve → maybe_search → generate → save_memory
@@ -171,6 +189,8 @@ load_memory → classify → route → retrieve → maybe_search → generate �
 **Retrieval pipeline**: FAISS vector search → BM25 keyword search → reciprocal rank fusion → cross-encoder reranker → top-k chunks passed to composer.
 
 **Memory**: rolling session summary (updated in the background after every response, never blocking the main path) + emotion arc (last 10 turns) + cross-session user memory (aggregated from last 8 session summaries).
+
+**Admin pipeline**: 17 REST endpoints under `/api/admin/*` guarded by `X-Admin-Key`. Ingested documents are auto-chunked by `_chunk_text()` (paragraph-level splitting with 60-character overlap, sentence-level fallback for long paragraphs). FAISS index is snapshotted after every ingest; up to 5 snapshots are retained for rollback. Low-confidence queries are written to the `knowledge_gaps` collection for triage in the dashboard.
 
 One thing I spent a lot of time on was making sure the system doesn't make things up when it doesn't know something. The knowledge base is curated, citations are validated against the retrieved corpus before they appear in the response, and the LLM is explicitly told when its knowledge is limited so it asks clarifying questions instead of hallucinating.
 
@@ -226,8 +246,6 @@ BM25 and cross-encoder reranking times are sub-millisecond on the standard index
 
 Evaluated on the TEST_HELDOUT split (50 queries, never seen during development) using `eval_baselines.py`. Source: `server/results/baselines_test_20260718_103703.json` (2026-07-18, live run).
 
-Four systems compared:
-
 | System | Description |
 |---|---|
 | **A. FULL** | bi-encoder + cross-encoder reranker + persona-domain filter (production) |
@@ -244,24 +262,22 @@ Four systems compared:
 | C. SINGLE_PERSONA | 68.0% | 0.805 | 44 ms | 6 |
 | D. ZERO_SHOT_LLM | — | — | 903 ms | — |
 
-**Deltas (FULL minus baseline, positive = FULL wins):**
+The FULL system beats both baselines by 8 pp in P@1. The domain filter eliminates all cross-domain leaks (0 vs 6 for B and C), giving the reranker a cleaner candidate pool. The TEST_HELDOUT P@1 of 76% is lower than 84% on the full 100-query set — expected, since the heldout set contains harder edge cases.
 
-| Comparison | ΔP@1 | ΔMRR |
-|---|---|---|
-| FULL vs VANILLA_RAG | **+8.0 pp** | **+0.056** |
-| FULL vs SINGLE_PERSONA | **+8.0 pp** | **+0.056** |
+### Persona benchmark
 
-**Zero-shot LLM keyword coverage (6 safety/legal probes):** 100% — the LLM correctly recalled helpline numbers, Section 138 NI Act, and PM-KISAN amounts from its training weights. This is not surprising for widely-known facts; the probes are designed to test recall of stable government information, not niche eligibility conditions. The gap between RAG and zero-shot appears on rare or recently-updated facts where the model has no training signal.
+210 structured test cases across all four personas. Source: `server/bench/reports/benchmark_report.md` (2026-07-13).
 
-**Reading the numbers:**
-
-The FULL system beats both baselines by 8 percentage points in P@1 on the held-out split. Comparing B and C reveals that the reranker alone (C) provides zero gain over plain bi-encoder (B) when there is no domain filter — the cross-encoder sees candidates from all four domains and the top-ranked chunk ends up in the wrong domain on 6/50 queries (12%). The domain filter eliminates all cross-domain leaks (0 for FULL), giving the reranker a cleaner candidate pool to work with. In other words, the persona-domain filter is doing the heavy lifting, not the reranker in isolation.
-
-The TEST_HELDOUT P@1 of 76% is lower than the 84% on the full 100-query set in `canonical.json` — this is expected. The heldout set was never used during development and contains harder edge cases, so the gap is a realistic estimate of generalisation.
+| Persona | Cases | Pass Rate | Keyword Coverage | Violations |
+|---|---|---|---|---|
+| Umang (Legal) | 100 | 100% | 100% | 0 |
+| Aarogya (Govt Schemes) | 50 | 100% | 100% | 0 |
+| Usha (Mental Health) | 30 | 100% | 100% | 0 |
+| Raksha (Safety) | 30 | 100% | 100% | 0 |
 
 ### Hallucination probe suite
 
-14 probes across four categories, evaluated against known-correct reference values. Source: `server/bench/reports/hallucination_report.md` (2026-07-13).
+14 probes across four categories. Source: `server/bench/reports/hallucination_report.md` (2026-07-13).
 
 | Probe category | Probes | Flagged |
 |---|---|---|
@@ -271,11 +287,9 @@ The TEST_HELDOUT P@1 of 76% is lower than the 84% on the full 100-query set in `
 | Should-refuse (diagnosis, outcome prediction, dosage) | 3 | 0 |
 | **Total** | **14** | **0 (0.0%)** |
 
-The 0% rate is against a targeted probe set, not an exhaustive one. The probes cover the failure modes I observed during development — specific hallucinated section numbers, wrong helpline digits, and scheme amounts that had changed — not the full space of possible hallucinations.
-
 ### Test set composition
 
-The 100-query frozen evaluation set (`eval_data.py`) spans four languages: English, Hindi (Devanagari script), Hinglish (Roman script), and German. It includes three near-neighbour adversarial pairs (queries with similar surface form but different correct domains) and eight queries with no direct knowledge-base match (to test graceful low-confidence handling). The set is split 50/50 into DEV (used during development) and TEST_HELDOUT (run once for final numbers).
+The 100-query frozen evaluation set (`eval_data.py`) spans four languages: English, Hindi (Devanagari script), Hinglish (Roman script), and German. It includes three near-neighbour adversarial pairs and eight queries with no direct knowledge-base match. Split 50/50 into DEV and TEST_HELDOUT.
 
 ## Installation
 
@@ -296,6 +310,7 @@ Fill in the required values before running:
 | `GROQ_API_KEY` | Yes | Groq API key for LLM + Whisper STT |
 | `JWT_SECRET` | Yes | 32+ byte random string for signing JWTs |
 | `MONGODB_URI` | Yes | MongoDB Atlas connection string |
+| `ADMIN_KEY` | Yes* | Secret key for the knowledge dashboard and `/api/admin/*` endpoints. *Optional — admin endpoints are disabled if not set. |
 | `ANTHROPIC_API_KEY` | No | Fallback LLM provider (Anthropic Claude) |
 | `OLLAMA_URL` | No | Local Ollama instance URL |
 | `ELEVENLABS_KEY` | No | Neural TTS (gTTS used if absent) |
@@ -309,7 +324,6 @@ Fill in the required values before running:
 | `SMTP_PASSWORD` | No | SMTP password |
 | `FIELD_ENCRYPTION_KEY` | No | 32-byte hex key for Fernet field encryption |
 | `REDIS_URL` | No | Redis URL for persistent rate-limit counters |
-| `ADMIN_KEY` | No | Secret key for `/api/admin/*` knowledge ingestion endpoints |
 
 ## Usage
 
@@ -321,16 +335,48 @@ npm run dev
 
 The backend runs from `server/` and the frontend runs via Vite. Defaults are `http://localhost:5000` for the API and `http://localhost:5173` for the client.
 
-## Evaluation
+### Accessing the knowledge dashboard
 
-There's a small evaluation harness and a functional test suite:
+1. Set `ADMIN_KEY` in your `server/.env`.
+2. Sign in to the app.
+3. Click your initials in the top-right → **Knowledge dashboard**.
+4. Enter the admin key to unlock. The key is held in sessionStorage and clears when you close the tab.
+
+## Tests
+
+The test suite lives in `server/tests/` and requires no live server, MongoDB, or FAISS index.
 
 ```bash
 cd server
-./.venv/Scripts/python -m pytest tests/test_functional_cases.py -q
+python -m pytest tests/ -q
 ```
 
-The evaluation scripts under `evaluation/` and the top-level `evaluate.py` are for offline checks on routing accuracy, response quality, retrieval behaviour, and latency. `evaluate.py` requires a running server and a valid JWT token (`--token`).
+**45 tests across two files:**
+
+| File | Tests | Covers |
+|---|---|---|
+| `test_functional_cases.py` | 21 | Language detection (all 4 languages + edge cases), language instruction builder, intent system prompt structure, multi-turn detection stability, session history trimming |
+| `test_admin_routes.py` | 24 | Auth guard (all endpoints), index status, chunk ingest (success + validation), chunk delete, chunk browser (filter + deleted exclusion), analytics, knowledge gaps (filter + patch), rollback (success + 409), snapshots, audit log, document list/delete/restore, file upload (txt + unsupported type), crawler trigger, `_chunk_text` unit test |
+
+The admin tests stub out `db`, `retriever`, `config`, `rate_limit`, and `knowledge_updater` at the module level — no external dependencies.
+
+## Evaluation scripts
+
+Offline evaluation harness under `server/`:
+
+```bash
+cd server
+# Routing accuracy on frozen 100-query set
+python eval.py
+
+# Baseline comparison (50-query heldout split)
+python eval_baselines.py
+
+# Full benchmark report (all 4 personas, 210 cases)
+python bench/run_benchmark.py
+```
+
+`evaluate.py` (root) requires a running server and a valid JWT token (`--token`).
 
 ## Deployment
 
@@ -358,6 +404,7 @@ A few things that were harder than expected:
 - **Mood + domain isolation** — the mood check-in should only influence Usha's responses, not Aarogya or Umang. Took careful scoping to make sure the mood hint doesn't leak into unrelated queries.
 - **Emotion granularity** — the first version had six emotional states. In practice, the difference between "hopeless" and "sad" or between "overwhelmed" and "anxious" matters a lot for how the persona should respond. Expanding to eleven states and writing distinct tone guidance for each made a noticeable difference in response quality.
 - **Crisis safety** — I deliberately don't rely on the LLM for crisis detection. Hard-coded phrase matching in 35+ English, Hinglish, Hindi, and German phrases runs in microseconds and never hallucinates. The LLM gets the final response but the safety routing is deterministic.
+- **Admin test isolation** — the admin tests stub out six modules at import time. When the functional tests (which import real language-engine code) are collected in the same pytest session, there is a config namespace collision. Fixed by making the stub comprehensive (all config attributes) and using a forced `sys.modules` assignment rather than `setdefault`.
 
 ## Known issues
 
