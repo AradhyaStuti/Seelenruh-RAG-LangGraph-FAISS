@@ -14,7 +14,7 @@ _DEVANAGARI = re.compile(r"[\u0900-\u097F]")
 # German marker words that rarely appear in English/Hindi queries
 _GERMAN_MARKERS = re.compile(
     r"\b(ich|bitte|habe|mein|meine|mich|mir|aber|oder|und|nicht|ist|sind|"
-    r"wurde|wurde|können|müssen|wohnung|vermieter|miete|polizei|zeuge|"
+    r"wurde|können|müssen|wohnung|vermieter|miete|polizei|zeuge|"
     r"anwalt|gericht|klage|recht|gesetz|vertrag|arbeitgeber|kündigung|"
     r"deutschland|österreich|schweiz|german|deutsch)\b",
     re.IGNORECASE,

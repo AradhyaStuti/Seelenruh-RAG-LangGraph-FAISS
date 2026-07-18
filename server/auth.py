@@ -151,7 +151,7 @@ async def create_user(*, email: str, name: str, password: str) -> dict:
     user: dict = {
         "password": hashed,
         "createdAt": datetime.now(timezone.utc),
-        "emailVerified": True,
+        "emailVerified": False,
     }
 
     if crypto.is_enabled():

@@ -178,8 +178,8 @@ const welcomeMessageFor = (domain) => ({
   timestamp: Date.now(),
 });
 
-export default function ChatAssistant({ onDomainChange }) {
-  const [selectedDomain, setSelectedDomain] = useState("Mental Health");
+export default function ChatAssistant({ onDomainChange, initialDomain = "Mental Health" }) {
+  const [selectedDomain, setSelectedDomain] = useState(initialDomain);
   const [domainSessions, setDomainSessions] = useState(() => loadAll());
   const [loadingByDomain, setLoadingByDomain] = useState({});
   const [hydrated, setHydrated] = useState(false);

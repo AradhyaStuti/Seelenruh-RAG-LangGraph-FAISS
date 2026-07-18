@@ -4,12 +4,13 @@ import asyncio
 import re as _re
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from auth import current_user
 from config import ELEVENLABS_KEY, ELEVENLABS_VOICE_ID
+from rate_limit import burst_limit
 from logger import get_logger
 
 log = get_logger("tts")
@@ -67,7 +68,7 @@ def _clean(text: str, lang: str = "en") -> str:
 
     # Collapse whitespace
     t = _re.sub(r'\s{2,}', ' ', t)
-    return t[:800].strip()
+    return t[:1000].strip()
 
 
 async def _elevenlabs(text: str, lang: str = "en", domain: str = "Mental Health") -> bytes:
@@ -122,7 +123,8 @@ def _detect_lang(text: str, requested_lang: str) -> str:
 
 
 @router.post("")
-async def synthesize(req: TTSRequest, _user: dict = Depends(current_user)):
+@burst_limit("15/minute")
+async def synthesize(request: Request, req: TTSRequest, _user: dict = Depends(current_user)):
     lang = _detect_lang(req.text, req.lang)
     clean = _clean(req.text, lang)
     if not clean:

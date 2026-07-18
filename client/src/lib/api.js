@@ -184,9 +184,7 @@ export async function fetchAllSummaries(signal) {
   // 10-second timeout so a slow server doesn't block app hydration
   const controller = new AbortController();
   const tid = setTimeout(() => controller.abort(), 10_000);
-  const merged = signal
-    ? new AbortController()
-    : controller;
+  // If the caller passes its own abort signal, forward it to our controller
   if (signal) {
     signal.addEventListener("abort", () => controller.abort(), { once: true });
   }

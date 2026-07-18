@@ -37,6 +37,7 @@ bcrypt==4.2.1
 PyJWT==2.10.1
 email-validator==2.2.0
 slowapi==0.1.9
+cryptography>=42.0.0  # field-level Fernet encryption (FIELD_ENCRYPTION_KEY)
 
 # --- optional features (install as needed) ---
 # pdfplumber          # PDF text extraction — required for /api/parse-document with .pdf files

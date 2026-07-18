@@ -1,6 +1,6 @@
 """Optional MongoDB persistence (motor async)."""
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
@@ -109,7 +109,7 @@ async def save_message(*, user_id: str, session_id: str, domain: str, role: str,
             "content": content,
             "emotion": emotion,
             "isEmergency": is_emergency,
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
         })
     except Exception as err:
         log.error("failed to save message", error=str(err))
@@ -165,7 +165,7 @@ async def upsert_summary(*, user_id: str, persona: str, session_id: str, summary
                 "persona": persona,
                 "sessionId": session_id,
                 "summary": summary,
-                "updatedAt": datetime.utcnow(),
+                "updatedAt": datetime.now(timezone.utc),
             }},
             upsert=True,
         )
@@ -235,7 +235,7 @@ async def save_session_memory(*, user_id: str, session_id: str,
                 "sessionId": session_id,
                 "summary": summary,
                 "emotionArc": emotion_arc,
-                "updatedAt": datetime.utcnow(),
+                "updatedAt": datetime.now(timezone.utc),
             }},
             upsert=True,
         )
@@ -284,7 +284,7 @@ async def save_goal(*, user_id: str, session_id: str, domain: str, goal: str) ->
                 "sessionId": session_id,
                 "domain": domain,
                 "goal": goal,
-                "updatedAt": datetime.utcnow(),
+                "updatedAt": datetime.now(timezone.utc),
             }},
             upsert=True,
         )
@@ -348,7 +348,7 @@ async def upsert_user_memory(user_id: str) -> Optional[str]:
             {"$set": {
                 "userId": user_id,
                 "memory": user_memory,
-                "updatedAt": datetime.utcnow(),
+                "updatedAt": datetime.now(timezone.utc),
             }},
             upsert=True,
         )
@@ -375,7 +375,7 @@ async def save_reset_token(*, email: str, token: str) -> bool:
     try:
         await _db["password_resets"].update_one(
             {"email": email},
-            {"$set": {"email": email, "token": token, "createdAt": datetime.utcnow()}},
+            {"$set": {"email": email, "token": token, "createdAt": datetime.now(timezone.utc)}},
             upsert=True,
         )
         return True
@@ -404,7 +404,7 @@ async def save_verification_token(*, email: str, token: str) -> bool:
     try:
         await _db["email_verifications"].update_one(
             {"email": email},
-            {"$set": {"email": email, "token": token, "createdAt": datetime.utcnow()}},
+            {"$set": {"email": email, "token": token, "createdAt": datetime.now(timezone.utc)}},
             upsert=True,
         )
         return True
@@ -433,7 +433,7 @@ async def mark_email_verified(email: str) -> bool:
     try:
         result = await _db["users"].update_one(
             {"email": email.lower().strip()},
-            {"$set": {"emailVerified": True, "verifiedAt": datetime.utcnow()}},
+            {"$set": {"emailVerified": True, "verifiedAt": datetime.now(timezone.utc)}},
         )
         return bool(result.modified_count)
     except Exception as err:
@@ -448,7 +448,7 @@ async def log_admin_action(*, action: str, detail: dict) -> None:
         await _db["audit_log"].insert_one({
             "action": action,
             "detail": detail,
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
         })
     except Exception:
         pass  # audit failure must never break the primary action
@@ -487,8 +487,8 @@ async def record_failed_login(email: str) -> int:
             {"email": email.lower().strip()},
             {
                 "$inc": {"attempts": 1},
-                "$set": {"updatedAt": datetime.utcnow()},
-                "$setOnInsert": {"createdAt": datetime.utcnow()},
+                "$set": {"updatedAt": datetime.now(timezone.utc)},
+                "$setOnInsert": {"createdAt": datetime.now(timezone.utc)},
             },
             upsert=True,
             return_document=True,
@@ -547,7 +547,7 @@ async def save_feedback_log(
                     "sessionId": session_id,
                     "userId": user_id,
                 },
-                "$setOnInsert": {"createdAt": datetime.utcnow()},
+                "$setOnInsert": {"createdAt": datetime.now(timezone.utc)},
             },
             upsert=True,
         )
@@ -629,7 +629,7 @@ async def save_knowledge_gap(
             "sessionId": session_id,
             "userId": user_id,
             "status": "open",          # open | solved | ignored
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
         })
         return True
     except Exception as err:
@@ -664,7 +664,7 @@ async def update_knowledge_gap(gap_id: str, status: str) -> bool:
         from bson import ObjectId
         result = await _db["knowledge_gaps"].update_one(
             {"_id": ObjectId(gap_id)},
-            {"$set": {"status": status, "updatedAt": datetime.utcnow()}},
+            {"$set": {"status": status, "updatedAt": datetime.now(timezone.utc)}},
         )
         return bool(result.modified_count)
     except Exception as err:
@@ -704,8 +704,8 @@ async def save_document_registry(
                 "topic": topic,
                 "uploaderId": uploader_id,
                 "status": "active",
-                "indexedAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow(),
+                "indexedAt": datetime.now(timezone.utc),
+                "updatedAt": datetime.now(timezone.utc),
             }},
             upsert=True,
         )
@@ -768,7 +768,7 @@ async def update_document_status(doc_id: str, status: str) -> bool:
     try:
         result = await _db["document_registry"].update_one(
             {"docId": doc_id},
-            {"$set": {"status": status, "updatedAt": datetime.utcnow()}},
+            {"$set": {"status": status, "updatedAt": datetime.now(timezone.utc)}},
         )
         return bool(result.modified_count)
     except Exception as err:

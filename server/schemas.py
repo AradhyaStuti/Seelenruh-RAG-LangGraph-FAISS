@@ -13,7 +13,7 @@ class HistoryMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    query: str = Field(min_length=1, max_length=2000)
+    query: str = Field(min_length=1, max_length=4000)
     domain: Domain
     history: list[HistoryMessage] = Field(default_factory=list, max_length=20)
     sessionId: Optional[str] = None

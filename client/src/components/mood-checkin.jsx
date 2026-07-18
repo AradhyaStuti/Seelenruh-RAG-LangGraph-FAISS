@@ -86,7 +86,13 @@ export function MoodCheckIn({ onMoodChange }) {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const data = JSON.parse(raw);
+        let data = JSON.parse(raw);
+        // Prune entries older than 60 days to prevent unbounded growth
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 60);
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+        data = data.filter((r) => r.date >= cutoffStr);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         setHistory(data);
         const todays = data.find((r) => r.date === today());
         if (todays) { setSelected(todays.mood); onMoodChange?.(todays.mood); }

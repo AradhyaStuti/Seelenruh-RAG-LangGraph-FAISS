@@ -8,7 +8,7 @@ from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 
 _ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 _TIMEOUT = 60.0
-_API_VERSION = "2023-06-01"
+_API_VERSION = "2024-06-01"
 
 
 def is_enabled() -> bool:

@@ -16,8 +16,26 @@ const domainThemes = {
   Safety: 'theme-safety',
 };
 
+// Map URL ?domain= param values (from PWA manifest shortcuts) to domain names
+const _DOMAIN_PARAM_MAP = {
+  'mental-health': 'Mental Health',
+  'legal': 'Legal',
+  'schemes': 'Government Schemes',
+  'safety': 'Safety',
+};
+
+function _initialDomain() {
+  try {
+    const param = new URLSearchParams(window.location.search).get('domain');
+    return param ? (_DOMAIN_PARAM_MAP[param] ?? 'Mental Health') : 'Mental Health';
+  } catch {
+    return 'Mental Health';
+  }
+}
+
 export default function App() {
-  const [theme, setTheme] = useState(domainThemes['Mental Health']);
+  const [initialDomain] = useState(_initialDomain);
+  const [theme, setTheme] = useState(domainThemes[initialDomain] ?? domainThemes['Mental Health']);
   const [authed, setAuthed] = useState(() => isAuthed());
 
   useEffect(() => subscribe(() => setAuthed(isAuthed())), []);
@@ -40,7 +58,7 @@ export default function App() {
               <AppHeader />
               <main className="flex-1 flex flex-col items-center px-4 sm:px-6 pt-2 pb-6">
                 <div className="w-full max-w-4xl mx-auto">
-                  <ChatAssistant onDomainChange={handleThemeChange} />
+                  <ChatAssistant onDomainChange={handleThemeChange} initialDomain={initialDomain} />
                 </div>
               </main>
               <AppFooter />

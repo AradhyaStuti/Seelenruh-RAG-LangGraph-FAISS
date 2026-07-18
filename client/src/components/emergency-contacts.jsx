@@ -2,9 +2,11 @@ import { SoftAlert, SoftSiren, SoftFlame, SoftPhone, GentleShield } from "@/comp
 
 const contacts = [
   { label: "Police", number: "100", icon: SoftSiren },
-  { label: "Fire", number: "101", icon: SoftFlame },
   { label: "Ambulance", number: "102", icon: SoftPhone },
   { label: "Women Helpline", number: "1091", icon: GentleShield },
+  { label: "iCall", number: "9152987821", icon: SoftPhone },
+  { label: "Tele-MANAS", number: "14416", icon: SoftPhone },
+  { label: "CHILDLINE", number: "1098", icon: GentleShield },
 ];
 
 export default function EmergencyContacts() {
@@ -24,7 +26,7 @@ export default function EmergencyContacts() {
         </div>
       </div>
 
-      <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
         {contacts.map(({ label, number, icon: Icon }) => (
           <a
             key={label}

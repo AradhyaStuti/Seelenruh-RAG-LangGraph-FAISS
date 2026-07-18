@@ -116,7 +116,23 @@ export async function silentRefresh() {
 }
 
 export function isAuthed() {
-  return !!getToken();
+  const token = getToken();
+  if (!token) return false;
+  try {
+    // Decode payload (no signature verify — server validates on every request)
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      // Token is expired — clear it so the app shows the login screen immediately
+      // instead of waiting for a 401 response on the next API call.
+      clearAuth();
+      return false;
+    }
+  } catch {
+    // Malformed token — treat as unauthenticated
+    clearAuth();
+    return false;
+  }
+  return true;
 }
 
 export async function signup({ email, name, password }) {

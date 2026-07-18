@@ -40,8 +40,6 @@ _INJECTION_PATTERNS = [
     # Jailbreak keywords
     re.compile(r"\bsystem\s+prompt\b", re.I),
     re.compile(r"\bjailbreak\b", re.I),
-    re.compile(r"\bDAN\b"),                         # "Do Anything Now"
-    re.compile(r"\bAIM\b"),                         # "Always Intelligent and Machiavellian"
     re.compile(r"\bGPT-?4chan\b", re.I),
     re.compile(r"developer\s+mode", re.I),
     re.compile(r"maintenance\s+mode", re.I),
