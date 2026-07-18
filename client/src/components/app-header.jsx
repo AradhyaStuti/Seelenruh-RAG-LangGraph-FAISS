@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SavedMomentsDrawer } from "@/components/saved-moments";
 import { getUser, subscribe, resendVerification } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { AdminDashboard } from "@/components/admin-dashboard";
 
 const BreathingCompanion = lazy(() => import("@/components/breathing-companion").then(m => ({ default: m.BreathingCompanion })));
 const SignOutDialog       = lazy(() => import("@/components/sign-out-dialog").then(m => ({ default: m.SignOutDialog })));
@@ -19,7 +20,7 @@ function initialsOf(name, email) {
   return (letters || source[0]).toUpperCase();
 }
 
-function AccountMenu({ user, onSignOut, onChangePassword }) {
+function AccountMenu({ user, onSignOut, onChangePassword, onAdmin }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -77,6 +78,16 @@ function AccountMenu({ user, onSignOut, onChangePassword }) {
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               Change password
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); onAdmin?.(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-foreground/80 hover:bg-primary/8 hover:text-foreground transition-colors text-left"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+              </svg>
+              Knowledge dashboard
             </button>
             <button
               type="button"
@@ -164,6 +175,7 @@ export function AppHeader() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [user, setUser] = useState(() => getUser());
 
   useEffect(() => subscribe(() => setUser(getUser())), []);
@@ -241,6 +253,7 @@ export function AppHeader() {
               user={user}
               onSignOut={() => setSignOutOpen(true)}
               onChangePassword={() => setChangePwOpen(true)}
+              onAdmin={() => setAdminOpen(true)}
             />
           )}
         </div>
@@ -252,6 +265,7 @@ export function AppHeader() {
         {signOutOpen && <SignOutDialog      open={signOutOpen} onOpenChange={setSignOutOpen} user={user} />}
         {changePwOpen && <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />}
       </Suspense>
+      {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
     </>
   );
 }

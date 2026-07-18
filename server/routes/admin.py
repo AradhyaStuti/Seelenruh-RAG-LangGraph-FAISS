@@ -516,3 +516,36 @@ async def restore_document(
         raise HTTPException(status_code=404, detail="Document not found.")
     await db.log_admin_action(action="restore_document", detail={"docId": doc_id})
     return {"ok": True, "docId": doc_id, "status": "active"}
+
+
+@router.get("/crawler/sources")
+@limiter.limit("30/minute")
+async def list_crawler_sources(
+    request: Request,
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """List all crawler source statuses from the knowledge_sources collection."""
+    _check_key(x_admin_key)
+    try:
+        cursor = db._db["knowledge_sources"].find({}, {"_id": 0})
+        sources = await cursor.to_list(length=100)
+    except Exception as err:
+        raise HTTPException(status_code=503, detail=f"DB error: {err}")
+    return {"sources": sources, "count": len(sources)}
+
+
+@router.post("/crawler/trigger")
+@limiter.limit("5/minute")
+async def trigger_crawler(
+    request: Request,
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """Manually trigger a knowledge update cycle (runs in background)."""
+    _check_key(x_admin_key)
+    import knowledge_updater
+    asyncio.create_task(knowledge_updater.run_update_cycle())
+    await db.log_admin_action(
+        action="trigger_crawler",
+        detail={"triggeredAt": date.today().isoformat()},
+    )
+    return {"ok": True, "message": "Crawler triggered. Results will appear in the audit log when complete."}
