@@ -26,6 +26,7 @@ from routes.tts import router as tts_router
 from routes.admin import router as admin_router
 from routes.upload import router as upload_router
 from routes.feedback import router as feedback_router
+from routes.export import router as export_router
 import db
 from rag import retriever
 
@@ -34,17 +35,39 @@ log = get_logger("main")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    from config import REDIS_URL, SEELENRUH_ENV
+    from config import REDIS_URL, SEELENRUH_ENV, FIELD_ENCRYPTION_KEY
+
     if not REDIS_URL:
         log.warning(
             "REDIS_URL not set — rate-limit counters are in-memory and will reset on restart. "
             "Set REDIS_URL in .env for persistent rate limiting across restarts."
         )
+
     if SEELENRUH_ENV == "prod":
         log.warning(
             "Running in production mode. Ensure MongoDB Atlas encryption-at-rest is enabled "
             "in your Atlas cluster settings to protect sensitive user data."
         )
+
+    # ── Encryption startup check ──────────────────────────────────────────────
+    try:
+        import crypto as _crypto
+        if FIELD_ENCRYPTION_KEY and not _crypto.is_enabled():
+            log.error(
+                "FIELD_ENCRYPTION_KEY is set but the 'cryptography' package is not installed. "
+                "Sensitive user fields (name, email) will be stored as PLAINTEXT. "
+                "Fix: add 'cryptography' to requirements.txt and redeploy."
+            )
+        elif not FIELD_ENCRYPTION_KEY and SEELENRUH_ENV == "prod":
+            log.warning(
+                "FIELD_ENCRYPTION_KEY is not set in production. "
+                "User name and email fields will be stored as plaintext in MongoDB. "
+                "Set FIELD_ENCRYPTION_KEY to a 32+ byte hex string for field-level encryption."
+            )
+        elif _crypto.is_enabled():
+            log.info("field-level encryption active")
+    except Exception as _enc_err:
+        log.error("encryption startup check failed", error=str(_enc_err))
 
     # Run DB connect + RAG warmup as background tasks so the lifespan
     # completes immediately and uvicorn starts accepting requests right away.
@@ -56,6 +79,14 @@ async def lifespan(_app: FastAPI):
         await retriever.init()
         await retriever.warmup()
         log.info("RAG index ready", chunks=retriever._store.size())
+
+        # Start the dynamic knowledge update scheduler (non-blocking)
+        try:
+            from knowledge_updater import start_scheduler
+            start_scheduler()
+            log.info("knowledge update scheduler started")
+        except Exception as _sched_err:
+            log.warning("knowledge update scheduler failed to start", error=str(_sched_err))
 
     asyncio.create_task(_bootstrap())
     yield
@@ -139,6 +170,7 @@ app.include_router(tts_router)
 app.include_router(admin_router)
 app.include_router(upload_router)
 app.include_router(feedback_router)
+app.include_router(export_router)
 
 
 _CLIENT_DIST = (Path(__file__).parent.parent / "client" / "dist").resolve()

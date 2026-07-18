@@ -5,6 +5,7 @@ from langgraph.graph import StateGraph, START, END
 
 from ai import aarogya_agents
 from ai.provider import chat, _ollama_up, _is_fallback_worthy
+from ai.grounding import maybe_add_grounding_note
 from config import GROQ_MODEL_SMART
 from logger import get_logger
 
@@ -101,7 +102,8 @@ async def _compose(state: AaroyaState) -> dict:
     )
     max_tokens = 500 if state.get("fast_mode") else 900
     result = await chat(model=GROQ_MODEL_SMART, temperature=0.2, max_tokens=max_tokens, messages=messages)
-    return {"response": result["content"], "via": result["via"], "composer_messages": messages}
+    response_text = maybe_add_grounding_note(result["content"], state.get("retrieved", []), domain="Government Schemes")
+    return {"response": response_text, "via": result["via"], "composer_messages": messages}
 
 
 _builder = StateGraph(AaroyaState)

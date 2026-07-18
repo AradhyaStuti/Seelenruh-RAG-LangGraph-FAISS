@@ -36,6 +36,10 @@ ADMIN_KEY = os.getenv("ADMIN_KEY", "")
 
 # Optional: Brave Search API for richer web results (https://api.search.brave.com)
 BRAVE_SEARCH_KEY = os.getenv("BRAVE_SEARCH_KEY", "")
+# Optional: Tavily Search API — second fallback after Brave (https://tavily.com, free tier available)
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
+# Optional: SerpAPI — tertiary fallback (https://serpapi.com)
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
 # Optional: ElevenLabs neural TTS (https://elevenlabs.io)
 # Find your voice ID in the ElevenLabs dashboard — set ELEVENLABS_VOICE_ID in .env.

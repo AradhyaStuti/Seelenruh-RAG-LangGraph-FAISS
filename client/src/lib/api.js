@@ -323,3 +323,33 @@ export function buildHistory(messages, n = 6) {
     .slice(-n)
     .map((m) => ({ role: m.role, content: m.content }));
 }
+
+/**
+ * Download a conversation export from the server.
+ * @param {string} sessionId - The session to export.
+ * @param {"json"|"md"|"txt"} format - Export format.
+ */
+export async function exportConversation(sessionId, format = "json") {
+  const token = getToken();
+  const res = await fetch(`/api/export/${encodeURIComponent(sessionId)}?format=${format}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (res.status === 401) {
+    clearAuth();
+    throw new Error("Session expired. Please sign in again.");
+  }
+  if (res.status === 404) throw new Error("No conversation history found for this session.");
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.detail || "Export failed.");
+  }
+  const blob = await res.blob();
+  const ext = format === "json" ? "json" : format === "md" ? "md" : "txt";
+  const filename = `seelenruh_${sessionId.slice(0, 16)}.${ext}`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

@@ -49,7 +49,7 @@ import { ChatHistoryDrawer } from "@/components/chat-history";
 import { loadMoments, saveMoment, removeMoment } from "@/components/saved-moments";
 import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
-import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, transcribeAudio, synthesizeSpeech } from "@/lib/api";
+import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, transcribeAudio, synthesizeSpeech, exportConversation } from "@/lib/api";
 import { ExplainabilityPanel } from "@/components/explainability-panel";
 import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
@@ -162,8 +162,10 @@ const moodHints = {
 // EmergencyContacts appear instantly instead of after the 2-4s LLM round-trip.
 // False positives are acceptable: we just pre-show contacts; the LLM still
 // classifies and the session isEmergency flag is set by the API response.
+// Client-side emergency patterns — English + Hinglish + indirect expressions.
+// False positives are fine: contacts appear instantly, LLM still re-classifies.
 const EMERGENCY_RE =
-  /\b(suicid(?:e|al)|kill(?:ing)?\s+my(?:self)?|end\s+my\s+life|want\s+to\s+die|don'?t\s+want\s+to\s+live|hurt(?:ing)?\s+my(?:self)?|self[- ]?harm|cutting\s+my(?:self)?|overdose|he'?s?\s+hitting\s+me|she'?s?\s+hitting\s+me|being\s+beaten|domestic\s+violence|being\s+abused|being\s+raped?|sexual\s+assault|heart\s+attack|can'?t\s+breathe|i\s+(?:am\s+)?dying|need\s+help\s+now|in\s+(?:immediate\s+)?danger|not\s+safe(?:\s+right\s+now)?|mujhe\s+maara|maar\s+diya|maar\s+raha|khatam\s+karna\s+chahta|bachao)\b/i;
+  /\b(suicid(?:e|al)|attempting\s+suicide|tried\s+to\s+kill|kill(?:ing)?\s+my(?:self)?|end\s+my\s+life|end\s+(?:it\s+)?all|want\s+to\s+die|wanna\s+die|ready\s+to\s+die|don'?t\s+want\s+to\s+(?:live|be\s+alive|exist)|no\s+reason\s+to\s+live|nothing\s+to\s+live\s+for|rather\s+be\s+dead|better\s+off\s+dead|hurt(?:ing)?\s+my(?:self)?|self[- ]?harm|self[- ]?injur|cutting\s+my(?:self)?|overdose|took\s+(?:too\s+many\s+)?pills|swallowed\s+pills|he'?s?\s+hitting\s+me|she'?s?\s+hitting\s+me|they'?re\s+hitting\s+me|being\s+beaten|physically\s+abused|domestic\s+violence|being\s+abused|he\s+is\s+hurting\s+me|being\s+raped?|sexual\s+assault|heart\s+attack|chest\s+pain\s+severe|can'?t\s+breathe|difficulty\s+breathing|choking|i\s+(?:am\s+)?dying|feeling\s+like\s+dying|need\s+help\s+now|help\s+me\s+now|please\s+help\s+(?:me\s+)?now|in\s+(?:immediate\s+)?danger|not\s+safe(?:\s+right\s+now)?|being\s+(?:followed|stalked)|trapped\s+(?:inside|here)|locked\s+(?:me\s+)?in|building\s+on\s+fire|there'?s\s+a\s+fire|he\s+has\s+a\s+(?:gun|knife|weapon)|mujhe\s+maara|maar\s+(?:diya|raha|rahi|rahe)|khatam\s+karna\s+chahta|khatam\s+kar\s+loon|jaan\s+dena\s+chahta|jaan\s+de\s+d(?:oon|i)|marna\s+chahta|marna\s+chahti|mar\s+jaana\s+chahta|nahi\s+rehna\s+chahta|jeena\s+nahi\s+chahta|jeene\s+ka\s+mann\s+nahi|zindagi\s+se\s+thak\s+gaya|thak\s+gaya\s+hoon\s+jeene|khud\s+ko\s+(?:hurt|nuksan)|bachao|help\s+karo\s+abhi|abhi\s+danger\s+mein|jaan\s+ka\s+khatra|abhi\s+koi\s+(?:ghus|maar)|koi\s+peeche\s+aa\s+raha|darwa\s+raha\s+hai|maar\s+(?:dega|dalega|degi|dalegi))\b/i;
 
 function looksLikeEmergency(text) {
   return EMERGENCY_RE.test(text);
@@ -221,6 +223,10 @@ export default function ChatAssistant({ onDomainChange }) {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
+  // Screen-reader live region — announces new assistant messages and loading state.
+  const liveRegionRef = useRef(null);
+  // Submit deduplication — prevents double-fire on rapid clicks before isLoading is set.
+  const submittingRef = useRef(false);
 
   const { toast } = useToast();
 
@@ -315,6 +321,23 @@ export default function ChatAssistant({ onDomainChange }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [visibleMessages, isLoading]);
+
+  // Announce loading state + new assistant responses to screen readers.
+  useEffect(() => {
+    if (!liveRegionRef.current) return;
+    if (isLoading) {
+      liveRegionRef.current.textContent = `${domainConfig[selectedDomain].persona} is typing…`;
+    } else {
+      const lastMsg = visibleMessages[visibleMessages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg?.content) {
+        // Trim to first 200 chars so screen reader doesn't read the full response
+        liveRegionRef.current.textContent =
+          `${domainConfig[selectedDomain].persona} replied: ${lastMsg.content.replace(/[#*`_]/g, "").slice(0, 200)}`;
+      } else {
+        liveRegionRef.current.textContent = "";
+      }
+    }
+  }, [isLoading, visibleMessages, selectedDomain]);
 
   const setDomainLoading = (loading) =>
     setLoadingByDomain((prev) => ({ ...prev, [selectedDomain]: loading }));
@@ -644,6 +667,9 @@ export default function ChatAssistant({ onDomainChange }) {
   const sendTextMessage = async (text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    // Dedup: if a submit is already in-flight (race between click and isLoading state update), bail.
+    if (submittingRef.current || isLoading) return;
+    submittingRef.current = true;
     setChatView(true);
 
 
@@ -794,6 +820,7 @@ export default function ChatAssistant({ onDomainChange }) {
     } finally {
       setStreamingMsgId(null);
       setDomainLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -888,11 +915,18 @@ export default function ChatAssistant({ onDomainChange }) {
 
   return (
     <TooltipProvider delayDuration={150}>
+      {/* Screen-reader live region — visually hidden, announces loading / new replies */}
+      <div
+        ref={liveRegionRef}
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      />
       <div className="space-y-4">
         <Card className="w-full rounded-[2rem] glass-strong petal-shadow transition-all duration-500 overflow-hidden border-border/40">
           <CardContent className="pt-5 px-3 sm:px-5 pb-5">
             <Tabs value={selectedDomain} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 h-auto bg-background/40 p-1.5 gap-1.5 rounded-2xl border border-border/40 backdrop-blur-sm">
+              <TabsList aria-label="Choose your support persona" className="grid w-full grid-cols-4 h-auto bg-background/50 p-1.5 gap-1.5 rounded-2xl border border-border/40 backdrop-blur-sm shadow-inner">
                 {Object.entries(domainConfig).map(([name, { icon: Icon, persona }]) => {
                   const dc = DOMAIN_COLORS[name];
                   const active = selectedDomain === name;
@@ -900,27 +934,30 @@ export default function ChatAssistant({ onDomainChange }) {
                     <TabsTrigger
                       key={name}
                       value={name}
-                      style={active ? { background: dc.bg, borderColor: dc.border, boxShadow: `0 4px 16px ${dc.dot}25` } : {}}
+                      aria-label={`${persona} — ${name}`}
+                      style={active
+                        ? { background: dc.bg, borderColor: dc.border, boxShadow: `0 2px 12px ${dc.dot}30, 0 1px 0 ${dc.border} inset` }
+                        : {}}
                       className={cn(
-                        "group flex-col gap-1.5 py-3 px-1 rounded-xl border transition-all duration-250",
+                        "group flex-col gap-1 py-2.5 px-1 rounded-xl border transition-all duration-200",
                         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                         active
                           ? "border-[inherit] shadow-sm"
-                          : "border-transparent hover:border-border/40 hover:bg-card/60"
+                          : "border-transparent hover:border-border/30 hover:bg-card/70"
                       )}
                     >
                       <div
-                        className="h-8 w-8 rounded-lg flex items-center justify-center ring-1 mx-auto transition-transform duration-200 group-hover:scale-110"
+                        className="h-8 w-8 rounded-[10px] flex items-center justify-center mx-auto transition-all duration-200 group-hover:scale-105"
                         style={active
-                          ? { background: dc.iconBg, borderColor: dc.border, border: `1px solid ${dc.border}` }
-                          : { background: "hsl(var(--muted)/0.6)", border: "1px solid transparent" }
+                          ? { background: dc.iconBg, border: `1.5px solid ${dc.border}`, boxShadow: `0 2px 8px ${dc.dot}30` }
+                          : { background: "hsl(var(--muted)/0.5)", border: "1.5px solid transparent" }
                         }
                       >
-                        <Icon className="h-4 w-4" style={{ color: active ? dc.iconColor : undefined }} />
+                        <Icon className="h-4 w-4 transition-transform duration-200" style={{ color: active ? dc.iconColor : undefined }} />
                       </div>
                       <div className="text-center leading-none">
-                        <p className="font-semibold text-[12px]" style={active ? { color: dc.iconColor } : {}}>{persona}</p>
-                        <p className="text-[9px] mt-0.5 text-muted-foreground/50">{DOMAIN_SHORT[name]}</p>
+                        <p className="font-semibold text-[11.5px] tracking-tight" style={active ? { color: dc.iconColor } : {}}>{persona}</p>
+                        <p className="text-[9px] mt-0.5 text-muted-foreground/45">{DOMAIN_SHORT[name]}</p>
                       </div>
                     </TabsTrigger>
                   );
@@ -946,17 +983,17 @@ export default function ChatAssistant({ onDomainChange }) {
                     return (
                       <>
                         <div
-                          className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ring-1"
-                          style={{ background: dc.iconBg, borderColor: dc.border, border: `1px solid ${dc.border}` }}
+                          className="h-9 w-9 rounded-[10px] flex items-center justify-center shrink-0"
+                          style={{ background: dc.iconBg, border: `1.5px solid ${dc.border}`, boxShadow: `0 2px 8px ${dc.dot}25` }}
                         >
-                          <Icon className="h-5 w-5" style={{ color: dc.iconColor }} />
+                          <Icon className="h-4.5 w-4.5" style={{ color: dc.iconColor }} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <p className="font-semibold text-sm text-foreground/90 leading-tight">{persona}</p>
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <p className="font-semibold text-sm leading-tight" style={{ color: dc.iconColor }}>{persona}</p>
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" style={{ boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
                           </div>
-                          <p className="text-[11px] text-muted-foreground/60 leading-snug truncate">{subtitle}</p>
+                          <p className="text-[11px] text-muted-foreground/55 leading-snug truncate">{subtitle}</p>
                         </div>
                       </>
                     );
@@ -1120,6 +1157,30 @@ export default function ChatAssistant({ onDomainChange }) {
                       </TooltipTrigger>
                       <TooltipContent>Start a fresh conversation</TooltipContent>
                     </Tooltip>
+                    {chatView && currentDomainState.activeId && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              exportConversation(currentDomainState.activeId, "md").catch((err) =>
+                                toast({ title: "Export failed", description: err.message, variant: "destructive" })
+                              );
+                            }}
+                            disabled={isLoading}
+                            className="text-[11px] gap-1.5 h-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span className="hidden sm:inline">Export</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download conversation as Markdown</TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
 
@@ -1128,28 +1189,32 @@ export default function ChatAssistant({ onDomainChange }) {
                     const { icon: Icon } = currentPersona;
                     const dc = DOMAIN_COLORS[selectedDomain];
                     return (
-                      <div className="min-h-[54vh] sm:min-h-[58vh] rounded-[1.65rem] border border-border/45 bg-gradient-to-br from-card/90 via-card/70 to-background/70 p-5 sm:p-8 shadow-[0_18px_70px_rgba(15,23,42,0.08)] flex flex-col justify-between animate-card-enter">
+                      <div className="relative min-h-[54vh] sm:min-h-[58vh] rounded-[1.65rem] border border-border/45 bg-gradient-to-br from-card/95 via-card/80 to-background/80 p-5 sm:p-8 shadow-[0_20px_80px_rgba(15,23,42,0.07)] flex flex-col justify-between animate-card-enter overflow-hidden">
+                        {/* Decorative glow blobs */}
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[1.65rem]" aria-hidden>
+                          <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full blur-3xl opacity-20" style={{ background: dc.dot }} />
+                          <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full blur-3xl opacity-15" style={{ background: dc.dot }} />
+                        </div>
                         {/* Persona hero */}
-                        <div className="flex flex-col items-center text-center gap-4 pt-4 sm:pt-6">
+                        <div className="relative flex flex-col items-center text-center gap-4 pt-4 sm:pt-6">
                           {/* Big persona icon */}
                           <div
-                            className="relative h-20 w-20 rounded-3xl flex items-center justify-center ring-2 shadow-lg"
-                            style={{ background: dc.bg, borderColor: dc.border, border: `2px solid ${dc.border}`, boxShadow: `0 12px 48px ${dc.dot}35` }}
+                            className="relative h-[72px] w-[72px] sm:h-20 sm:w-20 rounded-[1.5rem] flex items-center justify-center"
+                            style={{ background: dc.bg, border: `1.5px solid ${dc.border}`, boxShadow: `0 8px 32px ${dc.dot}40, 0 2px 8px ${dc.dot}25, 0 0 0 6px ${dc.dot}12` }}
                           >
-                            <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-25 blur-2xl pointer-events-none" style={{ background: dc.dot }} />
-                            <Icon className="h-10 w-10 relative z-10" style={{ color: dc.iconColor }} />
+                            <Icon className="h-9 w-9 sm:h-10 sm:w-10" style={{ color: dc.iconColor }} />
                             {/* Online dot */}
-                            <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-card flex items-center justify-center">
-                              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                            <span className="absolute -bottom-1.5 -right-1.5 h-5 w-5 rounded-full bg-emerald-500 ring-2 ring-card flex items-center justify-center" style={{ boxShadow: "0 0 8px rgba(52,211,153,0.5)" }}>
+                              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping opacity-80" />
                             </span>
                           </div>
 
                           <div>
                             <h2 className="font-headline text-2xl sm:text-3xl font-semibold tracking-tight">
                               Hi, I'm{" "}
-                              <span className="text-gradient">{currentPersona.persona}</span>
+                              <span style={{ color: dc.iconColor }}>{currentPersona.persona}</span>
                             </h2>
-                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground/70 max-w-sm mx-auto">
+                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground/65 max-w-xs mx-auto">
                               {currentPersona.subtitle}
                             </p>
                           </div>
@@ -1157,8 +1222,12 @@ export default function ChatAssistant({ onDomainChange }) {
                           <button
                             type="button"
                             onClick={() => setChatView(true)}
-                            className="mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            style={{ background: dc.iconBg, color: dc.iconColor, border: `1px solid ${dc.border}` }}
+                            className="mt-1 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            style={{
+                              background: dc.iconColor,
+                              color: "#fff",
+                              boxShadow: `0 4px 16px ${dc.dot}45`,
+                            }}
                           >
                             Start chatting
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1169,8 +1238,8 @@ export default function ChatAssistant({ onDomainChange }) {
 
                         {/* Quick-start prompts */}
                         {currentPersona.quickReplies?.length > 0 && (
-                          <div className="mt-6">
-                            <p className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/45 mb-3">
+                          <div className="relative mt-6">
+                            <p className="text-center text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">
                               Try asking
                             </p>
                             <div className="flex flex-wrap justify-center gap-2">
@@ -1179,8 +1248,8 @@ export default function ChatAssistant({ onDomainChange }) {
                                   key={prompt}
                                   type="button"
                                   onClick={() => sendTextMessage(prompt)}
-                                  className="rounded-full border px-3.5 py-1.5 text-[12px] transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                  style={{ borderColor: dc.border, color: dc.iconColor, background: dc.bg }}
+                                  className="rounded-full px-3.5 py-1.5 text-[12px] transition-all duration-200 hover:scale-[1.03] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
+                                  style={{ borderColor: dc.border, color: dc.iconColor, background: dc.bg, border: `1px solid ${dc.border}` }}
                                 >
                                   {prompt}
                                 </button>
@@ -1192,8 +1261,12 @@ export default function ChatAssistant({ onDomainChange }) {
                     );
                   })()
                 ) : (
-                <ScrollArea className="h-[52vh] sm:h-[58vh] pr-2">
-                  <div className="space-y-6">
+                <ScrollArea
+                  className="h-[52vh] sm:h-[58vh] pr-2"
+                  aria-label="Chat messages"
+                  aria-busy={isLoading}
+                >
+                  <div role="log" aria-label="Conversation" aria-live="off" className="space-y-6">
                     {activeSession?.summary && (
                       <div className="rounded-xl border border-border/30 bg-muted/25 px-3.5 py-2.5 text-[12px] leading-relaxed">
                         <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground/70">
@@ -1233,9 +1306,9 @@ export default function ChatAssistant({ onDomainChange }) {
                           )}
                         >
                           {message.role === "assistant" && (
-                            <Avatar className="h-9 w-9 ring-2 ring-primary/30 shrink-0">
-                              <AvatarFallback className="bg-gradient-to-br from-primary/90 to-accent text-primary-foreground">
-                                <BlossomLogo className="h-5 w-5" />
+                            <Avatar className="h-9 w-9 shrink-0 ring-1" style={{ boxShadow: `0 0 0 2px ${DOMAIN_COLORS[selectedDomain].border}` }}>
+                              <AvatarFallback style={{ background: DOMAIN_COLORS[selectedDomain].iconBg }}>
+                                {(() => { const { icon: Icon } = domainConfig[selectedDomain]; return <Icon className="h-4.5 w-4.5" style={{ color: DOMAIN_COLORS[selectedDomain].iconColor }} />; })()}
                               </AvatarFallback>
                             </Avatar>
                           )}
@@ -1246,7 +1319,7 @@ export default function ChatAssistant({ onDomainChange }) {
                                 message.role === "user"
                                   ? "bg-gradient-to-br from-primary/85 to-primary text-primary-foreground rounded-br-md petal-shadow leading-relaxed"
                                   : cn(
-                                      "bg-card/95 text-card-foreground rounded-bl-md border border-border/40 petal-shadow",
+                                      "bg-card/95 text-card-foreground rounded-bl-md border border-border/40 petal-shadow border-l-[2.5px]",
                                       "prose prose-sm max-w-none leading-relaxed",
                                       "prose-p:my-1 prose-p:leading-relaxed",
                                       "prose-headings:font-headline prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground/90 prose-headings:mt-3 prose-headings:mb-1",
@@ -1259,6 +1332,7 @@ export default function ChatAssistant({ onDomainChange }) {
                                       "prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5",
                                     )
                               )}
+                              style={message.role === "assistant" ? { borderLeftColor: DOMAIN_COLORS[selectedDomain].dot + "70" } : undefined}
                             >
                               <div className="min-w-0 break-anywhere">
                                 {message.role === "user" && message.hasAttachment && (
@@ -1566,19 +1640,19 @@ export default function ChatAssistant({ onDomainChange }) {
                     })}
                     {isLoading && !streamingMsgId && (
                       <div className="flex items-end gap-3 justify-start animate-slide-in-left">
-                        <Avatar className="h-9 w-9 ring-2 ring-primary/30">
-                          <AvatarFallback className="bg-gradient-to-br from-primary/90 to-accent text-primary-foreground">
-                            <BlossomLogo className="h-5 w-5" />
+                        <Avatar className="h-9 w-9 shrink-0 ring-1" style={{ boxShadow: `0 0 0 2px ${DOMAIN_COLORS[selectedDomain].border}` }}>
+                          <AvatarFallback style={{ background: DOMAIN_COLORS[selectedDomain].iconBg }}>
+                            {(() => { const { icon: Icon } = domainConfig[selectedDomain]; return <Icon className="h-4.5 w-4.5" style={{ color: DOMAIN_COLORS[selectedDomain].iconColor }} />; })()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="rounded-[1.4rem] border border-border/40 bg-card/90 px-5 py-4 shadow-sm">
+                        <div className="rounded-[1.4rem] border border-border/40 border-l-[2.5px] bg-card/90 px-5 py-4 shadow-sm" style={{ borderLeftColor: DOMAIN_COLORS[selectedDomain].dot + "70" }}>
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1.5">
                               {[0, 1, 2].map((i) => (
                                 <span
                                   key={i}
                                   className="typing-dot"
-                                  style={{ animationDelay: `${i * 0.18}s` }}
+                                  style={{ animationDelay: `${i * 0.18}s`, background: DOMAIN_COLORS[selectedDomain].iconColor + "99" }}
                                 />
                               ))}
                             </div>
@@ -1631,12 +1705,12 @@ export default function ChatAssistant({ onDomainChange }) {
                   )}
 
                   <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} aria-label={`Send a message to ${domainConfig[selectedDomain].persona}`}>
                       {/* Unified input pill */}
                       <div className={cn(
-                        "flex items-center gap-2 rounded-2xl border px-3 py-2 transition-all duration-300",
-                        "bg-card/80 backdrop-blur-sm",
-                        "border-border/55 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
+                        "flex items-center gap-2 rounded-[1.25rem] border px-3 py-2 transition-all duration-200",
+                        "bg-card/85 backdrop-blur-sm",
+                        "border-border/50 focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/12 focus-within:shadow-sm"
                       )}>
                         {/* Attach file button */}
                         <Tooltip>
@@ -1671,6 +1745,7 @@ export default function ChatAssistant({ onDomainChange }) {
                               <FormControl>
                                 <Input
                                   placeholder={isRecording ? "Listening…" : isTranscribing ? "Transcribing…" : `Message ${currentPersona.persona}...`}
+                                  aria-label={`Message to ${domainConfig[selectedDomain].persona}`}
                                   {...field}
                                   ref={(el) => { field.ref(el); inputRef.current = el; }}
                                   disabled={isLoading || isRecording || isTranscribing}

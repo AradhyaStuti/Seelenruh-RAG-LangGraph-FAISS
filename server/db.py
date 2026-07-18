@@ -67,6 +67,8 @@ async def connect() -> bool:
         await _db["login_attempts"].create_index("updatedAt", expireAfterSeconds=15 * 60)
         await _db["injection_attempts"].create_index("ts", expireAfterSeconds=90 * 24 * 3600)
         await _db["injection_attempts"].create_index("userId")
+        await _db["knowledge_sources"].create_index("sourceId", unique=True)
+        await _db["knowledge_sources"].create_index("lastUpdated")
         host = (_client.address or ("?", 0))[0]
         log.info("MongoDB connected", db=MONGODB_DB, host=host)
         return True
