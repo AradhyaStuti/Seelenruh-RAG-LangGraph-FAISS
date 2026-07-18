@@ -30,7 +30,7 @@ export default defineConfig({
           // Routing (if used)
           'vendor-router': ['react-hook-form', '@hookform/resolvers', 'zod'],
           // Markdown rendering — large, infrequently updated
-          'vendor-markdown': ['react-markdown', 'remark-gfm'],
+          'vendor-markdown': ['react-markdown'],
           // Radix UI primitives bundle — large group but stable
           'vendor-ui': [
             '@radix-ui/react-dialog',
