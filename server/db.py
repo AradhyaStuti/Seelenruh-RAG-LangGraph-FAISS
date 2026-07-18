@@ -1,6 +1,6 @@
 """Optional MongoDB persistence (motor async)."""
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
@@ -429,7 +429,11 @@ async def consume_verification_token(*, token: str) -> Optional[str]:
 
 async def mark_email_verified(email: str) -> bool:
     if not is_connected():
-        return False
+        from auth import _memory_users
+        key = email.lower().strip()
+        if key in _memory_users:
+            _memory_users[key]["emailVerified"] = True
+        return True
     try:
         result = await _db["users"].update_one(
             {"email": email.lower().strip()},
@@ -438,6 +442,59 @@ async def mark_email_verified(email: str) -> bool:
         return bool(result.modified_count)
     except Exception as err:
         log.error("mark_email_verified failed", email=email, error=str(err))
+        return False
+
+
+# In-memory OTP store for dev (no MongoDB). { email -> {otp, expires_at, attempts} }
+_memory_otps: dict = {}
+
+
+async def save_otp(*, email: str, otp: str, ttl_minutes: int = 10) -> bool:
+    """Persist a 6-digit OTP for the given email, overwriting any previous one."""
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)
+    if not is_connected():
+        _memory_otps[email.lower().strip()] = {"otp": otp, "expiresAt": expires_at, "attempts": 0}
+        return True
+    try:
+        await _db["email_otps"].update_one(
+            {"email": email.lower().strip()},
+            {"$set": {"email": email.lower().strip(), "otp": otp, "expiresAt": expires_at, "attempts": 0}},
+            upsert=True,
+        )
+        return True
+    except Exception as err:
+        log.error("save_otp failed", error=str(err))
+        return False
+
+
+async def consume_otp(*, email: str, otp: str) -> bool:
+    """Verify and consume an OTP. Returns True on match, False on mismatch/expiry."""
+    key = email.lower().strip()
+    if not is_connected():
+        entry = _memory_otps.get(key)
+        if not entry:
+            return False
+        if entry["expiresAt"] < datetime.now(timezone.utc):
+            _memory_otps.pop(key, None)
+            return False
+        if entry["otp"] != otp:
+            entry["attempts"] = entry.get("attempts", 0) + 1
+            return False
+        _memory_otps.pop(key, None)
+        return True
+    try:
+        doc = await _db["email_otps"].find_one({"email": key})
+        if not doc:
+            return False
+        if doc.get("expiresAt") and doc["expiresAt"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            await _db["email_otps"].delete_one({"email": key})
+            return False
+        if doc.get("otp") != otp:
+            await _db["email_otps"].update_one({"email": key}, {"$inc": {"attempts": 1}})
+            return False
+        await _db["email_otps"].delete_one({"email": key})
+        return True
+    except Exception:
         return False
 
 

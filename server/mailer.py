@@ -224,6 +224,30 @@ async def send_test_email(*, to: str) -> dict:
 # Public email functions
 # ---------------------------------------------------------------------------
 
+async def send_otp_email(*, to: str, otp: str) -> None:
+    subject = "Your Seelenruh verification code"
+    body_text = (
+        f"Your verification code is: {otp}\n\n"
+        f"Enter this code in the app to verify your email. It expires in 10 minutes.\n\n"
+        f"If you didn't create a Seelenruh account, you can safely ignore this email.\n\n"
+        f"— Seelenruh"
+    )
+    body_html = _html_wrap(subject, f"""
+        <p style="font-size:16px;color:#333;margin:0 0 16px;">Verify your email address</p>
+        <p style="font-size:14px;color:#555;margin:0 0 24px;line-height:1.6;">
+          Enter the code below in the app to complete your sign-up.<br>
+          It expires in <strong>10 minutes</strong>.
+        </p>
+        <div style="text-align:center;margin:24px 0;">
+          <span style="display:inline-block;background:#f4f4f8;border:1.5px solid #e0e0ef;border-radius:12px;padding:16px 32px;font-size:32px;font-weight:700;letter-spacing:10px;color:#1a1a2e;font-family:monospace;">{otp}</span>
+        </div>
+        <p style="font-size:12px;color:#aaa;text-align:center;">
+          Never share this code with anyone.
+        </p>
+    """)
+    await _dispatch(to=to, subject=subject, body_text=body_text, body_html=body_html)
+
+
 async def send_password_reset(*, to: str, token: str) -> None:
     link = f"{APP_BASE_URL}/reset-password?token={token}"
     subject = "Reset your Seelenruh password"

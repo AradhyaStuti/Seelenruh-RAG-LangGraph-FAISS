@@ -136,7 +136,17 @@ export function isAuthed() {
 }
 
 export async function signup({ email, name, password }) {
-  return _post("/api/auth/signup", { email, name, password });
+  // Signup no longer returns tokens — user must verify OTP first.
+  return _postRaw("/api/auth/signup", { email, name, password });
+}
+
+export async function verifyOtp(email, otp) {
+  // On success, server returns tokens — store them and emit.
+  return _post("/api/auth/verify-otp", { email, otp });
+}
+
+export async function resendOtp(email) {
+  return _postRaw("/api/auth/resend-otp", { email });
 }
 
 export async function login({ email, password }) {

@@ -2,6 +2,7 @@
 forgot-password, reset-password, verify-email, resend-verification, data-export."""
 import asyncio
 import json
+import random
 import secrets
 from datetime import datetime, timezone
 
@@ -42,20 +43,65 @@ def _public_user(user: dict) -> dict:
     }
 
 
-@router.post("/signup", response_model=AuthResponse)
+@router.post("/signup")
 @auth_limit("5/minute")
-async def signup(request: Request, req: SignupRequest) -> AuthResponse:
+async def signup(request: Request, req: SignupRequest) -> dict:
     try:
         user = await create_user(email=req.email, name=req.name, password=req.password)
     except EmailAlreadyRegistered:
-        raise HTTPException(status_code=400, detail="Couldn't create that account. Please try again.")
+        # If the account exists but is unverified, resend a fresh OTP so the user
+        # can complete registration without getting a confusing error.
+        existing = await find_user_by_email(req.email)
+        if existing and not existing.get("emailVerified", False):
+            otp = f"{random.SystemRandom().randint(0, 999999):06d}"
+            await db.save_otp(email=existing["email"], otp=otp, ttl_minutes=10)
+            asyncio.create_task(mailer.send_otp_email(to=existing["email"], otp=otp))
+            return {"ok": True, "pendingVerification": True, "email": existing["email"]}
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
+    # Generate 6-digit OTP and email it — user must verify before receiving tokens
+    otp = f"{random.SystemRandom().randint(0, 999999):06d}"
+    await db.save_otp(email=user["email"], otp=otp, ttl_minutes=10)
+    asyncio.create_task(mailer.send_otp_email(to=user["email"], otp=otp))
+    return {"ok": True, "pendingVerification": True, "email": user["email"]}
+
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+@router.post("/verify-otp", response_model=AuthResponse)
+@auth_limit("10/minute")
+async def verify_otp(request: Request, req: VerifyOtpRequest) -> AuthResponse:
+    """Consume a 6-digit OTP, mark email verified, and return auth tokens."""
+    valid = await db.consume_otp(email=req.email, otp=req.otp)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Incorrect or expired code. Please try again.")
+    user = await find_user_by_email(req.email)
+    if not user:
+        raise HTTPException(status_code=400, detail="Account not found.")
+    await db.mark_email_verified(user["email"])
     access_token = make_access_token(user_id=user["_id"], email=user["email"])
     refresh_token = make_refresh_token(user_id=user["_id"], email=user["email"])
-    # Send email verification — fire-and-forget so signup isn't delayed
-    verification_token = secrets.token_urlsafe(32)
-    await db.save_verification_token(email=user["email"], token=verification_token)
-    asyncio.create_task(mailer.send_email_verification(to=user["email"], token=verification_token))
+    user["emailVerified"] = True
     return AuthResponse(token=access_token, refreshToken=refresh_token, user=_public_user(user))
+
+
+class ResendOtpRequest(BaseModel):
+    email: EmailStr
+
+
+@router.post("/resend-otp")
+@auth_limit("3/minute")
+async def resend_otp(request: Request, req: ResendOtpRequest) -> dict:
+    """Re-send a fresh OTP to the given email (unauthenticated — user hasn't verified yet)."""
+    user = await find_user_by_email(req.email)
+    if user:
+        otp = f"{random.SystemRandom().randint(0, 999999):06d}"
+        await db.save_otp(email=user["email"], otp=otp, ttl_minutes=10)
+        asyncio.create_task(mailer.send_otp_email(to=user["email"], otp=otp))
+    # Always 200 — don't reveal whether the email is registered
+    return {"ok": True}
 
 
 @router.post("/login", response_model=AuthResponse)

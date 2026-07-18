@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BlossomLogo } from "@/components/icons";
-import { login, signup, forgotPassword, resetPassword, verifyEmail } from "@/lib/auth";
+import { login, signup, forgotPassword, resetPassword, verifyEmail, verifyOtp, resendOtp } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-// Modes: "login" | "signup" | "forgot" | "reset" | "verify"
+// Modes: "login" | "signup" | "forgot" | "reset" | "verify" | "otp"
 // "reset" and "verify" are triggered when the URL has ?token=... query params.
+// "otp" is shown after successful signup — user must enter 6-digit code from email.
 
 function detectModeFromURL() {
   const params = new URLSearchParams(window.location.search);
@@ -61,6 +62,12 @@ export function LoginScreen() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // OTP mode state
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
+
   const firstFieldRef = useRef(null);
 
   // Auto-run verify-email from URL token on mount
@@ -78,8 +85,61 @@ export function LoginScreen() {
     return () => window.clearTimeout(t);
   }, [mode]);
 
+  // Cooldown timer for OTP resend button
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  // Auto-focus first OTP box when entering otp mode
+  useEffect(() => {
+    if (mode === "otp") {
+      setTimeout(() => otpRefs[0].current?.focus(), 80);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   const handlePwKey = (e) => {
     if (typeof e.getModifierState === "function") setCapsLock(e.getModifierState("CapsLock"));
+  };
+
+  const handleOtpChange = (index, value) => {
+    // Handle paste of full OTP
+    if (value.length > 1) {
+      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
+      const next = ["", "", "", "", "", ""];
+      digits.forEach((d, i) => { if (i < 6) next[i] = d; });
+      setOtpDigits(next);
+      const focusIdx = Math.min(digits.length, 5);
+      otpRefs[focusIdx].current?.focus();
+      return;
+    }
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    if (digit && index < 5) otpRefs[index + 1].current?.focus();
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpRefs[index - 1].current?.focus();
+    }
+    if (e.key === "ArrowLeft" && index > 0) otpRefs[index - 1].current?.focus();
+    if (e.key === "ArrowRight" && index < 5) otpRefs[index + 1].current?.focus();
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || loading) return;
+    setError(""); setSuccess("");
+    try {
+      await resendOtp(pendingEmail);
+      setSuccess("A new code has been sent to your email.");
+      setResendCooldown(60);
+    } catch {
+      setError("Couldn't resend the code. Please try again.");
+    }
   };
 
   const handleVerifyToken = async (token) => {
@@ -102,7 +162,17 @@ export function LoginScreen() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        await signup({ email, name, password });
+        const res = await signup({ email, name, password });
+        if (res?.pendingVerification) {
+          setPendingEmail(res.email || email);
+          setOtpDigits(["", "", "", "", "", ""]);
+          setResendCooldown(60);
+          setMode("otp");
+        }
+      } else if (mode === "otp") {
+        const otp = otpDigits.join("");
+        await verifyOtp(pendingEmail, otp);
+        // verifyOtp calls setAuth internally — app will re-render on success
       } else if (mode === "login") {
         await login({ email, password });
       } else if (mode === "forgot") {
@@ -136,6 +206,7 @@ export function LoginScreen() {
     forgot: "Reset your password",
     reset:  "Set a new password",
     verify: "Verifying your email…",
+    otp:    "Check your email",
   };
   const SUBTITLES = {
     login:  "Sign in to continue your session.",
@@ -143,6 +214,7 @@ export function LoginScreen() {
     forgot: "Enter your email and we'll send a reset link.",
     reset:  "Choose a new password for your account.",
     verify: "Please wait while we verify your email address.",
+    otp:    `We sent a 6-digit code to ${pendingEmail || "your email"}.`,
   };
 
   return (
@@ -175,8 +247,8 @@ export function LoginScreen() {
           </div>
 
           <div className="px-6 pb-6">
-            {/* Success banner */}
-            {success && (
+            {/* Success banner (not shown in otp mode — it has its own) */}
+            {success && mode !== "otp" && (
               <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/80 px-3 py-2.5 text-sm text-emerald-700 animate-fade-in">
                 <CheckIcon />
                 {success}
@@ -191,7 +263,75 @@ export function LoginScreen() {
               </div>
             )}
 
-            {mode !== "verify" && (
+            {mode === "otp" && (
+              <form onSubmit={submit} className="space-y-5 mt-5" autoComplete="off">
+                {/* 6-box OTP input */}
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-3">Verification code</label>
+                  <div className="flex gap-2 justify-center">
+                    {otpDigits.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={otpRefs[i]}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                        onFocus={(e) => e.target.select()}
+                        className="w-11 h-13 text-center text-xl font-bold rounded-xl border border-border/60 bg-background/60 text-foreground focus:border-primary/60 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        style={{ height: "52px", fontSize: "22px" }}
+                        aria-label={`Digit ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {error && (
+                  <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-sm text-destructive animate-fade-in">
+                    {error}
+                  </div>
+                )}
+                {success && (
+                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/80 px-3 py-2.5 text-sm text-emerald-700 animate-fade-in">
+                    <CheckIcon />
+                    {success}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={loading || otpDigits.join("").length < 6}
+                  className="w-full h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-all duration-200 petal-shadow disabled:opacity-50 disabled:shadow-none"
+                >
+                  {loading && (
+                    <span className="inline-block h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin mr-2" />
+                  )}
+                  {loading ? "Verifying…" : "Verify"}
+                </Button>
+
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => { setMode("signup"); setError(""); setSuccess(""); }}
+                    className="text-primary font-medium hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={resendCooldown > 0 || loading}
+                    className="text-primary font-medium hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {mode !== "verify" && mode !== "otp" && (
               <form onSubmit={submit} className="space-y-4 mt-5" autoComplete="on">
 
                 {/* Name — signup only */}
@@ -316,7 +456,7 @@ export function LoginScreen() {
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                       <polyline points="22,6 12,13 2,6"/>
                     </svg>
-                    <span>A verification link will be sent to your email after sign-up.</span>
+                    <span>A 6-digit verification code will be sent to your email to confirm your address.</span>
                   </div>
                 )}
                 {/* Password reset tip */}
