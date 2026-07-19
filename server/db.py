@@ -516,8 +516,14 @@ async def fetch_audit_log(limit: int = 100) -> list[dict]:
         return []
     try:
         cursor = _db["audit_log"].find().sort("createdAt", -1).limit(limit)
+        def _fmt(dt):
+            if dt is None:
+                return None
+            if hasattr(dt, "tzinfo") and dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.isoformat()
         return [
-            {**d, "_id": str(d["_id"]), "createdAt": d["createdAt"].isoformat()}
+            {**d, "_id": str(d["_id"]), "createdAt": _fmt(d.get("createdAt"))}
             async for d in cursor
         ]
     except Exception:
