@@ -27,7 +27,11 @@ const GAP_STATUSES = ["open", "solved", "ignored"];
 function fmtDate(iso) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    return new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
   } catch { return iso; }
 }
 
