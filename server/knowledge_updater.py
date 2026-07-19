@@ -253,7 +253,7 @@ async def _check_and_update_source(source: dict) -> bool:
     url = source["url"]
 
     # Record that we checked this source
-    await _upsert_source_record(source_id, lastChecked=datetime.now(timezone.utc), url=url)
+    await _upsert_source_record(source_id, lastChecked=datetime.now(timezone.utc), url=url, status="checking")
 
     text = await _fetch_page(url)
     if not text or len(text) < _MIN_CONTENT_CHARS:
@@ -283,6 +283,7 @@ async def _check_and_update_source(source: dict) -> bool:
             pass
         await _upsert_source_record(
             source_id,
+            status="partial",
             lastError="js_rendered_stub_only",
             lastErrorAt=datetime.now(timezone.utc),
             lastUpdated=datetime.now(timezone.utc),
@@ -293,12 +294,14 @@ async def _check_and_update_source(source: dict) -> bool:
     record = await _get_source_record(source_id)
     if record and record.get("checksum") == new_checksum:
         log.debug("knowledge_updater: no change", source_id=source_id)
+        await _upsert_source_record(source_id, status="ok")
         return False
 
     # Content changed — re-ingest
     log.info("knowledge_updater: change detected", source_id=source_id, url=url)
     chunks = _chunk_text(text, source)
     if not chunks:
+        await _upsert_source_record(source_id, status="ok")
         return False
 
     try:
@@ -307,6 +310,7 @@ async def _check_and_update_source(source: dict) -> bool:
         version = (record.get("version", 0) + 1) if record else 1
         await _upsert_source_record(
             source_id,
+            status="ok",
             checksum=new_checksum,
             lastUpdated=datetime.now(timezone.utc),
             version=version,
@@ -319,6 +323,7 @@ async def _check_and_update_source(source: dict) -> bool:
         log.error("knowledge_updater: ingest failed", source_id=source_id, error=str(err))
         await _upsert_source_record(
             source_id,
+            status="error",
             lastError=str(err),
             lastErrorAt=datetime.now(timezone.utc),
         )
