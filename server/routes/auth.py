@@ -26,11 +26,10 @@ from auth import (
     verify_password,
     find_user_by_email,
 )
-from config import MAX_LOGIN_ATTEMPTS
+from config import MAX_LOGIN_ATTEMPTS, RESEND_API_KEY, SMTP_HOST, SMTP_USER, SMTP_PASSWORD
 from rate_limit import auth_limit, burst_limit
 import db
 import mailer
-from config import RESEND_API_KEY, SMTP_HOST, SMTP_USER, SMTP_PASSWORD
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
