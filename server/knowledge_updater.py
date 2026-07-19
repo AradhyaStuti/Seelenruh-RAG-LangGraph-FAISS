@@ -188,16 +188,23 @@ async def _fetch_page(url: str) -> Optional[str]:
         async with httpx.AsyncClient(
             timeout=_FETCH_TIMEOUT,
             follow_redirects=True,
-            headers={"User-Agent": "SeelenruhKnowledgeBot/1.0 (educational project; contact: admin@seelenruh.app)"},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+            },
         ) as client:
             r = await client.get(url)
             if r.status_code != 200:
+                log.warning("fetch_page non-200", url=url, status=r.status_code)
                 return None
-            # Only process HTML pages — skip PDFs, images, etc.
             ct = r.headers.get("content-type", "")
             if not any(t in ct for t in ("html", "text", "xml")):
+                log.warning("fetch_page bad content-type", url=url, ct=ct)
                 return None
-            return _strip_html(r.text)
+            text = _strip_html(r.text)
+            log.debug("fetch_page ok", url=url, chars=len(text))
+            return text
     except Exception as err:
         log.warning("fetch_page failed", url=url, error=str(err))
         return None
