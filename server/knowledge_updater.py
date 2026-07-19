@@ -134,9 +134,9 @@ _SOURCES: list[dict] = [
     },
     {
         "id": "telemanas",
-        "url": "https://en.wikipedia.org/wiki/Tele_MANAS",
+        "url": "https://en.wikipedia.org/wiki/Mental_health_in_India",
         "domain": "Mental Health",
-        "topic": "Tele-MANAS — Mental Health Helpline 14416",
+        "topic": "Tele-MANAS — Mental Health Helpline 14416 and Mental Health in India",
         "section": "mental_health",
     },
     # Women's safety
