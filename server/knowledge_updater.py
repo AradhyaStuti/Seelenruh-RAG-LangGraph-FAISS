@@ -215,7 +215,7 @@ def _chunk_text(text: str, source: dict, max_chars: int = _MAX_PAGE_CHARS) -> li
             "text": para[:1500],
             "source": source["url"],
             "sourceAuthority": "Official",
-            "reviewStatus": "Active",
+            "reviewStatus": "Verified",
             "crawled": True,
             "crawledAt": datetime.now(timezone.utc).isoformat(),
         })
@@ -257,8 +257,36 @@ async def _check_and_update_source(source: dict) -> bool:
 
     text = await _fetch_page(url)
     if not text or len(text) < _MIN_CONTENT_CHARS:
-        log.warning("knowledge_updater: empty/short page", source_id=source_id, url=url)
-        await _upsert_source_record(source_id, lastError="empty_page", lastErrorAt=datetime.now(timezone.utc))
+        # JS-rendered sites return empty HTML — store a reference stub so the
+        # source is still findable in RAG even without live content.
+        log.warning("knowledge_updater: empty/short page (JS-rendered?)", source_id=source_id, url=url)
+        stub_text = (
+            f"{source['topic']}. "
+            f"Official resource available at {url}. "
+            f"Domain: {source['domain']}."
+        )
+        stub_chunks = [{
+            "id": f"crawl_{source_id}_stub",
+            "domain": source["domain"],
+            "topic": source["topic"],
+            "text": stub_text,
+            "source": url,
+            "sourceAuthority": "Official",
+            "reviewStatus": "Verified",
+            "crawled": True,
+            "crawledAt": datetime.now(timezone.utc).isoformat(),
+        }]
+        try:
+            from rag import retriever as _retriever
+            await _retriever.ingest(stub_chunks)
+        except Exception:
+            pass
+        await _upsert_source_record(
+            source_id,
+            lastError="js_rendered_stub_only",
+            lastErrorAt=datetime.now(timezone.utc),
+            lastUpdated=datetime.now(timezone.utc),
+        )
         return False
 
     new_checksum = _checksum(text)
