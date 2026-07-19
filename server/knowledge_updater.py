@@ -156,7 +156,7 @@ _SOURCES: list[dict] = [
     },
     {
         "id": "cybercrime",
-        "url": "https://cybercrime.gov.in/",
+        "url": "https://en.wikipedia.org/wiki/Indian_Cyber_Crime_Coordination_Centre",
         "domain": "Safety",
         "topic": "National Cyber Crime Reporting Portal — 1930",
         "section": "safety",
