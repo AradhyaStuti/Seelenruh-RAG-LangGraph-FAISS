@@ -12,7 +12,6 @@ import {
   fetchChunks, ingestChunks, deleteChunks,
   fetchDocuments, uploadDocument, deleteDocument, restoreDocument,
   fetchKnowledgeGaps, updateKnowledgeGap,
-  fetchSnapshots, rollbackIndex,
   fetchCrawlerSources, triggerCrawler,
   fetchAuditLog, testEmail,
 } from "@/lib/admin-api";
@@ -789,100 +788,6 @@ function CrawlerTab() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tab: Index Management
-// ---------------------------------------------------------------------------
-function IndexTab() {
-  const { data: statusData, loading: statusLoading, reload: reloadStatus } = useLoad(fetchAdminStatus);
-  const { data: snapsData, loading: snapsLoading, reload: reloadSnaps } = useLoad(fetchSnapshots);
-  const [rolling, setRolling] = useState(false);
-  const [steps, setSteps] = useState(1);
-  const [error, setError] = useState("");
-  const [ok, setOk] = useState("");
-
-  const handleRollback = async () => {
-    if (!confirm(`Roll back the index by ${steps} snapshot(s)? This affects the live index immediately.`)) return;
-    setRolling(true);
-    setError("");
-    setOk("");
-    try {
-      const res = await rollbackIndex(steps);
-      setOk(`Rolled back ${res.steps} step(s). Index now has ${res.totalInIndex} chunks.`);
-      await Promise.all([reloadStatus(), reloadSnaps()]);
-    } catch (e) { setError(e.message); }
-    finally { setRolling(false); }
-  };
-
-  const loading = statusLoading || snapsLoading;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <SectionTitle>Index Management</SectionTitle>
-        <Button variant="outline" size="sm" onClick={() => { reloadStatus(); reloadSnaps(); }} disabled={loading}>
-          {loading ? <Spinner /> : "Refresh"}
-        </Button>
-      </div>
-      <ErrMsg msg={error} />
-      <OkMsg msg={ok} />
-
-      {statusData && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <StatCard label="Live Chunks" value={statusData.chunksInIndex} color="green" />
-          <StatCard label="Total Vectors" value={statusData.totalVectors} color="blue" />
-          <StatCard label="Deleted (waste)" value={statusData.deletedVectors} color={statusData.deletedVectors > 0 ? "amber" : "default"} />
-          <StatCard
-            label="Compaction"
-            value={statusData.compactionNeeded ? "Needed" : "OK"}
-            color={statusData.compactionNeeded ? "amber" : "green"}
-          />
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-border/50 p-4 mb-4">
-        <p className="text-sm font-semibold mb-3">Rollback Index</p>
-        <p className="text-[12px] text-muted-foreground mb-3">
-          Restore the FAISS index to a previous snapshot. The index is auto-snapshotted after each ingest.
-        </p>
-        <div className="flex items-center gap-3">
-          <label className="text-xs text-muted-foreground whitespace-nowrap">Steps back:</label>
-          <Input
-            type="number"
-            min={1}
-            max={5}
-            value={steps}
-            onChange={(e) => setSteps(Math.max(1, Math.min(5, parseInt(e.target.value) || 1)))}
-            className="w-20"
-          />
-          <Button variant="destructive" size="sm" onClick={handleRollback} disabled={rolling}>
-            {rolling ? <Spinner /> : "Rollback"}
-          </Button>
-        </div>
-      </div>
-
-      {snapsData && (
-        <div>
-          <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Available Snapshots ({snapsData.count})</p>
-          {snapsData.snapshots.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-6">No snapshots yet.</p>
-          )}
-          <div className="space-y-2">
-            {snapsData.snapshots.map((snap, i) => (
-              <div key={snap.name || i} className="rounded-xl border border-border/40 p-3 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium">{snap.name || `Snapshot ${i + 1}`}</p>
-                  {snap.created && <p className="text-[11px] text-muted-foreground">{fmtDate(snap.created)}</p>}
-                  {snap.size && <p className="text-[11px] text-muted-foreground">{fmtBytes(snap.size)}</p>}
-                </div>
-                <span className="text-[11px] text-muted-foreground/60">step {i + 1}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Tab: Audit Log
@@ -1113,7 +1018,6 @@ const TABS = [
   { id: "documents",  label: "Documents" },
   { id: "gaps",       label: "Gaps" },
   { id: "crawler",    label: "Crawler" },
-  { id: "index",      label: "Index" },
   { id: "email",      label: "Email" },
   { id: "audit",      label: "Audit Log" },
 ];
@@ -1203,7 +1107,6 @@ export function AdminDashboard({ onClose }) {
               {activeTab === "documents" && <DocumentsTab />}
               {activeTab === "gaps"      && <GapsTab />}
               {activeTab === "crawler"   && <CrawlerTab />}
-              {activeTab === "index"     && <IndexTab />}
               {activeTab === "email"     && <EmailTab />}
               {activeTab === "audit"     && <AuditTab />}
             </div>
