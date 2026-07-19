@@ -1034,6 +1034,7 @@ function EmailTab() {
 // ---------------------------------------------------------------------------
 function AdminKeyGate({ onSuccess }) {
   const [key, setKey] = useState("");
+  const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -1062,14 +1063,33 @@ function AdminKeyGate({ onSuccess }) {
       <h2 className="font-headline text-lg font-semibold mb-1">Admin Access</h2>
       <p className="text-sm text-muted-foreground text-center mb-5">Enter your ADMIN_KEY to continue.</p>
       <form onSubmit={handleSubmit} className="w-full space-y-3">
-        <Input
-          type="password"
-          placeholder="Admin key…"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          autoFocus
-          className="text-center"
-        />
+        <div className="relative">
+          <Input
+            type={show ? "text" : "password"}
+            placeholder="Admin key…"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            autoFocus
+            className="text-center pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShow(v => !v)}
+            tabIndex={-1}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={show ? "Hide key" : "Show key"}
+          >
+            {show ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            )}
+          </button>
+        </div>
         <Button type="submit" className="w-full" disabled={loading || !key.trim()}>
           {loading ? <Spinner /> : "Unlock Dashboard"}
         </Button>
