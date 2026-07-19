@@ -62,23 +62,21 @@ _SOURCES: list[dict] = [
     # Legislation / Judiciary
     {
         "id": "indiacode_home",
-        # Static sitemap/about page — homepage is JS-rendered
-        "url": "https://www.indiacode.nic.in/handle/123456789/1362",
+        "url": "https://en.wikipedia.org/wiki/India_Code",
         "domain": "Legal",
         "topic": "India Code — Central Acts Portal",
         "section": "legislation",
     },
     {
         "id": "nalsa_home",
-        "url": "https://nalsa.gov.in/",
+        "url": "https://en.wikipedia.org/wiki/National_Legal_Services_Authority",
         "domain": "Legal",
         "topic": "NALSA — National Legal Services Authority",
         "section": "legal_aid",
     },
     {
         "id": "egazette",
-        # Use the weekly extraordinary gazette RSS feed — returns plain XML
-        "url": "https://egazette.gov.in/WriteReadData/2024/247781.pdf",
+        "url": "https://en.wikipedia.org/wiki/The_Gazette_of_India",
         "domain": "Legal",
         "topic": "eGazette India — Official Gazette Notifications",
         "section": "gazette",
@@ -93,8 +91,7 @@ _SOURCES: list[dict] = [
     },
     {
         "id": "pib_home",
-        # PIB RSS feed — plain XML with real press release text
-        "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3",
+        "url": "https://en.wikipedia.org/wiki/Press_Information_Bureau",
         "domain": "Government Schemes",
         "topic": "PIB — Press Information Bureau India",
         "section": "news",
@@ -115,8 +112,7 @@ _SOURCES: list[dict] = [
     },
     {
         "id": "pmjay",
-        # About page is static HTML
-        "url": "https://pmjay.gov.in/about/pmjay",
+        "url": "https://en.wikipedia.org/wiki/Ayushman_Bharat_Pradhan_Mantri_Jan_Arogya_Yojana",
         "domain": "Government Schemes",
         "topic": "Ayushman Bharat PM-JAY — Health Insurance Scheme",
         "section": "schemes",
@@ -124,24 +120,21 @@ _SOURCES: list[dict] = [
     # Mental health
     {
         "id": "nhp_mental",
-        # NHP mental health page with static content
-        "url": "https://www.nhp.gov.in/mental-health_pg",
+        "url": "https://en.wikipedia.org/wiki/Mental_health_in_India",
         "domain": "Mental Health",
-        "topic": "National Health Portal — Mental Health Resources",
+        "topic": "Mental Health in India — Resources and Support",
         "section": "mental_health",
     },
     {
         "id": "nimhans",
-        # About page is static
-        "url": "https://nimhans.ac.in/about-nimhans/",
+        "url": "https://en.wikipedia.org/wiki/National_Institute_of_Mental_Health_and_Neurosciences",
         "domain": "Mental Health",
         "topic": "NIMHANS — National Institute of Mental Health and Neurosciences",
         "section": "mental_health",
     },
     {
         "id": "telemanas",
-        # MoHFW Tele-MANAS info page — static
-        "url": "https://mohfw.gov.in/major-initiatives/mental-health/tele-manas",
+        "url": "https://en.wikipedia.org/wiki/Tele_MANAS",
         "domain": "Mental Health",
         "topic": "Tele-MANAS — Mental Health Helpline 14416",
         "section": "mental_health",
@@ -149,18 +142,16 @@ _SOURCES: list[dict] = [
     # Women's safety
     {
         "id": "wcd_ministry",
-        # WCD schemes listing — static table
-        "url": "https://wcd.nic.in/schemes-listing",
+        "url": "https://en.wikipedia.org/wiki/Ministry_of_Women_and_Child_Development_(India)",
         "domain": "Safety",
         "topic": "Ministry of Women and Child Development — Schemes",
         "section": "safety",
     },
     {
         "id": "shebox",
-        # About SHe-Box page
-        "url": "https://shebox.wcd.gov.in/about-shebox",
+        "url": "https://en.wikipedia.org/wiki/Sexual_Harassment_of_Women_at_Workplace_(Prevention,_Prohibition_and_Redressal)_Act,_2013",
         "domain": "Safety",
-        "topic": "SHe-Box — Sexual Harassment Online Complaint Portal",
+        "topic": "SHe-Box — Sexual Harassment at Workplace Act 2013",
         "section": "safety",
     },
     {
