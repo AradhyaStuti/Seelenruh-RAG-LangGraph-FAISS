@@ -30,8 +30,12 @@ from config import MAX_LOGIN_ATTEMPTS
 from rate_limit import auth_limit, burst_limit
 import db
 import mailer
+from config import RESEND_API_KEY, SMTP_HOST, SMTP_USER, SMTP_PASSWORD
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+def _email_configured() -> bool:
+    return bool(RESEND_API_KEY or (SMTP_HOST and SMTP_USER and SMTP_PASSWORD))
 
 
 def _public_user(user: dict) -> dict:
@@ -49,24 +53,22 @@ async def signup(request: Request, req: SignupRequest) -> dict:
     try:
         user = await create_user(email=req.email, name=req.name, password=req.password)
     except EmailAlreadyRegistered:
-        # If the account exists but is unverified, resend a fresh OTP so the user
-        # can complete registration without getting a confusing error.
         existing = await find_user_by_email(req.email)
         if existing and not existing.get("emailVerified", False):
             otp = f"{random.SystemRandom().randint(0, 999999):06d}"
             await db.save_otp(email=existing["email"], otp=otp, ttl_minutes=10)
-            sent = await mailer.send_otp_email(to=existing["email"], otp=otp)
+            asyncio.create_task(mailer.send_otp_email(to=existing["email"], otp=otp))
             resp: dict = {"ok": True, "pendingVerification": True, "email": existing["email"]}
-            if not sent:
+            if not _email_configured():
                 resp["devOtp"] = otp
             return resp
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
-    # Generate 6-digit OTP and email it — user must verify before receiving tokens
+    # Generate 6-digit OTP — send in background so signup returns instantly
     otp = f"{random.SystemRandom().randint(0, 999999):06d}"
     await db.save_otp(email=user["email"], otp=otp, ttl_minutes=10)
-    sent = await mailer.send_otp_email(to=user["email"], otp=otp)
+    asyncio.create_task(mailer.send_otp_email(to=user["email"], otp=otp))
     resp = {"ok": True, "pendingVerification": True, "email": user["email"]}
-    if not sent:
+    if not _email_configured():
         resp["devOtp"] = otp
     return resp
 
@@ -106,8 +108,8 @@ async def resend_otp(request: Request, req: ResendOtpRequest) -> dict:
     if user:
         otp = f"{random.SystemRandom().randint(0, 999999):06d}"
         await db.save_otp(email=user["email"], otp=otp, ttl_minutes=10)
-        sent = await mailer.send_otp_email(to=user["email"], otp=otp)
-        if not sent:
+        asyncio.create_task(mailer.send_otp_email(to=user["email"], otp=otp))
+        if not _email_configured():
             resp["devOtp"] = otp
     return resp
 
