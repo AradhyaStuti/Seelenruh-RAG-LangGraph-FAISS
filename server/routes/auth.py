@@ -54,6 +54,23 @@ async def signup(request: Request, req: SignupRequest) -> dict:
     except EmailAlreadyRegistered:
         existing = await find_user_by_email(req.email)
         if existing and not existing.get("emailVerified", False):
+            # Update password in case user is retrying with different credentials
+            new_hash = hash_password(req.password)
+            if db.is_connected():
+                from bson import ObjectId
+                from bson.errors import InvalidId
+                try:
+                    await db.users().update_one(
+                        {"_id": ObjectId(existing["_id"])},
+                        {"$set": {"password": new_hash}},
+                    )
+                except (InvalidId, TypeError):
+                    pass
+            else:
+                from auth import _memory_users
+                key = req.email.lower().strip()
+                if key in _memory_users:
+                    _memory_users[key]["password"] = new_hash
             otp = f"{random.SystemRandom().randint(0, 999999):06d}"
             await db.save_otp(email=existing["email"], otp=otp, ttl_minutes=10)
             asyncio.create_task(mailer.send_otp_email(to=existing["email"], otp=otp))
