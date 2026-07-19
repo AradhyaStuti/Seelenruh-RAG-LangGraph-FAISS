@@ -526,6 +526,8 @@ async def list_crawler_sources(
 ) -> dict:
     """List all crawler source statuses from the knowledge_sources collection."""
     _check_key(x_admin_key)
+    if not db.is_connected():
+        raise HTTPException(status_code=503, detail="Database not connected.")
     try:
         cursor = db._db["knowledge_sources"].find({}, {"_id": 0})
         sources = await cursor.to_list(length=100)
