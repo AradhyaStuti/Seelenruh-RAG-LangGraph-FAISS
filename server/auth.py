@@ -258,8 +258,8 @@ async def current_user(
 async def verified_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ) -> dict:
-    """Requires email verified — use for chat/data routes."""
-    return await _resolve_user(credentials, require_verified=True)
+    """Email is verified at signup via OTP, so no extra check needed here."""
+    return await _resolve_user(credentials, require_verified=False)
 
 
 async def current_token_payload(

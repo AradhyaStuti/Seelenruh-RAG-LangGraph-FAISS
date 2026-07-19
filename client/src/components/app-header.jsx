@@ -194,10 +194,6 @@ export function AppHeader() {
 
   return (
     <>
-      {/* Email verification banner — shown only when emailVerified is explicitly false */}
-      {user && user.emailVerified === false && (
-        <EmailVerificationBanner email={user.email} />
-      )}
       <header className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-5">
         <div className="group flex min-w-0 items-center gap-2 sm:gap-3 cursor-default">
           <div className="relative shrink-0">
