@@ -3,7 +3,7 @@ import asyncio
 import io
 import re
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
@@ -560,6 +560,6 @@ async def trigger_crawler(
     asyncio.create_task(knowledge_updater.run_update_cycle())
     await db.log_admin_action(
         action="trigger_crawler",
-        detail={"triggeredAt": date.today().isoformat()},
+        detail={"triggeredAt": datetime.now(timezone.utc).isoformat()},
     )
     return {"ok": True, "message": "Crawler triggered. Results will appear in the audit log when complete."}
