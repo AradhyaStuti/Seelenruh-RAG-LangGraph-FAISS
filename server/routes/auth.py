@@ -204,7 +204,7 @@ async def forgot_password(request: Request, req: ForgotPasswordRequest) -> dict:
     if user:
         token = secrets.token_urlsafe(32)
         await db.save_reset_token(email=user["email"], token=token)
-        asyncio.create_task(mailer.send_password_reset(to=user["email"], token=token))
+        await mailer.send_password_reset(to=user["email"], token=token)
     return {"ok": True, "message": "If that email is registered, a reset link has been sent."}
 
 
