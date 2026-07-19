@@ -79,6 +79,7 @@ function AccountMenu({ user, onSignOut, onChangePassword, onAdmin }) {
               </svg>
               Change password
             </button>
+            {user.email === "aradhya.mutants@gmail.com" && (
             <button
               type="button"
               onClick={() => { setOpen(false); onAdmin?.(); }}
@@ -89,6 +90,7 @@ function AccountMenu({ user, onSignOut, onChangePassword, onAdmin }) {
               </svg>
               Knowledge dashboard
             </button>
+            )}
             <button
               type="button"
               onClick={() => { setOpen(false); onSignOut(); }}
