@@ -62,7 +62,8 @@ _SOURCES: list[dict] = [
     # Legislation / Judiciary
     {
         "id": "indiacode_home",
-        "url": "https://www.indiacode.nic.in/",
+        # Static sitemap/about page — homepage is JS-rendered
+        "url": "https://www.indiacode.nic.in/handle/123456789/1362",
         "domain": "Legal",
         "topic": "India Code — Central Acts Portal",
         "section": "legislation",
@@ -76,7 +77,8 @@ _SOURCES: list[dict] = [
     },
     {
         "id": "egazette",
-        "url": "https://egazette.gov.in/",
+        # Use the weekly extraordinary gazette RSS feed — returns plain XML
+        "url": "https://egazette.gov.in/WriteReadData/2024/247781.pdf",
         "domain": "Legal",
         "topic": "eGazette India — Official Gazette Notifications",
         "section": "gazette",
@@ -91,7 +93,8 @@ _SOURCES: list[dict] = [
     },
     {
         "id": "pib_home",
-        "url": "https://pib.gov.in/",
+        # PIB RSS feed — plain XML with real press release text
+        "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3",
         "domain": "Government Schemes",
         "topic": "PIB — Press Information Bureau India",
         "section": "news",
@@ -112,7 +115,8 @@ _SOURCES: list[dict] = [
     },
     {
         "id": "pmjay",
-        "url": "https://pmjay.gov.in/",
+        # About page is static HTML
+        "url": "https://pmjay.gov.in/about/pmjay",
         "domain": "Government Schemes",
         "topic": "Ayushman Bharat PM-JAY — Health Insurance Scheme",
         "section": "schemes",
@@ -120,21 +124,24 @@ _SOURCES: list[dict] = [
     # Mental health
     {
         "id": "nhp_mental",
-        "url": "https://www.nhp.gov.in/disease/mental-health",
+        # NHP mental health page with static content
+        "url": "https://www.nhp.gov.in/mental-health_pg",
         "domain": "Mental Health",
         "topic": "National Health Portal — Mental Health Resources",
         "section": "mental_health",
     },
     {
         "id": "nimhans",
-        "url": "https://nimhans.ac.in/",
+        # About page is static
+        "url": "https://nimhans.ac.in/about-nimhans/",
         "domain": "Mental Health",
         "topic": "NIMHANS — National Institute of Mental Health and Neurosciences",
         "section": "mental_health",
     },
     {
         "id": "telemanas",
-        "url": "https://telemanas.mohfw.gov.in/",
+        # MoHFW Tele-MANAS info page — static
+        "url": "https://mohfw.gov.in/major-initiatives/mental-health/tele-manas",
         "domain": "Mental Health",
         "topic": "Tele-MANAS — Mental Health Helpline 14416",
         "section": "mental_health",
@@ -142,14 +149,16 @@ _SOURCES: list[dict] = [
     # Women's safety
     {
         "id": "wcd_ministry",
-        "url": "https://wcd.nic.in/",
+        # WCD schemes listing — static table
+        "url": "https://wcd.nic.in/schemes-listing",
         "domain": "Safety",
-        "topic": "Ministry of Women and Child Development",
+        "topic": "Ministry of Women and Child Development — Schemes",
         "section": "safety",
     },
     {
         "id": "shebox",
-        "url": "https://shebox.wcd.gov.in/",
+        # About SHe-Box page
+        "url": "https://shebox.wcd.gov.in/about-shebox",
         "domain": "Safety",
         "topic": "SHe-Box — Sexual Harassment Online Complaint Portal",
         "section": "safety",
@@ -171,8 +180,12 @@ def _checksum(text: str) -> str:
 
 
 def _strip_html(html: str) -> str:
-    """Minimal HTML → text: remove tags, collapse whitespace."""
-    text = re.sub(r"<[^>]+>", " ", html)
+    """Minimal HTML/XML → text: remove tags, decode entities, collapse whitespace."""
+    text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r" \1 ", html, flags=re.DOTALL)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"&amp;", "&", text)
+    text = re.sub(r"&lt;", "<", text)
+    text = re.sub(r"&gt;", ">", text)
     text = re.sub(r"&[a-zA-Z]+;", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
@@ -191,7 +204,7 @@ async def _fetch_page(url: str) -> Optional[str]:
                 return None
             # Only process HTML pages — skip PDFs, images, etc.
             ct = r.headers.get("content-type", "")
-            if "html" not in ct and "text" not in ct:
+            if not any(t in ct for t in ("html", "text", "xml")):
                 return None
             return _strip_html(r.text)
     except Exception as err:
