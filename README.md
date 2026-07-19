@@ -23,10 +23,10 @@ So I built something that routes questions to the right "persona" and pulls from
 
 The app routes user messages to one of four personas:
 
-- **Usha** — mental health and emotional support. Warm, non-judgmental, conversational.
-- **Umang** — legal guidance and rights-based advice. Plain-language explanations, act/section citations.
-- **Aarogya** — government schemes and entitlements. Eligibility checks, application steps.
-- **Raksha** — safety and emergency support. Calm, action-oriented, emergency contacts.
+- **Usha** — mental health, emotional support, and health triage. Warm, non-judgmental, conversational. Handles common symptoms (fever, cold, flu, COVID, dengue) with calm evidence-based guidance — not alarmist, not dismissive.
+- **Umang** — legal guidance and rights-based advice. Plain-language explanations, act/section citations. Covers BNS/BNSS/BSA 2023 (new criminal codes replacing IPC/CrPC), DPDP Act 2023, and all major Indian laws.
+- **Aarogya** — government schemes and entitlements. Eligibility checks, application steps. Covers 20+ central schemes plus state-specific schemes across 10+ states including 2024–25 additions (PM Surya Ghar, PM Vishwakarma, Lakhpati Didi).
+- **Raksha** — safety and emergency support. Calm, action-oriented, emergency contacts. Covers cybercrime, domestic violence, medical emergencies, and life-safety situations with deterministic step-by-step protocols.
 
 ## Features
 
@@ -66,12 +66,13 @@ The app routes user messages to one of four personas:
 
 ### Persona-specific tools
 
-**Usha (Mental Health)**
+**Usha (Mental Health & Health Triage)**
 
 - Mood check-in button in the toolbar. Pick from five moods (Joyful, Calm, Tired, Anxious, Sad); shows an affirmation and a practical tip. Mood history tracked with a streak counter and 14-day visual chart. Old entries (> 60 days) are pruned automatically.
 - Breathing companion: three guided patterns (Calm 4-6, Box 4-4-4-4, 4-7-8) with animated visual guidance. Accessible from the header.
 - Hard-coded crisis detection (Python, no LLM) in 35+ English, Hinglish, Hindi (Devanagari), and German phrases — never relies on the language model for life-safety routing.
 - Emergency contacts bar appears automatically on crisis detection: Police 100, Ambulance 102, Women Helpline 1091, iCall 9152987821, Tele-MANAS 14416, CHILDLINE 1098.
+- Health triage: calm, evidence-based guidance for fever, cold, flu, COVID, dengue, malaria, typhoid, body ache, and cough. Tells you when to rest at home, when to see a doctor, and when to go to the ER — without the alarmism of a Google search.
 
 **Umang (Legal)**
 
@@ -88,12 +89,13 @@ The app routes user messages to one of four personas:
 
 - Deterministic safety plans (Python dict lookup, no LLM) for 8 threat types: domestic violence, cybercrime, workplace harassment, trafficking, natural disaster, and others.
 - POCSO detection flag — automatically routes child-protection queries to relevant provisions.
+- Medical emergency protocols: heart attack (FAST, aspirin guidance), stroke (FAST acronym), unconscious person (CPR steps), severe allergic reaction (EpiPen, Heimlich), febrile seizure in children, drowning — all with direct Step 1/2/3 action format.
 
 ### Knowledge Dashboard (Admin)
 
 A full-screen admin panel accessible from the account menu → **Knowledge dashboard**. Requires `ADMIN_KEY` to unlock — the key is verified against the server and stored in sessionStorage for the browser session.
 
-Seven tabs:
+Six tabs:
 
 | Tab | What it does |
 |---|---|
@@ -102,7 +104,6 @@ Seven tabs:
 | **Documents** | Upload .pdf / .docx / .md / .txt / .json files (max 10 MB); auto-chunked and embedded on upload; list with domain/status filter; soft delete, hard delete, restore |
 | **Gaps** | List low-confidence queries the RAG couldn't answer; mark each as solved, ignored, or reopen |
 | **Crawler** | View crawler status for all 14 government sources (last checked, last updated, errors); trigger a manual crawl cycle |
-| **Index** | List FAISS snapshots; rollback the live index by 1–5 steps |
 | **Audit Log** | Chronological log of all admin actions (ingest, delete, rollback, trigger, upload) with full detail |
 
 Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
@@ -126,12 +127,13 @@ Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
 
 ### Account
 
-- Email/password signup and login. Verification email sent on signup; account requires verification before chat is unlocked.
-- Forgot password and reset password flow via email token.
+- Email/password signup with OTP-based email verification. A 6-digit code is sent to your email on signup; you must enter it before the account is activated. OTP expires in 10 minutes. Code shown on screen in dev mode (when no email provider is configured).
+- Forgot password and reset password flow via email link.
 - Change password from the account menu (invalidates all existing sessions on all devices).
 - Sign out with optional local data wipe.
 - Account deletion with full data purge (messages, summaries, goals, memory, feedback).
 - Full data export as JSON from the account menu.
+- Knowledge dashboard is only visible to the admin account — not shown to regular users.
 
 ### PWA
 
@@ -410,7 +412,7 @@ A few things that were harder than expected:
 
 - Response quality depends on which LLM provider is available. Groq is the default; Anthropic and Ollama are fallbacks. If all three are down, the app returns a graceful offline message.
 - The retrieval layer occasionally misses edge cases — especially for very specific scheme eligibility questions or obscure legal provisions. Web search fills in some gaps but not all.
-- Email sending (verification, password reset) requires SMTP or Resend credentials. In the demo deployment these aren't configured, so tokens are logged to the server console instead.
+- The HF Spaces free tier puts the container to sleep after inactivity. The first request after a sleep period may take 15–30 seconds while the container wakes up — subsequent requests are fast.
 - This is not a substitute for professional legal or medical advice, and the app says so explicitly in every response.
 
 ## Acknowledgements
