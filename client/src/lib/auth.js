@@ -226,7 +226,10 @@ async function _postRaw(path, body) {
   try {
     data = await res.json();
   } catch {
-    throw new Error(`Backend returned a non-JSON response (HTTP ${res.status}).`);
+    if (res.status === 503 || res.status === 502) {
+      throw new Error("Server is starting up — please wait a moment and try again.");
+    }
+    throw new Error(`Something went wrong (HTTP ${res.status}). Please try again.`);
   }
   if (!res.ok) {
     const msg = data?.detail || data?.error || `HTTP ${res.status}`;
@@ -250,7 +253,10 @@ async function _post(path, body) {
   try {
     data = await res.json();
   } catch {
-    throw new Error(`Backend returned a non-JSON response (HTTP ${res.status}).`);
+    if (res.status === 503 || res.status === 502) {
+      throw new Error("Server is starting up — please wait a moment and try again.");
+    }
+    throw new Error(`Something went wrong (HTTP ${res.status}). Please try again.`);
   }
   if (!res.ok) {
     const msg = data?.detail || data?.error || `HTTP ${res.status}`;
