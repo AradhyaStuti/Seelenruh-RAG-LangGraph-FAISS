@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 # Minimal stubs so admin.py imports cleanly — no live server/DB/FAISS needed
 # ---------------------------------------------------------------------------
-import types
+import types  # noqa: E402
 
 _fake_config = types.ModuleType("config")
 _fake_config.ADMIN_KEY = "test-key"
@@ -104,9 +104,9 @@ _fake_ku = types.ModuleType("knowledge_updater")
 _fake_ku.run_update_cycle = AsyncMock(return_value={"checked": 3, "updated": 1, "errors": 0})
 sys.modules["knowledge_updater"] = _fake_ku
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from routes.admin import router as admin_router, _chunk_text
+from fastapi import FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from routes.admin import router as admin_router, _chunk_text  # noqa: E402
 
 app = FastAPI()
 app.include_router(admin_router)

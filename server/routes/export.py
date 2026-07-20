@@ -58,13 +58,13 @@ def _to_json(messages: list[dict], session_id: str, user: dict) -> str:
 
 def _to_markdown(messages: list[dict], session_id: str, user: dict) -> str:
     lines = [
-        f"# Seelenruh — Conversation Export",
-        f"",
+        "# Seelenruh — Conversation Export",
+        "",
         f"**Session:** `{session_id}`  ",
         f"**Exported:** {_fmt_ts(datetime.now(timezone.utc))}  ",
         f"**User:** {user.get('name') or user.get('email', 'Unknown')}",
         f"**Messages:** {len(messages)}",
-        f"",
+        "",
         "---",
         "",
     ]
@@ -86,7 +86,7 @@ def _to_markdown(messages: list[dict], session_id: str, user: dict) -> str:
 
 def _to_txt(messages: list[dict], session_id: str, user: dict) -> str:
     lines = [
-        f"SEELENRUH CONVERSATION EXPORT",
+        "SEELENRUH CONVERSATION EXPORT",
         f"Session: {session_id}",
         f"Exported: {_fmt_ts(datetime.now(timezone.utc))}",
         f"User: {user.get('name') or user.get('email', 'Unknown')}",

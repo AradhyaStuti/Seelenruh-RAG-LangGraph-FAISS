@@ -5,8 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ai.language_engine import build_language_instruction, detect_language
-from ai.intent import SYSTEM as INTENT_SYSTEM
+from ai.language_engine import build_language_instruction, detect_language  # noqa: E402
+from ai.intent import SYSTEM as INTENT_SYSTEM  # noqa: E402
 
 
 # ── Language detection ────────────────────────────────────────────────────────

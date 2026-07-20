@@ -1,6 +1,5 @@
 # Two-stage retrieval: FAISS dense + BM25 sparse hybrid, cross-encoder reranking.
 import asyncio
-import hashlib
 from functools import lru_cache
 import re
 import time
