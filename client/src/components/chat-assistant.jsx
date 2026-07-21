@@ -1272,7 +1272,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                               </AvatarFallback>
                             </Avatar>
                           )}
-                          <div className="flex flex-col max-w-[88%] sm:max-w-[520px]">
+                          <div className="flex flex-col w-fit max-w-[88%] sm:max-w-[520px]">
                             <div
                               className={cn(
                                 "relative rounded-2xl p-4 text-sm transition-all duration-300 group hover:shadow-md",
