@@ -94,20 +94,8 @@ async def vision_chat(
     temperature: float = 0.5,
     max_tokens: int = 1024,
 ) -> dict:
-    """Vision inference: Groq llama-3.2-11b-vision-preview, Anthropic claude-haiku fallback."""
-    # 1. Groq vision — bypass circuit breaker so stale OPEN state doesn't block
-    if GROQ_API_KEY:
-        try:
-            content = await groq_client.vision_chat(
-                image_b64=image_b64, media_type=media_type,
-                text=text, system=system,
-                temperature=temperature, max_tokens=max_tokens,
-            )
-            return {"content": content, "via": "groq-vision"}
-        except Exception as err:
-            log.warning("groq vision failed", error=repr(err), next="anthropic-vision")
-
-    # 2. Anthropic vision fallback
+    """Vision inference: Anthropic first (native base64), Groq fallback."""
+    # 1. Anthropic vision — natively supports base64 images
     if anthropic_client.is_enabled():
         try:
             content = await anthropic_client.vision_chat(
@@ -117,7 +105,19 @@ async def vision_chat(
             )
             return {"content": content, "via": "anthropic-vision"}
         except Exception as err:
-            log.error("anthropic vision failed", error=repr(err))
+            log.warning("anthropic vision failed", error=repr(err), next="groq-vision")
+
+    # 2. Groq vision fallback (llama-3.2-11b-vision-preview)
+    if GROQ_API_KEY:
+        try:
+            content = await groq_client.vision_chat(
+                image_b64=image_b64, media_type=media_type,
+                text=text, system=system,
+                temperature=temperature, max_tokens=max_tokens,
+            )
+            return {"content": content, "via": "groq-vision"}
+        except Exception as err:
+            log.error("groq vision failed", error=repr(err))
 
     raise RuntimeError("Image analysis is temporarily unavailable. Please try again later or send your question as text.")
 
