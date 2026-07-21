@@ -222,11 +222,21 @@ async def image_chat_endpoint(
             text=req.query or "Please describe and explain this image.",
             system=system_prompt,
         )
-    except RuntimeError as err:
-        raise HTTPException(status_code=503, detail=str(err))
     except Exception as err:
-        log.error("vision_chat failed", error=str(err))
-        raise HTTPException(status_code=500, detail="Image analysis failed. Please try again.")
+        log.error("vision_chat failed, falling back to text", error=repr(err))
+        # Fall back: process just the text query without the image
+        fallback_query = req.query or "The user sent an image but I cannot analyse it right now."
+        try:
+            from ai.provider import chat
+            fallback = await chat(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"[Note: image could not be processed] {fallback_query}"},
+                ]
+            )
+            result = {"content": fallback.get("content", "I couldn't analyse the image. Please describe what you see and I'll help."), "via": "text-fallback"}
+        except Exception:
+            result = {"content": "I'm unable to analyse images right now. Please describe what you see and I'll help.", "via": "offline-fallback"}
 
     session_id = (req.sessionId and req.sessionId.strip()) or user["id"]
     await db.save_message(
