@@ -232,8 +232,10 @@ export function LoginScreen() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground/55 mt-6 leading-relaxed">
-          Seelenruh provides informational support only —<br className="hidden sm:inline" /> not a substitute for professional advice.
+        <p className="text-center text-xs text-muted-foreground/60 mt-6 leading-relaxed px-2">
+          Seelenruh explains, listens, and informs — it does not diagnose,
+          predict legal outcomes, or replace crisis support.{" "}
+          <span className="text-muted-foreground/45">For emergencies, call 112.</span>
         </p>
       </div>
     </div>

@@ -56,6 +56,7 @@ import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { getUser } from "@/lib/auth";
 import { getLang, setLang, subscribeLang, LANGS } from "@/lib/lang";
 const EligibilityChecker = lazy(() => import("@/components/eligibility-checker").then(m => ({ default: m.EligibilityChecker })));
 
@@ -232,6 +233,22 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
   const applyFontFamily = (val) => {
     setFontFamily(val);
     try { localStorage.setItem("seelenruh:font-family:v1", val); } catch {}
+  };
+
+  // First-use onboarding acknowledgment — shown once per user, keyed by user ID.
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    try {
+      const uid = getUser()?.id;
+      if (!uid) return false;
+      return !localStorage.getItem(`seelenruh:onboarding:v1:${uid}`);
+    } catch { return false; }
+  });
+  const dismissOnboarding = () => {
+    try {
+      const uid = getUser()?.id;
+      if (uid) localStorage.setItem(`seelenruh:onboarding:v1:${uid}`, "1");
+    } catch {}
+    setOnboardingOpen(false);
   };
 
   const fileInputRef = useRef(null);
@@ -1848,6 +1865,64 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
           </CardContent>
         </Card>
       </div>
+
+      {/* First-use onboarding — shown once, must be acknowledged */}
+      <AlertDialog open={onboardingOpen} onOpenChange={() => {}}>
+        <AlertDialogContent
+          className="max-w-md rounded-3xl border border-border/40 glass-strong"
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-primary/20 via-card to-accent/15 ring-1 ring-primary/25 flex items-center justify-center shrink-0">
+                <BlossomLogo className="h-5 w-5" />
+              </div>
+              <AlertDialogTitle className="font-headline text-xl font-bold">
+                Before we begin
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-sm text-foreground/80 leading-relaxed mt-2">
+                <p>
+                  Seelenruh is here to listen, explain, and help you find your footing — but it is{" "}
+                  <strong className="text-foreground">not a doctor, lawyer, or crisis counsellor</strong>.
+                  It does not know your full situation and can be wrong.
+                </p>
+
+                <div className="rounded-2xl border border-border/50 bg-background/50 divide-y divide-border/40 overflow-hidden text-[13px]">
+                  <div className="flex gap-3 px-4 py-3">
+                    <span className="text-emerald-500 font-bold shrink-0 mt-0.5">✓</span>
+                    <span><strong>What it can do:</strong> explain rights in plain language, suggest schemes you may qualify for, share coping strategies, guide you through emergency steps.</span>
+                  </div>
+                  <div className="flex gap-3 px-4 py-3">
+                    <span className="text-rose-500 font-bold shrink-0 mt-0.5">✗</span>
+                    <span><strong>What it cannot do:</strong> diagnose illness, guarantee a legal outcome, or substitute for real crisis support.</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-amber-50/70 border border-amber-200/60 px-4 py-3 text-[13px] text-amber-900 leading-snug">
+                  <strong>If you are in danger right now</strong> — call <strong>112</strong> (police/ambulance) or{" "}
+                  <strong>iCall 9152987821</strong> for mental health crisis. Don't wait for a chat response.
+                </div>
+
+                <p className="text-xs text-muted-foreground/70">
+                  Conversations are private to your account. Nothing is shared externally.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogAction
+              onClick={dismissOnboarding}
+              className="w-full rounded-xl h-11 bg-gradient-to-r from-primary to-primary/85 text-primary-foreground font-semibold hover:from-primary/95 hover:to-primary/75 petal-shadow"
+            >
+              I understand — let's begin
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </TooltipProvider>
   );
