@@ -87,9 +87,6 @@ async def _log_injection_attempt(
         log.warning("injection audit log failed", error=str(err))
 
 
-# Groq Whisper accepts up to ~25 MB; we cap at 10 MB base64 (≈ 7.5 MB raw)
-_MAX_AUDIO_B64_CHARS = 10 * 1024 * 1024
-
 router = APIRouter(prefix="/api", tags=["chat"])
 
 
