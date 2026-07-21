@@ -23,5 +23,12 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        generatedCode: {
+          constBindings: false,
+        },
+      },
+    },
   },
 });
