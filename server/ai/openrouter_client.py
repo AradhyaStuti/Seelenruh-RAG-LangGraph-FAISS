@@ -4,7 +4,7 @@ import httpx
 from config import OPENROUTER_API_KEY
 
 _BASE = "https://openrouter.ai/api/v1/chat/completions"
-_VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free"
+_VISION_MODEL = "google/gemma-4-27b-it:free"
 _TIMEOUT = 30.0
 
 
