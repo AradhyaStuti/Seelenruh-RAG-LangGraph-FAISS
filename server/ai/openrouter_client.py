@@ -4,7 +4,7 @@ import httpx
 from config import OPENROUTER_API_KEY
 
 _BASE = "https://openrouter.ai/api/v1/chat/completions"
-_VISION_MODEL = "google/gemma-4-31b-it:free"
+_VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 _TIMEOUT = 30.0
 
 
