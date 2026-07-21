@@ -21,17 +21,10 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
   build: {
-    rollupOptions: {
-      output: {
-        // Single vendor chunk for all node_modules — avoids Rollup chunk-level
-        // circular dependencies that produce "Cannot access 'X' before initialization"
-        // TDZ errors when Radix UI packages are split across multiple chunks.
-        manualChunks(id) {
-          if (id.includes('node_modules')) return 'vendor';
-        },
-      },
-    },
     chunkSizeWarningLimit: 600,
   },
 });

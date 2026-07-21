@@ -6,10 +6,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SavedMomentsDrawer } from "@/components/saved-moments";
 import { getUser, subscribe } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { AdminDashboard } from "@/components/admin-dashboard";
-
-const BreathingCompanion = lazy(() => import("@/components/breathing-companion").then(m => ({ default: m.BreathingCompanion })));
-const SignOutDialog       = lazy(() => import("@/components/sign-out-dialog").then(m => ({ default: m.SignOutDialog })));
+const AdminDashboard      = lazy(() => import("@/components/admin-dashboard").then(m => ({ default: m.AdminDashboard })));
+const BreathingCompanion  = lazy(() => import("@/components/breathing-companion").then(m => ({ default: m.BreathingCompanion })));
+const SignOutDialog        = lazy(() => import("@/components/sign-out-dialog").then(m => ({ default: m.SignOutDialog })));
 const ChangePasswordDialog = lazy(() => import("@/components/change-password").then(m => ({ default: m.ChangePasswordDialog })));
 
 function initialsOf(name, email) {
