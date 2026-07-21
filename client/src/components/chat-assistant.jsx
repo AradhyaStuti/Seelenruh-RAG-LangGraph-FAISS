@@ -143,6 +143,13 @@ const DOMAIN_COLORS = {
   "Safety":             { bg: "rgba(232,124,124,0.09)", border: "rgba(232,124,124,0.32)", iconBg: "rgba(232,124,124,0.18)", iconColor: "#C85A5A", dot: "#E87C7C" },
 };
 
+const FONT_SIZES = { sm: "12px", md: "14px", lg: "17px" };
+const FONT_FAMILIES = {
+  quicksand: "'Quicksand', sans-serif",
+  system:    "system-ui, -apple-system, 'Segoe UI', sans-serif",
+  serif:     "Georgia, 'Times New Roman', serif",
+};
+
 const formatTime = (ts) => {
   try {
     return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -208,6 +215,24 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
   const [streamingMsgId, setStreamingMsgId] = useState(null);
   // Language preference — drives LLM response lang
   const [lang, setLangState] = useState(() => getLang());
+
+  // Font preferences — size + family, persisted to localStorage
+  const [fontSize, setFontSize] = useState(() => {
+    try { return localStorage.getItem("seelenruh:font-size:v1") || "md"; } catch { return "md"; }
+  });
+  const [fontFamily, setFontFamily] = useState(() => {
+    try { return localStorage.getItem("seelenruh:font-family:v1") || "quicksand"; } catch { return "quicksand"; }
+  });
+  const [fontSettingsOpen, setFontSettingsOpen] = useState(false);
+
+  const applyFontSize = (val) => {
+    setFontSize(val);
+    try { localStorage.setItem("seelenruh:font-size:v1", val); } catch {}
+  };
+  const applyFontFamily = (val) => {
+    setFontFamily(val);
+    try { localStorage.setItem("seelenruh:font-family:v1", val); } catch {}
+  };
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -1056,6 +1081,25 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                           type="button"
                           variant="ghost"
                           size="sm"
+                          onClick={() => setFontSettingsOpen((v) => !v)}
+                          className={cn(
+                            "text-[11px] gap-1.5 h-8 rounded-full font-bold transition-colors",
+                            fontSettingsOpen
+                              ? "bg-primary/12 text-primary"
+                              : "hover:bg-primary/10 hover:text-primary"
+                          )}
+                        >
+                          <span className="text-[13px] font-bold leading-none">Aa</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Font size &amp; style</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={startNewChat}
                           disabled={isLoading || !currentDomainState.activeId}
                           className="text-[11px] gap-1.5 h-8 rounded-full hover:bg-primary/10 hover:text-primary"
@@ -1161,7 +1205,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                                   key={prompt}
                                   type="button"
                                   onClick={() => sendTextMessage(prompt)}
-                                  className="reply-chip rounded-full px-4 py-2 text-[13px] font-medium transition-all duration-200 hover:scale-[1.03] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
+                                  className="reply-chip rounded-full px-3 py-1.5 text-[11px] font-medium transition-all duration-200 hover:scale-[1.03] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
                                   style={{ borderColor: dc.border, color: dc.iconColor, background: dc.bg, border: `1px solid ${dc.border}` }}
                                 >
                                   {prompt}
@@ -1196,13 +1240,13 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                     )}
                     {(isEmergency || preEmergency) && <EmergencyContacts />}
                     {messageCount <= 1 && !isLoading && heroPrompts.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1 pb-2">
+                      <div className="flex flex-wrap gap-1.5 pt-1 pb-2">
                         {heroPrompts.map((prompt) => (
                           <button
                             key={prompt}
                             type="button"
                             onClick={() => sendTextMessage(prompt)}
-                            className="reply-chip rounded-full border border-primary/30 bg-primary/8 px-4 py-2 text-[13px] font-medium text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/50 hover:shadow-sm transition-all duration-200 text-left"
+                            className="reply-chip rounded-full border border-primary/25 bg-primary/7 px-3 py-1 text-[11px] text-primary/75 hover:bg-primary/13 hover:text-primary hover:border-primary/40 hover:shadow-sm transition-all duration-200 text-left"
                           >
                             {prompt}
                           </button>
@@ -1250,7 +1294,10 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                               )}
                               style={message.role === "assistant" ? { borderLeftColor: DOMAIN_COLORS[selectedDomain].dot + "70" } : undefined}
                             >
-                              <div className="min-w-0 break-anywhere">
+                              <div
+                                className="min-w-0 break-anywhere"
+                                style={{ fontSize: FONT_SIZES[fontSize], fontFamily: FONT_FAMILIES[fontFamily] }}
+                              >
                                 {message.role === "user" && message.hasAttachment && (
                                   <p className="mb-1 flex items-center gap-1 text-[10px] text-primary-foreground/70">
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1553,6 +1600,74 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                 {moodOpen && (
                   <div className="mt-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
                     <MoodCheckIn onMoodChange={setMood} />
+                  </div>
+                )}
+
+                {fontSettingsOpen && (
+                  <div className="mt-3 rounded-2xl border border-border/40 bg-card/80 backdrop-blur-sm px-4 py-3.5 animate-in fade-in-0 slide-in-from-top-2 duration-200 space-y-3.5">
+                    {/* Font size */}
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">Font Size</p>
+                      <div className="flex items-center gap-2">
+                        {[
+                          { key: "sm", label: "A", size: "text-[11px]", hint: "Small" },
+                          { key: "md", label: "A", size: "text-[13px]", hint: "Medium" },
+                          { key: "lg", label: "A", size: "text-[16px]", hint: "Large" },
+                        ].map(({ key, label, size, hint }) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => applyFontSize(key)}
+                            title={hint}
+                            className={cn(
+                              "flex items-center justify-center h-9 w-12 rounded-xl border font-bold transition-all duration-150",
+                              size,
+                              fontSize === key
+                                ? "border-primary/50 bg-primary/12 text-primary shadow-sm"
+                                : "border-border/40 hover:border-primary/30 hover:bg-muted/50 text-muted-foreground"
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                        <span className="ml-1 text-[11px] text-muted-foreground/50">
+                          {fontSize === "sm" ? "Small" : fontSize === "lg" ? "Large" : "Medium"}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Font family */}
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">Font Style</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {[
+                          { key: "quicksand", label: "Default", preview: "Quicksand" },
+                          { key: "system",    label: "Clean",   preview: "System" },
+                          { key: "serif",     label: "Serif",   preview: "Georgia" },
+                        ].map(({ key, label, preview }) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => applyFontFamily(key)}
+                            className={cn(
+                              "px-3.5 py-1.5 rounded-xl border text-[12px] transition-all duration-150",
+                              fontFamily === key
+                                ? "border-primary/50 bg-primary/12 text-primary shadow-sm"
+                                : "border-border/40 hover:border-primary/30 hover:bg-muted/50 text-muted-foreground"
+                            )}
+                            style={{ fontFamily: FONT_FAMILIES[key] }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Preview */}
+                    <div
+                      className="rounded-xl bg-muted/20 border border-border/30 px-3.5 py-2.5 text-foreground/70 leading-relaxed"
+                      style={{ fontSize: FONT_SIZES[fontSize], fontFamily: FONT_FAMILIES[fontFamily] }}
+                    >
+                      The quick brown fox jumps over the lazy dog. — यह एक परीक्षण वाक्य है।
+                    </div>
                   </div>
                 )}
 
