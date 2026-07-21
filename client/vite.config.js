@@ -24,31 +24,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // React core — changes rarely, long-lived cache hit
-          'vendor-react': ['react', 'react-dom'],
-          // Routing (if used)
-          'vendor-router': ['react-hook-form', '@hookform/resolvers', 'zod'],
-          // Markdown rendering — large, infrequently updated
-          'vendor-markdown': ['react-markdown'],
-          // Radix UI primitives bundle — large group but stable
-          'vendor-ui': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-avatar',
-            '@radix-ui/react-label',
-            '@radix-ui/react-slot',
-          ],
-          // Utility libs
-          'vendor-utils': ['clsx', 'class-variance-authority', 'tailwind-merge', 'lucide-react'],
+        // Single vendor chunk for all node_modules — avoids Rollup chunk-level
+        // circular dependencies that produce "Cannot access 'X' before initialization"
+        // TDZ errors when Radix UI packages are split across multiple chunks.
+        manualChunks(id) {
+          if (id.includes('node_modules')) return 'vendor';
         },
       },
     },
-    // Warn when any chunk exceeds 400 kB (down from default 500 kB)
-    chunkSizeWarningLimit: 400,
+    chunkSizeWarningLimit: 600,
   },
 });
