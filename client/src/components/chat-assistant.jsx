@@ -1018,14 +1018,9 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
         )
       );
     } catch (err) {
-      updateActiveMessages((msgs) =>
-        msgs.map((m) =>
-          m.id === asstId
-            ? { ...m, streaming: false, content: err?.message || "Image analysis failed." }
-            : m
-        )
-      );
-      toast({ title: "Image error", description: err?.message || "Please try again.", variant: "destructive" });
+      // Remove the empty loading bubble — don't pollute chat with error text
+      updateActiveMessages((msgs) => msgs.filter((m) => m.id !== asstId));
+      toast({ title: "Image error", description: err?.message || "Image analysis failed. Please try again.", variant: "destructive" });
     } finally {
       setStreamingMsgId(null);
       setDomainLoading(false);
