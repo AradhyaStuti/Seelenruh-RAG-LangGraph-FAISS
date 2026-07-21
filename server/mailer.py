@@ -26,7 +26,6 @@ import httpx
 from config import (
     RESEND_API_KEY,
     SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM,
-    APP_BASE_URL,
 )
 from logger import get_logger
 

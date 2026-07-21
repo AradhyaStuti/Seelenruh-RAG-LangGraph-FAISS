@@ -160,7 +160,6 @@ _HINGLISH_MAP = {
     "dhamki": "threat intimidation",
     "takleef": "harassment trouble",
     "pareshaan": "harassed troubled",
-    "pareshan": "harassed troubled",
     "nakli": "fake forged counterfeit",
     "jhooth": "false fabricated",
     "jhuta": "false fabricated",
