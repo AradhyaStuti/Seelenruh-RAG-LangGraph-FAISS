@@ -21,7 +21,6 @@ MONGODB_DB = os.getenv("MONGODB_DB", "seelenruh")
 
 GROQ_MODEL_SMART = "llama-3.3-70b-versatile"
 GROQ_MODEL_FAST = "llama-3.1-8b-instant"
-GROQ_MODEL_WHISPER = "whisper-large-v3-turbo"
 
 EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 RETRIEVAL_TOP_K = 5
@@ -41,12 +40,7 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 # Optional: SerpAPI — tertiary fallback (https://serpapi.com)
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
-# Optional: ElevenLabs neural TTS (https://elevenlabs.io)
-# Find your voice ID in the ElevenLabs dashboard — set ELEVENLABS_VOICE_ID in .env.
-ELEVENLABS_KEY = os.getenv("ELEVENLABS_KEY", "")
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
-
-# Optional: Anthropic as third LLM fallback (after Groq + Ollama)
+# Optional: Anthropic as second LLM fallback (after Groq)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 

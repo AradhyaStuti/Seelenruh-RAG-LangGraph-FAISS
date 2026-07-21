@@ -62,14 +62,6 @@ class ChatResponse(BaseModel):
     webSearched: bool = False           # true when agent autonomously ran a web search
 
 
-class TranscribeRequest(BaseModel):
-    audio: str
-    lang: Lang = "auto"
-
-
-class TranscribeResponse(BaseModel):
-    text: str
-    error: Optional[str] = None
 
 
 class HealthResponse(BaseModel):

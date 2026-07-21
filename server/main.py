@@ -22,7 +22,6 @@ from routes.auth import router as auth_router
 from routes.schemes import router as schemes_router
 from routes.templates import router as templates_router
 from routes.summary import router as summary_router
-from routes.tts import router as tts_router
 from routes.admin import router as admin_router
 from routes.upload import router as upload_router
 from routes.feedback import router as feedback_router
@@ -166,7 +165,6 @@ app.include_router(chat_router)
 app.include_router(schemes_router)
 app.include_router(templates_router)
 app.include_router(summary_router)
-app.include_router(tts_router)
 app.include_router(admin_router)
 app.include_router(upload_router)
 app.include_router(feedback_router)

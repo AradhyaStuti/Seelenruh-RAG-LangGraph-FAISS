@@ -1,4 +1,4 @@
-"""Chat, audio, transcribe, history, and streaming endpoints."""
+"""Chat, history, and streaming endpoints."""
 import json
 import re
 from datetime import datetime, timezone
@@ -7,11 +7,10 @@ from typing import AsyncIterator, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from ai import stt
 from ai.provider import _AllProvidersFailed, _OFFLINE_RESPONSE
 import db
 import graph
-from schemas import ChatRequest, ChatResponse, TranscribeRequest, TranscribeResponse
+from schemas import ChatRequest, ChatResponse
 from auth import current_user, verified_user
 from rate_limit import chat_limit, burst_limit
 from logger import get_logger
@@ -190,16 +189,6 @@ async def audio_endpoint(request: Request, req: ChatRequest,
     if req.lang == "auto":
         req = req.model_copy(update={"lang": "en"})
     return await _handle(req, user, fast_mode=True)
-
-
-@router.post("/transcribe", response_model=TranscribeResponse)
-@chat_limit("20/minute")
-async def transcribe_endpoint(request: Request, req: TranscribeRequest,
-                              user: dict = Depends(current_user)) -> TranscribeResponse:
-    if len(req.audio) > _MAX_AUDIO_B64_CHARS:
-        raise HTTPException(status_code=413, detail="Audio payload too large. Maximum is ~7.5 MB.")
-    out = await stt.transcribe(req.audio, lang=req.lang)
-    return TranscribeResponse(text=out["text"] or "", error=out.get("error"))
 
 
 @router.get("/history/{session_id}")

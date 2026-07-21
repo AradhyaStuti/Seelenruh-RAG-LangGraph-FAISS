@@ -151,7 +151,6 @@ async def create_user(*, email: str, name: str, password: str) -> dict:
     user: dict = {
         "password": hashed,
         "createdAt": datetime.now(timezone.utc),
-        "emailVerified": False,
     }
 
     if crypto.is_enabled():
@@ -225,7 +224,7 @@ async def delete_user(user_id: str, email: str) -> bool:
     return _memory_users.pop(email.lower().strip(), None) is not None
 
 
-async def _resolve_user(credentials: HTTPAuthorizationCredentials, *, require_verified: bool) -> dict:
+async def _resolve_user(credentials: HTTPAuthorizationCredentials) -> dict:
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -239,27 +238,20 @@ async def _resolve_user(credentials: HTTPAuthorizationCredentials, *, require_ve
             detail="Token has been revoked. Please sign in again.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if require_verified:
-        user_record = await find_user_by_email(payload["email"])
-        if user_record and not user_record.get("emailVerified", True):
-            raise HTTPException(
-                status_code=403,
-                detail="Email not verified. Please check your inbox or resend from settings.",
-            )
     return {"id": payload["sub"], "email": payload["email"], "jti": payload.get("jti")}
 
 
 async def current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ) -> dict:
-    return await _resolve_user(credentials, require_verified=False)
+    return await _resolve_user(credentials)
 
 
 async def verified_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ) -> dict:
-    """Email is verified at signup via OTP, so no extra check needed here."""
-    return await _resolve_user(credentials, require_verified=False)
+    """Alias of current_user — signup issues tokens immediately, no verification step."""
+    return await _resolve_user(credentials)
 
 
 async def current_token_payload(
