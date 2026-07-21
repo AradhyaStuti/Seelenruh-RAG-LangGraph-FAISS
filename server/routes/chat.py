@@ -224,6 +224,8 @@ async def image_chat_endpoint(
         )
     except Exception as err:
         log.error("vision_chat failed, falling back to text", error=repr(err))
+        import os
+        raise HTTPException(status_code=503, detail=f"vision_err={repr(err)} OR_KEY={'set' if os.getenv('OPENROUTER_API_KEY') else 'MISSING'} GEM_KEY={'set' if os.getenv('GEMINI_API_KEY') else 'MISSING'}")
         # Fall back: process just the text query without the image
         fallback_query = req.query or "The user sent an image but I cannot analyse it right now."
         try:
