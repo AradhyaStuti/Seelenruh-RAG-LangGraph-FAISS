@@ -175,6 +175,39 @@ _HINGLISH_MAP = {
     "penshn": "pension", "ration": "ration food",
     "awas": "housing shelter", "bijli": "electricity",
     "paani": "water", "shauchalay": "toilet sanitation",
+    # mental health Hinglish — feelings and states
+    "udaas": "sad depressed unhappy", "udas": "sad depressed",
+    "dara": "scared anxious fear", "darta": "scared fear anxious",
+    "ghabra": "anxious panic scared nervous", "ghabrahat": "anxiety panic nervousness",
+    "chinta": "worry anxiety tension stress", "chintha": "worry anxiety",
+    "tension": "stress anxiety tension", "tanav": "stress tension pressure",
+    "gussa": "anger angry frustrated", "gusse": "anger angry",
+    "rona": "crying sad emotional distressed", "rota": "crying sad",
+    "thak": "tired exhausted fatigued", "thaka": "tired exhausted",
+    "akela": "lonely alone isolated", "akelapan": "loneliness isolation",
+    "neend": "sleep insomnia rest", "neend nahi": "insomnia sleep problems",
+    "khud": "self myself", "khudkushi": "suicide self-harm crisis",
+    "marna": "die death suicidal", "mar": "death die",
+    "dukhi": "sad grieving sorrowful", "dukh": "sadness grief sorrow",
+    "pareshan": "troubled anxious disturbed stressed",
+    "mann": "mind mental emotional", "dimag": "mind mental stress",
+    "mushkil": "difficult problem struggling", "taklif": "pain suffering trouble",
+    "darr": "fear anxiety scared phobia", "khauf": "fear terror anxiety",
+    "depression": "depression depressed low mood",
+    "bipolar": "bipolar mood disorder", "anxiety": "anxiety disorder panic",
+    "therapist": "therapist counsellor mental health professional",
+    "counselling": "counselling therapy mental health support",
+    "iCall": "iCall mental health helpline counselling",
+    # safety Hinglish additions
+    "pita": "father domestic violence family",
+    "maa": "mother domestic violence family",
+    "pati": "husband domestic violence abuse",
+    "patni": "wife domestic violence marriage",
+    "ladai": "fight violence dispute conflict",
+    "maara": "hit beat assault violence",
+    "maarpeet": "assault beating physical violence",
+    "darwana": "threatening intimidation fear",
+    "peecha": "stalking following harassment",
 }
 
 # Multi-word Hinglish phrases → English equivalents.
@@ -214,6 +247,60 @@ _HINGLISH_PHRASES: list[tuple[re.Pattern, str]] = [
 ]
 
 _DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]+")
+
+# Devanagari Hindi tokens → English equivalents for BM25 matching.
+# BM25 does exact token matching so Devanagari tokens never hit English knowledge-base docs.
+# Appending the English translation alongside the Hindi word improves recall significantly.
+# Covers the most common mental-health, safety, legal, and schemes queries in Devanagari.
+_DEVANAGARI_MAP: dict[str, str] = {
+    # Mental health
+    "डर": "fear anxiety scared",
+    "उदास": "sad depressed unhappy",
+    "अकेलापन": "loneliness alone isolated",
+    "चिंता": "anxiety worry tension",
+    "तनाव": "stress tension pressure",
+    "गुस्सा": "anger angry frustrated",
+    "थकान": "tired fatigue exhaustion",
+    "नींद": "sleep insomnia sleeplessness",
+    "आत्महत्या": "suicide suicidal self-harm crisis",
+    "मदद": "help support assistance",
+    "खुशी": "happy happiness joy",
+    "दुख": "grief sadness sorrow",
+    "परेशान": "troubled disturbed harassed",
+    "मानसिक": "mental psychological",
+    "स्वास्थ्य": "health wellbeing",
+    "इलाज": "treatment therapy counselling",
+    "डॉक्टर": "doctor physician therapist",
+    "अस्पताल": "hospital clinic",
+    # Safety / emergency
+    "मार": "violence hitting abuse assault",
+    "पुलिस": "police FIR complaint",
+    "खतरा": "danger threat unsafe",
+    "बचाओ": "help save rescue emergency",
+    "हिंसा": "violence domestic abuse assault",
+    "बलात्कार": "rape sexual assault",
+    "अपराध": "crime offence criminal",
+    # Legal
+    "कानून": "law legal rights",
+    "अधिकार": "rights entitlement legal",
+    "शिकायत": "complaint grievance report",
+    "न्याय": "justice court legal",
+    "वकील": "lawyer advocate legal aid",
+    "जमीन": "land property rights",
+    "किराया": "rent tenant landlord",
+    "तलाक": "divorce separation legal",
+    # Government schemes
+    "योजना": "scheme yojana benefit government",
+    "पेंशन": "pension retirement benefit",
+    "राशन": "ration food PDS subsidy",
+    "छात्रवृत्ति": "scholarship student education",
+    "किसान": "farmer agriculture kisan",
+    "आवास": "housing home shelter scheme",
+    "रोजगार": "employment job work",
+    "बीमा": "insurance coverage health",
+    "लाभ": "benefit entitlement scheme",
+    "पात्रता": "eligibility criteria qualification",
+}
 
 # (pattern, expansion terms) — appended before embedding for vague legal queries
 _LEGAL_EXPANSIONS: list[tuple] = [
@@ -332,13 +419,21 @@ def _normalize_query(text: str) -> str:
     for phrase_re, replacement in _HINGLISH_PHRASES:
         text = phrase_re.sub(replacement, text)
 
-    # Phase 2: per-token single-word Hinglish expansion.
-    # Devanagari tokens are left as-is — multilingual-e5 handles them natively.
+    # Phase 2: per-token expansion — Hinglish (Roman) + Devanagari Hindi.
+    # Devanagari tokens: keep original (multilingual-e5 handles semantically)
+    # AND append English equivalent so BM25 can match English knowledge-base docs.
     tokens = text.split()
     expanded = []
     for tok in tokens:
-        lower = tok.lower().rstrip("?!.,;:")
-        if lower in _HINGLISH_MAP and not _DEVANAGARI_RE.search(tok):
+        clean = tok.rstrip("?!.,;:")
+        lower = clean.lower()
+        if _DEVANAGARI_RE.search(clean):
+            # Hindi Devanagari: keep + append English expansion for BM25
+            english = _DEVANAGARI_MAP.get(clean, "")
+            expanded.append(clean)
+            if english:
+                expanded.append(english)
+        elif lower in _HINGLISH_MAP:
             expanded.append(_HINGLISH_MAP[lower])
         else:
             expanded.append(tok)

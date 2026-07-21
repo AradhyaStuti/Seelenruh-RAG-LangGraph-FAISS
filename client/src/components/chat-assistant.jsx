@@ -855,15 +855,18 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     }
     setTranslationMap((prev) => ({ ...prev, [msgId]: { loading: true } }));
     try {
-      const plain = text.replace(/[#*`_~[\]]/g, "").slice(0, 500);
-      const res = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(plain)}&langpair=de|en`
-      );
+      const plain = text.replace(/[#*`_~[\]]/g, "").slice(0, 1000);
+      // Google Translate unofficial API — no key needed, much higher limits than MyMemory
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(plain)}`;
+      const res = await fetch(url);
       const data = await res.json();
-      const translated = data?.responseData?.translatedText || "Translation unavailable.";
-      setTranslationMap((prev) => ({ ...prev, [msgId]: { text: translated } }));
+      // Response: [[[translated, original], ...], ...]
+      const translated = Array.isArray(data?.[0])
+        ? data[0].map((seg) => seg?.[0] || "").join("")
+        : "Translation unavailable.";
+      setTranslationMap((prev) => ({ ...prev, [msgId]: { text: translated || "Translation unavailable." } }));
     } catch {
-      setTranslationMap((prev) => ({ ...prev, [msgId]: { text: "Could not translate. MyMemory free tier limit may have been reached." } }));
+      setTranslationMap((prev) => ({ ...prev, [msgId]: { text: "Could not translate. Please try again." } }));
     }
   };
 
@@ -1224,6 +1227,15 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                   aria-busy={isLoading}
                 >
                   <div role="log" aria-label="Conversation" aria-live="off" className="space-y-6">
+                    {lang === "de" && (
+                      <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-3.5 py-2.5 text-[11.5px] leading-relaxed flex items-start gap-2 text-amber-800">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
+                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <span>Antworten basieren auf <strong>indischem Recht</strong>, nicht auf deutschem oder EU-Recht. Diese App gilt nur für Indien.</span>
+                      </div>
+                    )}
+
                     {activeSession?.summary && (
                       <div
                         className="rounded-xl border border-border/25 border-l-[3px] bg-muted/15 px-3.5 py-2.5 text-[12px] leading-relaxed shadow-sm"

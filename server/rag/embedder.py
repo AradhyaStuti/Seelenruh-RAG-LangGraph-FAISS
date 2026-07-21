@@ -8,10 +8,24 @@ from config import EMBEDDING_MODEL
 _model: SentenceTransformer | None = None
 
 
+def _detect_device() -> str:
+    """Return the best available compute device: cuda > mps > cpu."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+    except Exception:
+        pass
+    return "cpu"
+
+
 def _get() -> SentenceTransformer:
     global _model
     if _model is None:
-        _model = SentenceTransformer(EMBEDDING_MODEL)
+        device = _detect_device()
+        _model = SentenceTransformer(EMBEDDING_MODEL, device=device)
     return _model
 
 
