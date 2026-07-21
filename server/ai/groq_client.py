@@ -45,7 +45,7 @@ async def chat_json(*, messages: list[dict], model: str | None = None, temperatu
     return json.loads(raw)
 
 
-_GROQ_VISION_MODEL = "llama-3.2-11b-vision-preview"
+_GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 
 async def vision_chat(

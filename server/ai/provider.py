@@ -6,7 +6,6 @@ from ai import groq_client, ollama_client, anthropic_client
 import ai.gemini_client as gemini_client
 import ai.openrouter_client as openrouter_client
 from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
-from config import GROQ_API_KEY
 from logger import get_logger
 
 log = get_logger("provider")
@@ -108,7 +107,6 @@ async def vision_chat(
             return {"content": content, "via": "openrouter-vision"}
         except Exception as err:
             log.warning("openrouter vision failed", error=repr(err))
-            raise RuntimeError(f"openrouter_err: {repr(err)}")
 
     # 2. Gemini vision fallback
     if gemini_client.is_enabled():

@@ -40,7 +40,7 @@ The app routes user messages to one of four personas:
 - Session history per persona — browse and restore past conversations.
 - Copy, save (bookmark), and thumbs up/down feedback on any response.
 - Export conversation as Markdown (server-side, authenticated).
-- Attach a document (.txt, .md, .pdf, .docx, .csv) or an image (.jpg, .png, .gif, .webp) to provide as context for your next message. Images are processed by a vision model (Groq llama-4-scout first, Anthropic claude-haiku fallback).
+- Attach a document (.txt, .md, .pdf, .docx, .csv) or an image (.jpg, .png, .gif, .webp) to provide as context for your next message. Images are processed by a vision-language model (OpenRouter free tier primary, Anthropic Claude fallback).
 
 ### Retrieval
 
@@ -153,7 +153,7 @@ Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
 |---|---|
 | Frontend | React 18, Vite, Tailwind CSS, Radix UI, shadcn/ui |
 | Backend | Python 3.10+, FastAPI, LangGraph |
-| LLM providers | Groq (primary), Anthropic Claude, Ollama (fallbacks) |
+| LLM providers | Groq (primary), Anthropic Claude, Ollama (text fallbacks); OpenRouter (vision) |
 | Embeddings | intfloat/multilingual-e5-small |
 | Retrieval | FAISS + BM25 + cross-encoder reranker (ms-marco-MiniLM-L-6-v2) |
 | Web search | Brave → Tavily → DuckDuckGo → SerpAPI → Wikipedia (cascade) |
@@ -311,6 +311,7 @@ Fill in the required values before running:
 | `JWT_SECRET` | Yes | 32+ byte random string for signing JWTs |
 | `MONGODB_URI` | Yes | MongoDB Atlas connection string |
 | `ADMIN_KEY` | Yes* | Secret key for the knowledge dashboard and `/api/admin/*` endpoints. *Optional — admin endpoints are disabled if not set. |
+| `OPENROUTER_API_KEY` | No | Vision/image analysis provider (free tier available at openrouter.ai) |
 | `ANTHROPIC_API_KEY` | No | Fallback LLM provider (Anthropic Claude) |
 | `OLLAMA_URL` | No | Local Ollama instance URL |
 | `ELEVENLABS_KEY` | No | Neural TTS (gTTS used if absent) |

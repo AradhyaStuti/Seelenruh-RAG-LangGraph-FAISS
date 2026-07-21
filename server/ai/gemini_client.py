@@ -1,5 +1,4 @@
 """Google Gemini API client — used for vision/image analysis."""
-import base64
 import httpx
 
 from config import GEMINI_API_KEY
