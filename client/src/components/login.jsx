@@ -2,19 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BlossomLogo } from "@/components/icons";
-import { login, signup, forgotPassword, resetPassword, verifyEmail, verifyOtp, resendOtp } from "@/lib/auth";
+import { login, signup } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-
-// Modes: "login" | "signup" | "forgot" | "reset" | "verify" | "otp"
-// "reset" and "verify" are triggered when the URL has ?token=... query params.
-// "otp" is shown after successful signup — user must enter 6-digit code from email.
-
-function detectModeFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("token") && window.location.pathname.includes("reset-password")) return "reset";
-  if (params.get("token") && window.location.pathname.includes("verify-email")) return "verify";
-  return "login";
-}
 
 function passwordStrength(pw) {
   if (!pw) return { score: 0, label: "" };
@@ -43,151 +32,37 @@ function EyeIcon({ open }) {
   );
 }
 
-function CheckIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  );
-}
-
 export function LoginScreen() {
-  const [mode, setMode] = useState(() => detectModeFromURL());
+  const [mode, setMode] = useState("login"); // "login" | "signup"
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // OTP mode state
-  const [pendingEmail, setPendingEmail] = useState("");
-  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [devOtp, setDevOtp] = useState(""); // shown on screen when email isn't configured
-  const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
-
   const firstFieldRef = useRef(null);
 
-  // Auto-run verify-email from URL token on mount
   useEffect(() => {
-    if (mode === "verify") {
-      const token = new URLSearchParams(window.location.search).get("token");
-      if (token) handleVerifyToken(token);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    setError(""); setSuccess("");
+    setError("");
     const t = window.setTimeout(() => firstFieldRef.current?.focus(), 80);
     return () => window.clearTimeout(t);
-  }, [mode]);
-
-  // Cooldown timer for OTP resend button
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendCooldown]);
-
-  // Auto-focus first OTP box when entering otp mode
-  useEffect(() => {
-    if (mode === "otp") {
-      setTimeout(() => otpRefs[0].current?.focus(), 80);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   const handlePwKey = (e) => {
     if (typeof e.getModifierState === "function") setCapsLock(e.getModifierState("CapsLock"));
   };
 
-  const handleOtpChange = (index, value) => {
-    // Handle paste of full OTP
-    if (value.length > 1) {
-      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
-      const next = ["", "", "", "", "", ""];
-      digits.forEach((d, i) => { if (i < 6) next[i] = d; });
-      setOtpDigits(next);
-      const focusIdx = Math.min(digits.length, 5);
-      otpRefs[focusIdx].current?.focus();
-      return;
-    }
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const next = [...otpDigits];
-    next[index] = digit;
-    setOtpDigits(next);
-    if (digit && index < 5) otpRefs[index + 1].current?.focus();
-  };
-
-  const handleOtpKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
-      otpRefs[index - 1].current?.focus();
-    }
-    if (e.key === "ArrowLeft" && index > 0) otpRefs[index - 1].current?.focus();
-    if (e.key === "ArrowRight" && index < 5) otpRefs[index + 1].current?.focus();
-  };
-
-  const handleResendOtp = async () => {
-    if (resendCooldown > 0 || loading) return;
-    setError(""); setSuccess(""); setDevOtp("");
-    try {
-      const res = await resendOtp(pendingEmail);
-      setDevOtp(res?.devOtp || "");
-      setSuccess(res?.devOtp ? "" : "A new code has been sent to your email.");
-      setResendCooldown(60);
-    } catch {
-      setError("Couldn't resend the code. Please try again.");
-    }
-  };
-
-  const handleVerifyToken = async (token) => {
-    setLoading(true);
-    try {
-      await verifyEmail(token);
-      setSuccess("Your email has been verified! You can now sign in.");
-      setMode("login");
-    } catch (err) {
-      setError(err.message || "Verification link is invalid or has expired.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const submit = async (e) => {
     e.preventDefault();
     if (loading) return;
-    setError(""); setSuccess("");
+    setError("");
     setLoading(true);
     try {
       if (mode === "signup") {
-        const res = await signup({ email, name, password });
-        if (res?.pendingVerification) {
-          setPendingEmail(res.email || email);
-          setOtpDigits(["", "", "", "", "", ""]);
-          setDevOtp(res.devOtp || "");
-          setResendCooldown(60);
-          setMode("otp");
-        }
-      } else if (mode === "otp") {
-        const otp = otpDigits.join("");
-        await verifyOtp(pendingEmail, otp);
-        // verifyOtp calls setAuth internally — app will re-render on success
-      } else if (mode === "login") {
+        await signup({ email, name, password });
+      } else {
         await login({ email, password });
-      } else if (mode === "forgot") {
-        await forgotPassword(email);
-        setSuccess("If that email is registered, you'll receive a reset link shortly.");
-        setEmail("");
-      } else if (mode === "reset") {
-        const token = new URLSearchParams(window.location.search).get("token") || "";
-        await resetPassword(token, password);
-        setSuccess("Password updated! You can now sign in.");
-        setMode("login");
-        setPassword("");
       }
     } catch (err) {
       setError(err.message || "Something went wrong.");
@@ -196,29 +71,7 @@ export function LoginScreen() {
     }
   };
 
-  const switchMode = () => {
-    setError(""); setSuccess(""); setShowPassword(false);
-    setMode(mode === "signup" ? "login" : "signup");
-  };
-
   const strength = passwordStrength(password);
-
-  const TITLES = {
-    login:  "Welcome back",
-    signup: "Create your account",
-    forgot: "Reset your password",
-    reset:  "Set a new password",
-    verify: "Verifying your email…",
-    otp:    "Check your email",
-  };
-  const SUBTITLES = {
-    login:  "Sign in to continue your session.",
-    signup: "Your information is kept private and secure.",
-    forgot: "Enter your email and we'll send a reset link.",
-    reset:  "Choose a new password for your account.",
-    verify: "Please wait while we verify your email address.",
-    otp:    `We sent a 6-digit code to ${pendingEmail || "your email"}.`,
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
@@ -232,295 +85,143 @@ export function LoginScreen() {
           <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground">
             Seelen<span className="text-gradient font-bold">ruh</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Peace of mind, powered by AI</p>
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border/50 bg-card/70 px-3 py-1.5 text-[11px] font-medium text-muted-foreground/80">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            English • Hindi • Hinglish • German
-          </div>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground/80">
-            Calm support for mental wellbeing, legal rights, government schemes, and personal safety.
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Wellbeing, rights, and safety — one place.</p>
         </div>
 
         {/* Card */}
         <div className="rounded-3xl glass-strong petal-shadow border border-border/40 overflow-hidden">
           <div className="px-6 pt-6 pb-1">
-            <h2 className="font-headline text-lg font-semibold text-foreground">{TITLES[mode]}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{SUBTITLES[mode]}</p>
+            <h2 className="font-headline text-lg font-semibold text-foreground">
+              {mode === "signup" ? "Create your account" : "Welcome back"}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {mode === "signup" ? "Your information is kept private." : "Sign in to continue."}
+            </p>
           </div>
 
           <div className="px-6 pb-6">
-            {/* Success banner (not shown in otp mode — it has its own) */}
-            {success && mode !== "otp" && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/80 px-3 py-2.5 text-sm text-emerald-700 animate-fade-in">
-                <CheckIcon />
-                {success}
-              </div>
-            )}
+            <form onSubmit={submit} className="space-y-4 mt-5" autoComplete="on">
 
-            {/* Verify-email loading state */}
-            {mode === "verify" && loading && (
-              <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground text-sm">
-                <span className="inline-block h-5 w-5 rounded-full border-2 border-border border-t-primary animate-spin" />
-                Verifying…
-              </div>
-            )}
-
-            {mode === "otp" && (
-              <form onSubmit={submit} className="space-y-5 mt-5" autoComplete="off">
-                {/* 6-box OTP input */}
-                <div>
-                  <label className="text-sm font-medium text-foreground block mb-3">Verification code</label>
-                  <div className="flex gap-2 justify-center">
-                    {otpDigits.map((digit, i) => (
-                      <input
-                        key={i}
-                        ref={otpRefs[i]}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(i, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                        onFocus={(e) => e.target.select()}
-                        className="w-11 h-13 text-center text-xl font-bold rounded-xl border border-border/60 bg-background/60 text-foreground focus:border-primary/60 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        style={{ height: "52px", fontSize: "22px" }}
-                        aria-label={`Digit ${i + 1}`}
-                      />
-                    ))}
-                  </div>
+              {/* Name — signup only */}
+              {mode === "signup" && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Full Name</label>
+                  <Input
+                    ref={firstFieldRef}
+                    type="text"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    minLength={1}
+                    maxLength={80}
+                    autoComplete="name"
+                    className="h-10 rounded-xl border-border/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 bg-background/60 text-foreground placeholder:text-muted-foreground/50"
+                  />
                 </div>
+              )}
 
-                {error && (
-                  <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-sm text-destructive animate-fade-in">
-                    {error}
-                  </div>
-                )}
-                {success && (
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/80 px-3 py-2.5 text-sm text-emerald-700 animate-fade-in">
-                    <CheckIcon />
-                    {success}
-                  </div>
-                )}
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Email Address</label>
+                <Input
+                  ref={mode === "login" ? firstFieldRef : undefined}
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="h-10 rounded-xl border-border/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 bg-background/60 text-foreground placeholder:text-muted-foreground/50"
+                />
+              </div>
 
-                {/* Dev fallback: show OTP on screen when no email provider is configured */}
-                {devOtp && (
-                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-center animate-fade-in">
-                    <p className="text-xs text-amber-700 mb-1.5 font-medium">Email not configured — your code is:</p>
-                    <p className="text-2xl font-bold tracking-[0.3em] text-amber-900 font-mono">{devOtp}</p>
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={loading || otpDigits.join("").length < 6}
-                  className="w-full h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-all duration-200 petal-shadow disabled:opacity-50 disabled:shadow-none"
-                >
-                  {loading && (
-                    <span className="inline-block h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin mr-2" />
-                  )}
-                  {loading ? "Verifying…" : "Verify"}
-                </Button>
-
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Password</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder={mode === "signup" ? "Minimum 6 characters" : "Your password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyUp={handlePwKey}
+                    onKeyDown={handlePwKey}
+                    required
+                    minLength={6}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    className="h-10 rounded-xl border-border/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 bg-background/60 text-foreground placeholder:text-muted-foreground/50 pr-10"
+                  />
                   <button
                     type="button"
-                    onClick={() => { setMode("signup"); setError(""); setSuccess(""); }}
-                    className="text-primary font-medium hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline"
+                    onClick={() => setShowPassword((v) => !v)}
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                   >
-                    ← Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={resendCooldown > 0 || loading}
-                    className="text-primary font-medium hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+                    <EyeIcon open={showPassword} />
                   </button>
                 </div>
-              </form>
-            )}
+              </div>
 
-            {mode !== "verify" && mode !== "otp" && (
-              <form onSubmit={submit} className="space-y-4 mt-5" autoComplete="on">
-
-                {/* Name — signup only */}
-                {mode === "signup" && (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">Full Name</label>
-                    <Input
-                      ref={firstFieldRef}
-                      type="text"
-                      placeholder="Your name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      minLength={1}
-                      maxLength={80}
-                      autoComplete="name"
-                      className="h-10 rounded-xl border-border/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 bg-background/60 text-foreground placeholder:text-muted-foreground/50"
-                    />
-                  </div>
-                )}
-
-                {/* Email — login, signup, forgot */}
-                {mode !== "reset" && (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">Email Address</label>
-                    <Input
-                      ref={mode !== "signup" ? firstFieldRef : undefined}
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      autoComplete="email"
-                      className="h-10 rounded-xl border-border/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 bg-background/60 text-foreground placeholder:text-muted-foreground/50"
-                    />
-                  </div>
-                )}
-
-                {/* Password — login, signup, reset */}
-                {mode !== "forgot" && (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">
-                      {mode === "reset" ? "New Password" : "Password"}
-                    </label>
-                    <div className="relative">
-                      <Input
-                        ref={mode === "reset" ? firstFieldRef : undefined}
-                        type={showPassword ? "text" : "password"}
-                        placeholder={mode === "signup" || mode === "reset" ? "Minimum 6 characters" : "Your password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onKeyUp={handlePwKey}
-                        onKeyDown={handlePwKey}
-                        required
-                        minLength={6}
-                        autoComplete={mode === "login" ? "current-password" : "new-password"}
-                        className="h-10 rounded-xl border-border/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 bg-background/60 text-foreground placeholder:text-muted-foreground/50 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        tabIndex={-1}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-                      >
-                        <EyeIcon open={showPassword} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Password hints */}
-                {(capsLock || ((mode === "signup" || mode === "reset") && password)) && (
-                  <div className="flex items-center justify-between gap-3">
-                    {capsLock ? (
-                      <span className="text-xs text-amber-600 font-medium">Caps Lock is on</span>
-                    ) : <span />}
-                    {(mode === "signup" || mode === "reset") && password && (
-                      <div className="flex items-center gap-2 ml-auto">
-                        <div className="flex gap-1">
-                          {[1, 2, 3, 4].map((i) => (
-                            <span
-                              key={i}
-                              className={cn(
-                                "h-1.5 w-5 rounded-full transition-colors duration-300",
-                                i <= strength.score
-                                  ? strength.score <= 2 ? "bg-amber-500" : "bg-emerald-500"
-                                  : "bg-border"
-                              )}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{strength.label}</span>
+              {/* Password strength + caps lock */}
+              {(capsLock || (mode === "signup" && password)) && (
+                <div className="flex items-center justify-between gap-3">
+                  {capsLock ? (
+                    <span className="text-xs text-amber-600 font-medium">Caps Lock is on</span>
+                  ) : <span />}
+                  {mode === "signup" && password && (
+                    <div className="flex items-center gap-2 ml-auto">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4].map((i) => (
+                          <span
+                            key={i}
+                            className={cn(
+                              "h-1.5 w-5 rounded-full transition-colors duration-300",
+                              i <= strength.score
+                                ? strength.score <= 2 ? "bg-amber-500" : "bg-emerald-500"
+                                : "bg-border"
+                            )}
+                          />
+                        ))}
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Forgot password link — login mode only */}
-                {mode === "login" && (
-                  <div className="text-right -mt-1">
-                    <button
-                      type="button"
-                      onClick={() => setMode("forgot")}
-                      className="text-xs text-primary hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                )}
-
-                {error && (
-                  <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-sm text-destructive animate-fade-in">
-                    {error}
-                  </div>
-                )}
-
-                {/* Email tip — signup */}
-                {mode === "signup" && (
-                  <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-[11px] text-primary/80 leading-relaxed">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                      <polyline points="22,6 12,13 2,6"/>
-                    </svg>
-                    <span>A 6-digit verification code will be sent to your email to confirm your address.</span>
-                  </div>
-                )}
-                {/* Password reset tip */}
-                {mode === "forgot" && (
-                  <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-[11px] text-primary/80 leading-relaxed">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                      <polyline points="22,6 12,13 2,6"/>
-                    </svg>
-                    <span>Check your inbox — the link expires in 1 hour. Also check spam.</span>
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={
-                    loading ||
-                    (mode !== "reset" && !email) ||
-                    (mode === "signup" && !name) ||
-                    (mode !== "forgot" && password.length < 6)
-                  }
-                  className="w-full h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-all duration-200 petal-shadow disabled:opacity-50 disabled:shadow-none mt-2"
-                >
-                  {loading && (
-                    <span className="inline-block h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin mr-2" />
-                  )}
-                  {loading
-                    ? { login: "Signing in…", signup: "Creating account…", forgot: "Sending…", reset: "Updating…" }[mode]
-                    : { login: "Sign in", signup: "Create account", forgot: "Send reset link", reset: "Set new password" }[mode]}
-                </Button>
-
-                {/* Bottom links */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground pt-1">
-                  {(mode === "login" || mode === "signup") ? (
-                    <p>
-                      {mode === "signup" ? "Already have an account?" : "Don't have an account?"}{" "}
-                      <button type="button" onClick={switchMode} className="text-primary font-medium hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline">
-                        {mode === "signup" ? "Sign in" : "Create account"}
-                      </button>
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
-                      className="text-primary font-medium hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline text-sm"
-                    >
-                      ← Back to sign in
-                    </button>
+                      <span className="text-xs text-muted-foreground">{strength.label}</span>
+                    </div>
                   )}
                 </div>
+              )}
 
-              </form>
-            )}
+              {error && (
+                <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-sm text-destructive animate-fade-in">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={loading || !email || password.length < 6 || (mode === "signup" && !name)}
+                className="w-full h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-all duration-200 petal-shadow disabled:opacity-50 disabled:shadow-none mt-2"
+              >
+                {loading && (
+                  <span className="inline-block h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin mr-2" />
+                )}
+                {loading
+                  ? (mode === "signup" ? "Creating account…" : "Signing in…")
+                  : (mode === "signup" ? "Create account" : "Sign in")}
+              </Button>
+
+              <div className="text-center text-sm text-muted-foreground pt-1">
+                {mode === "signup" ? "Already have an account?" : "Don't have an account?"}{" "}
+                <button
+                  type="button"
+                  onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); setShowPassword(false); }}
+                  className="text-primary font-medium hover:text-primary/75 transition-colors focus:outline-none focus-visible:underline"
+                >
+                  {mode === "signup" ? "Sign in" : "Create account"}
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
 
