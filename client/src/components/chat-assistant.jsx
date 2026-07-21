@@ -923,7 +923,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-sm leading-tight" style={{ color: dc.iconColor }}>{persona}</p>
-                            <span className="h-2 w-2 rounded-full bg-emerald-400 online-dot" style={{ boxShadow: "0 0 5px rgba(74,222,128,0.6)" }} />
+                            <span className="h-2 w-2 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 5px rgba(74,222,128,0.6)" }} />
                           </div>
                           <p className="text-[11px] text-muted-foreground/50 leading-snug truncate mt-0.5">{subtitle}</p>
                         </div>
@@ -936,7 +936,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
               <div key={selectedDomain} className="mt-3 p-3 sm:p-4 rounded-[1.75rem] bg-background/50 border border-border/45 shadow-[inset_0_2px_12px_hsl(var(--foreground)/0.03)] backdrop-blur-sm animate-fade-in">
                 <div className="mb-3 flex items-center justify-between gap-1 px-1">
                   <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground overflow-hidden">
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 online-dot" style={{ boxShadow: "0 0 6px rgba(74,222,128,0.6)" }} />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 6px rgba(74,222,128,0.6)" }} />
                     <span className="font-medium">{currentPersona.persona} online</span>
                     <span className="opacity-50">·</span>
                     <span className="hidden sm:inline tabular-nums">

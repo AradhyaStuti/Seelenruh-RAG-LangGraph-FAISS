@@ -436,14 +436,6 @@
     transform: translateX(100%);
   }
 
-  /* Online dot pulse */
-  @keyframes online-pulse {
-    0%, 100% { opacity: 0.55; transform: scale(1); }
-    50%       { opacity: 1;    transform: scale(1.1); }
-  }
-  .online-dot {
-    animation: online-pulse 2.4s ease-in-out infinite;
-  }
 }
 
 @keyframes skeleton-shimmer {
