@@ -108,6 +108,7 @@ async def vision_chat(
             return {"content": content, "via": "gemini-vision"}
         except Exception as err:
             log.warning("gemini vision failed", error=repr(err))
+            raise RuntimeError(f"gemini_failed: {repr(err)}")
 
     # 2. Anthropic fallback
     if anthropic_client.is_enabled():
