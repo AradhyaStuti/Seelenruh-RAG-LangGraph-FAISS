@@ -4,6 +4,7 @@ import time
 
 from ai import groq_client, ollama_client, anthropic_client
 import ai.gemini_client as gemini_client
+import ai.openrouter_client as openrouter_client
 from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
 from config import GROQ_API_KEY
 from logger import get_logger
@@ -95,9 +96,20 @@ async def vision_chat(
     temperature: float = 0.5,
     max_tokens: int = 1024,
 ) -> dict:
-    """Vision inference: Gemini first (free, reliable), Anthropic fallback."""
-    log.info("vision_chat called", gemini_enabled=gemini_client.is_enabled(), anthropic_enabled=anthropic_client.is_enabled())
-    # 1. Gemini vision (free tier, natively supports base64)
+    """Vision inference: OpenRouter (free) → Gemini → Anthropic fallback."""
+    # 1. OpenRouter vision (free tier — google/gemini-2.0-flash-exp:free)
+    if openrouter_client.is_enabled():
+        try:
+            content = await openrouter_client.vision_chat(
+                image_b64=image_b64, media_type=media_type,
+                text=text, system=system,
+                temperature=temperature, max_tokens=max_tokens,
+            )
+            return {"content": content, "via": "openrouter-vision"}
+        except Exception as err:
+            log.warning("openrouter vision failed", error=repr(err))
+
+    # 2. Gemini vision fallback
     if gemini_client.is_enabled():
         try:
             content = await gemini_client.vision_chat(
@@ -108,9 +120,8 @@ async def vision_chat(
             return {"content": content, "via": "gemini-vision"}
         except Exception as err:
             log.warning("gemini vision failed", error=repr(err))
-            raise RuntimeError(f"gemini_failed: {repr(err)}")
 
-    # 2. Anthropic fallback
+    # 3. Anthropic fallback
     if anthropic_client.is_enabled():
         try:
             content = await anthropic_client.vision_chat(
@@ -122,8 +133,7 @@ async def vision_chat(
         except Exception as err:
             log.error("anthropic vision failed", error=repr(err))
 
-    from config import GEMINI_API_KEY as _GK
-    raise RuntimeError(f"No vision provider available. gemini_enabled={gemini_client.is_enabled()} key_set={bool(_GK)} anthropic_enabled={anthropic_client.is_enabled()}")
+    raise RuntimeError("Image analysis is temporarily unavailable. Please try again later or send your question as text.")
 
 
 _VISION_SYSTEM = (

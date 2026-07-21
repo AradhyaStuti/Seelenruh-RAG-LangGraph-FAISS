@@ -42,6 +42,8 @@ SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
 # Optional: Google Gemini — used for vision/image analysis (free tier available)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# Optional: OpenRouter — vision fallback (free tier models available)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 # Optional: Anthropic as second LLM fallback (after Groq)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
