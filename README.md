@@ -39,10 +39,8 @@ The app routes user messages to one of four personas:
 - Goal tracking — detects what you're trying to accomplish (e.g. "file an RTI") and tracks it across turns.
 - Session history per persona — browse and restore past conversations.
 - Copy, save (bookmark), and thumbs up/down feedback on any response.
-- Export conversation as JSON, Markdown, or plain text (server-side, authenticated).
+- Export conversation as Markdown (server-side, authenticated).
 - Attach a document (.txt, .md, .pdf, .docx, .csv) to provide as context for your next message.
-- Voice input — mic button in the chat bar records audio and transcribes it via Groq Whisper STT; fills the input field automatically.
-- Read aloud — speaker button on every assistant message plays the response via ElevenLabs TTS (gTTS fallback); click again to stop.
 
 ### Retrieval
 
@@ -127,8 +125,7 @@ Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
 
 ### Account
 
-- Email/password signup with OTP-based email verification. A 6-digit code is sent to your email on signup; you must enter it before the account is activated. OTP expires in 10 minutes. Code shown on screen in dev mode (when no email provider is configured).
-- Forgot password and reset password flow via email link.
+- Email/password signup with immediate token issuance — no verification step required.
 - Change password from the account menu (invalidates all existing sessions on all devices).
 - Sign out with optional local data wipe.
 - Account deletion with full data purge (messages, summaries, goals, memory, feedback).
@@ -160,8 +157,6 @@ Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
 | Database | MongoDB Atlas (motor async driver) |
 | Cache/rate limiting | Redis (optional, falls back to in-memory) |
 | Auth | PyJWT + bcrypt, field-level Fernet encryption (cryptography>=42.0.0) |
-| TTS | ElevenLabs (primary), gTTS (fallback) |
-| STT | Groq Whisper (whisper-large-v3-turbo) |
 | Deployment | Docker, Hugging Face Spaces, nginx reverse proxy |
 | PWA | Service worker, Web App Manifest |
 
@@ -320,10 +315,6 @@ Fill in the required values before running:
 | `BRAVE_SEARCH_KEY` | No | Brave Search API key (web search cascade) |
 | `TAVILY_API_KEY` | No | Tavily Search API key (second web fallback) |
 | `SERPAPI_KEY` | No | SerpAPI key (fourth web fallback) |
-| `RESEND_API_KEY` | No | Resend API key for transactional email |
-| `SMTP_HOST` | No | SMTP server for email (alternative to Resend) |
-| `SMTP_USER` | No | SMTP username |
-| `SMTP_PASSWORD` | No | SMTP password |
 | `FIELD_ENCRYPTION_KEY` | No | 32-byte hex key for Fernet field encryption |
 | `REDIS_URL` | No | Redis URL for persistent rate-limit counters |
 

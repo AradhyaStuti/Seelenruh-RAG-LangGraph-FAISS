@@ -855,7 +855,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
         <Card className="w-full rounded-[2rem] glass-strong petal-shadow transition-all duration-500 overflow-hidden border-border/40">
           <CardContent className="pt-5 px-3 sm:px-5 pb-5">
             <Tabs value={selectedDomain} onValueChange={handleTabChange} className="w-full">
-              <TabsList aria-label="Choose your support persona" className="grid w-full grid-cols-4 h-auto bg-background/50 p-1.5 gap-1.5 rounded-2xl border border-border/40 backdrop-blur-sm shadow-inner">
+              <TabsList aria-label="Choose your support persona" className="grid w-full grid-cols-4 h-auto bg-background/45 p-1.5 gap-1.5 rounded-2xl border border-border/40 backdrop-blur-sm shadow-inner">
                 {Object.entries(domainConfig).map(([name, { icon: Icon, persona }]) => {
                   const dc = DOMAIN_COLORS[name];
                   const active = selectedDomain === name;
@@ -865,28 +865,31 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                       value={name}
                       aria-label={`${persona} — ${name}`}
                       style={active
-                        ? { background: dc.bg, borderColor: dc.border, boxShadow: `0 2px 12px ${dc.dot}30, 0 1px 0 ${dc.border} inset` }
+                        ? { background: dc.bg, borderColor: dc.border, boxShadow: `0 2px 16px ${dc.dot}35, 0 1px 0 rgba(255,255,255,0.7) inset` }
                         : {}}
                       className={cn(
-                        "group flex-col gap-1 py-2.5 px-1 rounded-xl border transition-all duration-200",
+                        "group flex-col gap-1.5 py-3 px-1 rounded-xl border transition-all duration-200",
                         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                         active
-                          ? "border-[inherit] shadow-sm"
-                          : "border-transparent hover:border-border/30 hover:bg-card/70"
+                          ? "border-[inherit] shadow-md"
+                          : "border-transparent hover:border-border/35 hover:bg-card/75 hover:shadow-sm"
                       )}
                     >
                       <div
-                        className="h-8 w-8 rounded-[10px] flex items-center justify-center mx-auto transition-all duration-200 group-hover:scale-105"
+                        className={cn(
+                          "h-9 w-9 rounded-[11px] flex items-center justify-center mx-auto transition-all duration-200",
+                          active ? "scale-110" : "group-hover:scale-105"
+                        )}
                         style={active
-                          ? { background: dc.iconBg, border: `1.5px solid ${dc.border}`, boxShadow: `0 2px 8px ${dc.dot}30` }
-                          : { background: "hsl(var(--muted)/0.5)", border: "1.5px solid transparent" }
+                          ? { background: dc.iconBg, border: `1.5px solid ${dc.border}`, boxShadow: `0 3px 10px ${dc.dot}35` }
+                          : { background: "hsl(var(--muted)/0.45)", border: "1.5px solid transparent" }
                         }
                       >
-                        <Icon className="h-4 w-4 transition-transform duration-200" style={{ color: active ? dc.iconColor : undefined }} />
+                        <Icon className="h-4.5 w-4.5 transition-transform duration-200" style={{ color: active ? dc.iconColor : undefined }} />
                       </div>
                       <div className="text-center leading-none">
-                        <p className="font-semibold text-[11.5px] tracking-tight" style={active ? { color: dc.iconColor } : {}}>{persona}</p>
-                        <p className="text-[9px] mt-0.5 text-muted-foreground/45">{DOMAIN_SHORT[name]}</p>
+                        <p className="font-semibold text-[12px] tracking-tight" style={active ? { color: dc.iconColor } : {}}>{persona}</p>
+                        <p className="text-[9px] mt-0.5 text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">{DOMAIN_SHORT[name]}</p>
                       </div>
                     </TabsTrigger>
                   );
@@ -895,11 +898,11 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
 
               {/* Persona identity row — visible when in chat view */}
               {(chatView || messageCount > 1 || isLoading) && (
-                <div className="mt-3 flex items-center gap-3 px-1">
+                <div className="mt-3 flex items-center gap-3 px-1 py-1.5 rounded-2xl bg-background/40 border border-border/30 backdrop-blur-sm">
                   <button
                     type="button"
                     onClick={() => { setChatView(false); startNewChat(); }}
-                    className="shrink-0 rounded-full p-2 text-muted-foreground/50 hover:bg-muted/70 hover:text-foreground transition-all duration-200 hover:scale-105"
+                    className="shrink-0 rounded-full p-2 ml-1 text-muted-foreground/50 hover:bg-muted/70 hover:text-foreground transition-all duration-200 hover:scale-105"
                     aria-label="Back to persona selection"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -912,17 +915,17 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                     return (
                       <>
                         <div
-                          className="h-9 w-9 rounded-[10px] flex items-center justify-center shrink-0"
-                          style={{ background: dc.iconBg, border: `1.5px solid ${dc.border}`, boxShadow: `0 2px 8px ${dc.dot}25` }}
+                          className="h-10 w-10 rounded-[12px] flex items-center justify-center shrink-0"
+                          style={{ background: dc.iconBg, border: `1.5px solid ${dc.border}`, boxShadow: `0 2px 10px ${dc.dot}30` }}
                         >
-                          <Icon className="h-4.5 w-4.5" style={{ color: dc.iconColor }} />
+                          <Icon className="h-5 w-5" style={{ color: dc.iconColor }} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             <p className="font-semibold text-sm leading-tight" style={{ color: dc.iconColor }}>{persona}</p>
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" style={{ boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+                            <span className="h-2 w-2 rounded-full bg-emerald-400 online-dot" style={{ boxShadow: "0 0 5px rgba(74,222,128,0.6)" }} />
                           </div>
-                          <p className="text-[11px] text-muted-foreground/55 leading-snug truncate">{subtitle}</p>
+                          <p className="text-[11px] text-muted-foreground/50 leading-snug truncate mt-0.5">{subtitle}</p>
                         </div>
                       </>
                     );
@@ -930,13 +933,11 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                 </div>
               )}
 
-              <div key={selectedDomain} className="mt-3 p-3 sm:p-4 rounded-[1.75rem] bg-background/55 border border-border/50 shadow-inner backdrop-blur-sm animate-fade-in">
+              <div key={selectedDomain} className="mt-3 p-3 sm:p-4 rounded-[1.75rem] bg-background/50 border border-border/45 shadow-[inset_0_2px_12px_hsl(var(--foreground)/0.03)] backdrop-blur-sm animate-fade-in">
                 <div className="mb-3 flex items-center justify-between gap-1 px-1">
                   <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground overflow-hidden">
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500">
-                      <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
-                    </span>
-                    <span>{currentPersona.persona} online</span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 online-dot" style={{ boxShadow: "0 0 6px rgba(74,222,128,0.6)" }} />
+                    <span className="font-medium">{currentPersona.persona} online</span>
                     <span className="opacity-50">·</span>
                     <span className="hidden sm:inline tabular-nums">
                       {messageCount} {messageCount === 1 ? "message" : "messages"}
@@ -1019,27 +1020,6 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>One-paragraph recap of this conversation</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {activeSession && visibleMessages.length > 1 && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={exportChat}
-                            className="text-[11px] gap-1.5 h-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="7 10 12 15 17 10" />
-                              <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            <span>Export</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Download conversation as text file</TooltipContent>
                       </Tooltip>
                     )}
                     </div>
@@ -1168,16 +1148,20 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                         {/* Quick-start prompts */}
                         {currentPersona.quickReplies?.length > 0 && (
                           <div className="relative mt-6">
-                            <p className="text-center text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">
-                              Try asking
-                            </p>
+                            <div className="flex items-center gap-3 mb-3.5">
+                              <div className="flex-1 h-px bg-border/40" />
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/35">
+                                Try asking
+                              </p>
+                              <div className="flex-1 h-px bg-border/40" />
+                            </div>
                             <div className="flex flex-wrap justify-center gap-2">
                               {currentPersona.quickReplies.map((prompt) => (
                                 <button
                                   key={prompt}
                                   type="button"
                                   onClick={() => sendTextMessage(prompt)}
-                                  className="rounded-full px-3.5 py-1.5 text-[12px] transition-all duration-200 hover:scale-[1.03] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
+                                  className="reply-chip rounded-full px-4 py-2 text-[13px] font-medium transition-all duration-200 hover:scale-[1.03] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
                                   style={{ borderColor: dc.border, color: dc.iconColor, background: dc.bg, border: `1px solid ${dc.border}` }}
                                 >
                                   {prompt}
@@ -1191,20 +1175,23 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                   })()
                 ) : (
                 <ScrollArea
-                  className="h-[52vh] sm:h-[58vh] pr-2"
+                  className="h-[56vh] sm:h-[63vh] pr-2"
                   aria-label="Chat messages"
                   aria-busy={isLoading}
                 >
                   <div role="log" aria-label="Conversation" aria-live="off" className="space-y-6">
                     {activeSession?.summary && (
-                      <div className="rounded-xl border border-border/30 bg-muted/25 px-3.5 py-2.5 text-[12px] leading-relaxed">
-                        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground/70">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                      <div
+                        className="rounded-xl border border-border/25 border-l-[3px] bg-muted/15 px-3.5 py-2.5 text-[12px] leading-relaxed shadow-sm"
+                        style={{ borderLeftColor: DOMAIN_COLORS[selectedDomain].dot + "90" }}
+                      >
+                        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: DOMAIN_COLORS[selectedDomain].iconColor }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                           </svg>
-                          Session context
+                          Previous session
                         </div>
-                        <p className="text-foreground/80">{activeSession.summary}</p>
+                        <p className="text-foreground/75 leading-relaxed">{activeSession.summary}</p>
                       </div>
                     )}
                     {(isEmergency || preEmergency) && <EmergencyContacts />}
@@ -1215,7 +1202,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                             key={prompt}
                             type="button"
                             onClick={() => sendTextMessage(prompt)}
-                            className="rounded-full border border-primary/25 bg-primary/8 px-3.5 py-1.5 text-[12px] text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/40 transition-all duration-200 text-left"
+                            className="reply-chip rounded-full border border-primary/30 bg-primary/8 px-4 py-2 text-[13px] font-medium text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/50 hover:shadow-sm transition-all duration-200 text-left"
                           >
                             {prompt}
                           </button>
@@ -1246,9 +1233,9 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                               className={cn(
                                 "relative rounded-2xl p-4 text-sm transition-all duration-300 group hover:shadow-md",
                                 message.role === "user"
-                                  ? "bg-gradient-to-br from-primary/85 to-primary text-primary-foreground rounded-br-md petal-shadow leading-relaxed"
+                                  ? "bg-gradient-to-br from-primary to-primary/75 text-primary-foreground rounded-br-md shadow-[0_4px_20px_hsl(var(--primary)/0.35),0_1px_4px_hsl(var(--foreground)/0.08)] leading-relaxed ring-1 ring-primary/20"
                                   : cn(
-                                      "bg-card/95 text-card-foreground rounded-bl-md border border-border/40 petal-shadow border-l-[2.5px]",
+                                      "bg-card/95 text-card-foreground rounded-bl-md border border-border/40 petal-shadow border-l-[3px]",
                                       "prose prose-sm max-w-none leading-relaxed",
                                       "prose-p:my-1 prose-p:leading-relaxed",
                                       "prose-headings:font-headline prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground/90 prose-headings:mt-3 prose-headings:mb-1",
@@ -1517,17 +1504,18 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                             )}
                             <span
                               className={cn(
-                                "text-[10px] mt-1 text-muted-foreground/80",
+                                "msg-time text-[10px] mt-1 text-muted-foreground/55 select-none",
                                 message.role === "user" ? "text-right pr-1" : "text-left pl-1"
                               )}
+                              aria-hidden="true"
                             >
                               {hydrated ? formatTime(message.timestamp) : ""}
                             </span>
                           </div>
                           {message.role === "user" && (
-                            <Avatar className="h-9 w-9 ring-2 ring-accent/40 shrink-0">
-                              <AvatarFallback className="bg-gradient-to-br from-accent/80 to-secondary text-foreground/80">
-                                <SoftUser className="h-5 w-5" />
+                            <Avatar className="h-9 w-9 shrink-0 ring-1 ring-primary/25" style={{ boxShadow: "0 2px 8px hsl(var(--primary)/0.15)" }}>
+                              <AvatarFallback className="bg-gradient-to-br from-primary/15 via-accent/10 to-secondary/20 text-foreground/70">
+                                <SoftUser className="h-4.5 w-4.5" />
                               </AvatarFallback>
                             </Avatar>
                           )}
@@ -1604,9 +1592,9 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                     <form onSubmit={form.handleSubmit(onSubmit)} aria-label={`Send a message to ${domainConfig[selectedDomain].persona}`}>
                       {/* Unified input pill */}
                       <div className={cn(
-                        "flex items-center gap-2 rounded-[1.25rem] border px-3 py-2 transition-all duration-200",
-                        "bg-card/85 backdrop-blur-sm",
-                        "border-border/50 focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/12 focus-within:shadow-sm"
+                        "chat-input-pill flex items-center gap-2 rounded-[1.4rem] border px-3 py-2.5 transition-all duration-250",
+                        "bg-card/90 backdrop-blur-sm",
+                        "border-border/50"
                       )}>
                         {/* Attach file button */}
                         <Tooltip>

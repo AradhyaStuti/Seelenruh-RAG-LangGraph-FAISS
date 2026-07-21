@@ -73,19 +73,39 @@ export function LoginScreen() {
 
   const strength = passwordStrength(password);
 
+  const personaColors = [
+    { color: "#7CB9E8", label: "Usha" },
+    { color: "#C9B38A", label: "Umang" },
+    { color: "#8FC9A3", label: "Aarogya" },
+    { color: "#E87C7C", label: "Raksha" },
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
       <div className="w-full max-w-sm">
 
         {/* Brand mark */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-3xl bg-gradient-to-br from-primary/20 via-card to-accent/15 ring-1 ring-primary/25 petal-shadow mb-4 mx-auto">
-            <BlossomLogo className="h-7 w-7" />
+          <div className="relative inline-flex items-center justify-center mb-4 mx-auto">
+            <div className="absolute inset-0 rounded-3xl blur-xl opacity-30 bg-primary scale-125" />
+            <div className="relative h-16 w-16 rounded-3xl bg-gradient-to-br from-primary/25 via-card to-accent/20 ring-1 ring-primary/30 petal-shadow flex items-center justify-center">
+              <BlossomLogo className="h-8 w-8" />
+            </div>
           </div>
-          <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="font-headline text-3xl font-bold tracking-tight text-foreground">
             Seelen<span className="text-gradient font-bold">ruh</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Wellbeing, rights, and safety — one place.</p>
+          <p className="text-sm text-muted-foreground/70 mt-1.5">Wellbeing, rights, and safety — one place.</p>
+
+          {/* Persona dots */}
+          <div className="flex items-center justify-center gap-2.5 mt-3.5">
+            {personaColors.map(({ color, label }) => (
+              <div key={label} className="flex flex-col items-center gap-1">
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}70` }} />
+                <span className="text-[9px] text-muted-foreground/40 font-medium">{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Card */}
@@ -94,8 +114,8 @@ export function LoginScreen() {
             <h2 className="font-headline text-lg font-semibold text-foreground">
               {mode === "signup" ? "Create your account" : "Welcome back"}
             </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {mode === "signup" ? "Your information is kept private." : "Sign in to continue."}
+            <p className="text-sm text-muted-foreground/70 mt-0.5">
+              {mode === "signup" ? "Private and secure — your data stays yours." : "Sign in to continue your conversations."}
             </p>
           </div>
 
@@ -192,7 +212,10 @@ export function LoginScreen() {
               )}
 
               {error && (
-                <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-sm text-destructive animate-fade-in">
+                <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/8 px-3.5 py-3 text-sm text-destructive animate-fade-in flex items-start gap-2">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
                   {error}
                 </div>
               )}
@@ -200,7 +223,7 @@ export function LoginScreen() {
               <Button
                 type="submit"
                 disabled={loading || !email || password.length < 6 || (mode === "signup" && !name)}
-                className="w-full h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-all duration-200 petal-shadow disabled:opacity-50 disabled:shadow-none mt-2"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-primary/85 text-primary-foreground hover:from-primary/95 hover:to-primary/75 font-semibold transition-all duration-250 petal-shadow disabled:opacity-50 disabled:shadow-none disabled:hover:from-primary disabled:hover:to-primary/85 mt-2 tracking-wide"
               >
                 {loading && (
                   <span className="inline-block h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin mr-2" />
