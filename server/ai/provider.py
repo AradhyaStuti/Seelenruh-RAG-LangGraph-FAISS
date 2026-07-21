@@ -2,7 +2,7 @@
 import json
 import time
 
-from ai import groq_client, ollama_client, anthropic_client
+from ai import groq_client, ollama_client, anthropic_client, gemini_client
 from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
 from config import GROQ_API_KEY
 from logger import get_logger
@@ -94,8 +94,20 @@ async def vision_chat(
     temperature: float = 0.5,
     max_tokens: int = 1024,
 ) -> dict:
-    """Vision inference: Anthropic first (native base64), Groq fallback."""
-    # 1. Anthropic vision — natively supports base64 images
+    """Vision inference: Gemini first (free, reliable), Anthropic fallback."""
+    # 1. Gemini vision (free tier, natively supports base64)
+    if gemini_client.is_enabled():
+        try:
+            content = await gemini_client.vision_chat(
+                image_b64=image_b64, media_type=media_type,
+                text=text, system=system,
+                temperature=temperature, max_tokens=max_tokens,
+            )
+            return {"content": content, "via": "gemini-vision"}
+        except Exception as err:
+            log.warning("gemini vision failed", error=repr(err))
+
+    # 2. Anthropic fallback
     if anthropic_client.is_enabled():
         try:
             content = await anthropic_client.vision_chat(
@@ -105,19 +117,7 @@ async def vision_chat(
             )
             return {"content": content, "via": "anthropic-vision"}
         except Exception as err:
-            log.warning("anthropic vision failed", error=repr(err), next="groq-vision")
-
-    # 2. Groq vision fallback (llama-3.2-11b-vision-preview)
-    if GROQ_API_KEY:
-        try:
-            content = await groq_client.vision_chat(
-                image_b64=image_b64, media_type=media_type,
-                text=text, system=system,
-                temperature=temperature, max_tokens=max_tokens,
-            )
-            return {"content": content, "via": "groq-vision"}
-        except Exception as err:
-            log.error("groq vision failed", error=repr(err))
+            log.error("anthropic vision failed", error=repr(err))
 
     raise RuntimeError("Image analysis is temporarily unavailable. Please try again later or send your question as text.")
 

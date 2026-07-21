@@ -40,6 +40,9 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 # Optional: SerpAPI — tertiary fallback (https://serpapi.com)
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
+# Optional: Google Gemini — used for vision/image analysis (free tier available)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
 # Optional: Anthropic as second LLM fallback (after Groq)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
