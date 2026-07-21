@@ -347,6 +347,8 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     return () => { cancelled = true; };
   }, []);
 
+  const currentDomainState = domainSessions[selectedDomain];
+
   // Server message recovery: when a session has no messages (localStorage was cleared but
   // server summary existed), fetch message history and restore the thread.
   useEffect(() => {
@@ -401,7 +403,6 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     }
   }, [domainSessions, selectedDomain, hydrated]);
 
-  const currentDomainState = domainSessions[selectedDomain];
   const activeSession = useMemo(
     () => currentDomainState.sessions.find((s) => s.id === currentDomainState.activeId) || null,
     [currentDomainState]
