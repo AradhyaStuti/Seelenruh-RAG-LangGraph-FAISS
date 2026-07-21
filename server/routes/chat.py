@@ -235,8 +235,8 @@ async def image_chat_endpoint(
                 ]
             )
             result = {"content": fallback.get("content", "I couldn't analyse the image. Please describe what you see and I'll help."), "via": "text-fallback"}
-        except Exception:
-            result = {"content": "I'm unable to analyse images right now. Please describe what you see and I'll help.", "via": "offline-fallback"}
+        except Exception as ferr:
+            result = {"content": f"I'm unable to analyse images right now. Please describe what you see and I'll help. [debug: {repr(err)}]", "via": "offline-fallback"}
 
     session_id = (req.sessionId and req.sessionId.strip()) or user["id"]
     await db.save_message(
