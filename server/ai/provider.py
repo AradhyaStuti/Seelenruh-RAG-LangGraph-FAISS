@@ -96,6 +96,7 @@ async def vision_chat(
     max_tokens: int = 1024,
 ) -> dict:
     """Vision inference: Gemini first (free, reliable), Anthropic fallback."""
+    log.info("vision_chat called", gemini_enabled=gemini_client.is_enabled(), anthropic_enabled=anthropic_client.is_enabled())
     # 1. Gemini vision (free tier, natively supports base64)
     if gemini_client.is_enabled():
         try:
@@ -120,7 +121,8 @@ async def vision_chat(
         except Exception as err:
             log.error("anthropic vision failed", error=repr(err))
 
-    raise RuntimeError("Image analysis is temporarily unavailable. Please try again later or send your question as text.")
+    from config import GEMINI_API_KEY as _GK
+    raise RuntimeError(f"No vision provider available. gemini_enabled={gemini_client.is_enabled()} key_set={bool(_GK)} anthropic_enabled={anthropic_client.is_enabled()}")
 
 
 _VISION_SYSTEM = (
