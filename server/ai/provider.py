@@ -4,6 +4,7 @@ import time
 
 from ai import groq_client, ollama_client, anthropic_client
 from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
+from config import GROQ_API_KEY
 from logger import get_logger
 
 log = get_logger("provider")
@@ -132,7 +133,6 @@ _VISION_SYSTEM = (
     "If text is unclear, say so and describe what you CAN see."
 )
 
-from config import GROQ_API_KEY  # noqa: E402 — imported here to avoid circular at module load
 
 
 async def chat_safe(**opts) -> dict:
