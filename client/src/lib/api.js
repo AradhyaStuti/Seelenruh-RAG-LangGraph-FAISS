@@ -257,6 +257,20 @@ export async function checkServerHealth() {
   }
 }
 
+/**
+ * Fetch server-stored message history for a session.
+ * Returns [] when MongoDB is not connected or session has no stored messages.
+ */
+export async function fetchSessionHistory(sessionId) {
+  if (!sessionId) return [];
+  try {
+    const data = await get(`/api/chat/history/${encodeURIComponent(sessionId)}`);
+    return Array.isArray(data?.messages) ? data.messages : [];
+  } catch {
+    return [];
+  }
+}
+
 export function buildHistory(messages, n = 6) {
   return messages
     .slice(1)

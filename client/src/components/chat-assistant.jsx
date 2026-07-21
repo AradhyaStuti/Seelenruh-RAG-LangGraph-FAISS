@@ -50,7 +50,7 @@ import { ChatHistoryDrawer } from "@/components/chat-history";
 import { loadMoments, saveMoment, removeMoment } from "@/components/saved-moments";
 import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
-import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, exportConversation } from "@/lib/api";
+import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, exportConversation, fetchSessionHistory } from "@/lib/api";
 import { ExplainabilityPanel } from "@/components/explainability-panel";
 import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
@@ -296,10 +296,9 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cross-device summary hydrate: pull every server-stored summary for this
-  // user and overlay it onto the local sessions. Lets a user pick up where
-  // they left off on another device. Best-effort — fails silently if the
-  // server is down or the user is signed out.
+  // Cross-device summary hydrate: pull every server-stored summary for this user and overlay
+  // onto local sessions. Also CREATES stub sessions for sessions that exist on the server but
+  // not locally (e.g. after localStorage was cleared) so users don't lose their chat history.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -311,22 +310,82 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
           const ds = next[row.persona];
           if (!ds) continue;
           const found = ds.sessions.find((s) => s.id === row.sessionId);
-          if (!found) continue;
-          if ((found.summary || "") === row.summary) continue;
-          next[row.persona] = {
-            ...ds,
-            sessions: ds.sessions.map((s) =>
-              s.id === row.sessionId
-                ? { ...s, summary: row.summary, summarizedAt: Date.parse(row.updatedAt || "") || Date.now() }
-                : s
-            ),
-          };
+          if (found) {
+            // Update existing session's summary if it changed
+            if ((found.summary || "") !== row.summary) {
+              next[row.persona] = {
+                ...ds,
+                sessions: ds.sessions.map((s) =>
+                  s.id === row.sessionId
+                    ? { ...s, summary: row.summary, summarizedAt: Date.parse(row.updatedAt || "") || Date.now() }
+                    : s
+                ),
+              };
+            }
+          } else {
+            // Session missing locally (localStorage cleared) — create a stub so history can be restored
+            const stub = {
+              id: row.sessionId,
+              title: row.summary ? row.summary.slice(0, 55) + "…" : "Restored chat",
+              createdAt: Date.parse(row.updatedAt || "") || Date.now(),
+              updatedAt: Date.parse(row.updatedAt || "") || Date.now(),
+              messages: [],  // empty — will be fetched from server when selected
+              summary: row.summary,
+              summarizedAt: Date.parse(row.updatedAt || "") || Date.now(),
+              isEmergency: false,
+              _serverRestored: true,
+            };
+            next[row.persona] = { ...ds, sessions: [stub, ...ds.sessions] };
+          }
         }
         return next;
       });
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Server message recovery: when a session has no messages (localStorage was cleared but
+  // server summary existed), fetch message history and restore the thread.
+  useEffect(() => {
+    if (!hydrated) return;
+    const activeId = currentDomainState.activeId;
+    if (!activeId) return;
+    const session = currentDomainState.sessions.find((s) => s.id === activeId);
+    if (!session) return;
+    // Only fetch if: (a) session is a server-restored stub OR (b) messages empty and summary exists
+    const needsRestore = session._serverRestored || (session.messages.length === 0 && session.summary);
+    if (!needsRestore) return;
+    let cancelled = false;
+    (async () => {
+      const msgs = await fetchSessionHistory(activeId);
+      if (cancelled || !msgs.length) return;
+      setDomainSessions((prev) => {
+        const ds = prev[selectedDomain];
+        return {
+          ...prev,
+          [selectedDomain]: {
+            ...ds,
+            sessions: ds.sessions.map((s) =>
+              s.id === activeId
+                ? {
+                    ...s,
+                    _serverRestored: false,
+                    messages: msgs.map((m) => ({
+                      id: m._id || m.id || crypto.randomUUID(),
+                      role: m.role,
+                      content: m.content,
+                      timestamp: m.createdAt ? Date.parse(m.createdAt) : Date.now(),
+                    })),
+                  }
+                : s
+            ),
+          },
+        };
+      });
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, currentDomainState.activeId, selectedDomain]);
 
   // Persist sessions + active domain
   useEffect(() => {

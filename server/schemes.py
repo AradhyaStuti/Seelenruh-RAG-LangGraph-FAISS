@@ -49,6 +49,19 @@ def _caste_in(*cats: str) -> Callable[[dict], bool]:
     return lambda a: not a.get("casteCategory") or a["casteCategory"].lower() in s
 
 
+def _rural() -> Callable[[dict], bool]:
+    return lambda a: not a.get("residenceType") or a["residenceType"].lower() == "rural"
+
+
+def _urban() -> Callable[[dict], bool]:
+    return lambda a: not a.get("residenceType") or a["residenceType"].lower() == "urban"
+
+
+def _land_lt(acres: float) -> Callable[[dict], bool]:
+    """Match if landholding is below threshold (or not provided)."""
+    return lambda a: a.get("landholding") is None or float(a["landholding"]) < acres
+
+
 SCHEMES = [
     {
         "id": "pmjay",
@@ -62,11 +75,11 @@ SCHEMES = [
     {
         "id": "pmkisan",
         "name": "PM Kisan Samman Nidhi",
-        "summary": "₹6,000/year (3 instalments of ₹2,000) direct to small/marginal farmers.",
+        "summary": "₹6,000/year (3 instalments of ₹2,000) direct to small/marginal farmers (landholding < 2 hectares / ~5 acres).",
         "link": "https://pmkisan.gov.in",
         "level": "central",
-        "match": _farmer(True),
-        "reasonIf": "You marked yourself as a farmer.",
+        "match": _and(_farmer(True), _land_lt(5.0)),
+        "reasonIf": "Small/marginal farmer with landholding under 5 acres (~2 hectares).",
     },
     {
         "id": "nsp",
@@ -83,8 +96,8 @@ SCHEMES = [
         "summary": "Pucca house assistance of ₹1.2 lakh (plain) / ₹1.3 lakh (hilly) for rural BPL families.",
         "link": "https://pmayg.nic.in",
         "level": "central",
-        "match": _income_lt(3 * LPA),
-        "reasonIf": "Household income suggests EWS/LIG bracket.",
+        "match": _and(_rural(), _income_lt(3 * LPA)),
+        "reasonIf": "Rural household with income suggesting BPL/EWS bracket.",
     },
     {
         "id": "nrega",
@@ -92,8 +105,8 @@ SCHEMES = [
         "summary": "Right to 100 days of unskilled wage employment per rural household per year.",
         "link": "https://nrega.nic.in",
         "level": "central",
-        "match": _and(_age_in(18, 99), _income_lt(3 * LPA)),
-        "reasonIf": "Adult in a low-income household — eligible to demand work at your Gram Panchayat.",
+        "match": _and(_rural(), _age_in(18, 99), _income_lt(3 * LPA)),
+        "reasonIf": "Rural adult in a low-income household — eligible to demand work at your Gram Panchayat.",
     },
     {
         "id": "pmuy",
@@ -232,8 +245,8 @@ SCHEMES = [
         "summary": "Credit-Linked Subsidy on home loan interest. EWS/LIG up to ₹6 LPA income, MIG-I up to ₹12 LPA, MIG-II up to ₹18 LPA.",
         "link": "https://pmaymis.gov.in",
         "level": "central",
-        "match": _income_lt(18 * LPA),
-        "reasonIf": "Annual income under ₹18 LPA — likely fits EWS/LIG/MIG eligibility.",
+        "match": _and(_urban(), _income_lt(18 * LPA)),
+        "reasonIf": "Urban household with annual income under ₹18 LPA — fits EWS/LIG/MIG eligibility.",
     },
     {
         "id": "pmmvy",

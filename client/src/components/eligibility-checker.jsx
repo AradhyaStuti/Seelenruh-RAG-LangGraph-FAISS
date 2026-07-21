@@ -30,6 +30,8 @@ const initialForm = {
   incomeAnnual: "",
   gender: "",
   casteCategory: "",
+  residenceType: "",
+  landholding: "",
   isStudent: false,
   isFarmer: false,
   isDisabled: false,
@@ -63,6 +65,8 @@ export function EligibilityChecker({ open, onOpenChange }) {
         incomeAnnual: form.incomeAnnual ? Number(form.incomeAnnual) : undefined,
         gender: form.gender || undefined,
         casteCategory: form.casteCategory || undefined,
+        residenceType: form.residenceType || undefined,
+        landholding: form.landholding ? Number(form.landholding) : undefined,
         isStudent: form.isStudent,
         isFarmer: form.isFarmer,
         isDisabled: form.isDisabled,
@@ -163,6 +167,33 @@ export function EligibilityChecker({ open, onOpenChange }) {
                   <option value="obc">OBC</option>
                   <option value="general">General</option>
                 </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="el-residence" className="text-xs">Area of Residence</Label>
+                <select
+                  id="el-residence"
+                  value={form.residenceType}
+                  onChange={(e) => setForm((f) => ({ ...f, residenceType: e.target.value }))}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Not specified</option>
+                  <option value="rural">Rural (village / gram panchayat)</option>
+                  <option value="urban">Urban (town / city)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="el-land" className="text-xs">Land Owned (acres) — for farmers</Label>
+                <Input
+                  id="el-land"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="e.g. 2.5 (leave blank if unknown)"
+                  value={form.landholding}
+                  onChange={(e) => setForm((f) => ({ ...f, landholding: e.target.value }))}
+                />
               </div>
             </div>
 

@@ -99,6 +99,8 @@ class EligibilityRequest(BaseModel):
     isDisabled: Optional[bool] = None
     isWidow: Optional[bool] = None
     casteCategory: Optional[str] = Field(default=None, max_length=20)  # sc | st | obc | general
+    residenceType: Optional[str] = Field(default=None, max_length=10)  # urban | rural
+    landholding: Optional[float] = Field(default=None, ge=0)           # acres owned
 
 
 class SchemeMatch(BaseModel):

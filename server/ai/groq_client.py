@@ -1,13 +1,11 @@
-"""Groq SDK wrapper. Exposes chat, chat_json, transcribe — the
+"""Groq SDK wrapper. Exposes chat and chat_json — the
 provider layer wraps these with auto-fallback."""
-import base64
-import io
 import json
 from typing import AsyncIterator
 
 from groq import AsyncGroq, APIStatusError
 
-from config import GROQ_API_KEY, GROQ_MODEL_FAST, GROQ_MODEL_WHISPER
+from config import GROQ_API_KEY, GROQ_MODEL_FAST
 
 _client: AsyncGroq | None = None
 
@@ -71,42 +69,3 @@ async def stream_chat(
         raise GroqError(str(err), status=err.status_code) from err
 
 
-async def transcribe(audio_data_uri: str, lang: str = "auto") -> str:
-    _, _, payload = audio_data_uri.partition(",")
-    audio_bytes = base64.b64decode(payload or audio_data_uri)
-    if not audio_bytes:
-        raise ValueError("Empty audio payload")
-    mime = "audio/wav"
-    if audio_data_uri.startswith("data:") and ";" in audio_data_uri:
-        mime = audio_data_uri.split(":", 1)[1].split(";", 1)[0]
-    ext = mime.split("/")[-1].split(";")[0] or "wav"
-
-    # Lock language for all known languages — without it, Whisper auto-detect often mishears
-    # Hindi/Hinglish phonemes as English garbage (e.g. "mujhe acha ni lg rha" → "Milders" or
-    # "Topics is a great way to get a job"). "auto" defaults to "hi" because this is an Indian
-    # app — language="hi" handles both Devanagari and Hinglish correctly. German/English users
-    # must select their language explicitly from the selector.
-    _LANG_MAP = {"en": "en", "hi": "hi", "de": "de", "auto": "hi"}
-    whisper_lang = _LANG_MAP.get(lang, "hi")
-
-    _PROMPTS = {
-        "en": "The user is speaking in English or Hinglish. Topics: mental health, legal, government schemes, safety.",
-        "hi": "The user is speaking in Hindi or Hinglish (Roman-script Hindi like 'acha nahi lag raha'). Transcribe exactly as spoken. Topics: mental health, legal, government schemes, safety.",
-        "de": "Der Benutzer spricht auf Deutsch. Themen: psychische Gesundheit, Recht, staatliche Programme, Sicherheit.",
-        "auto": "The user may be speaking in English, Hindi, Hinglish (Roman-script Hindi like 'mujhe acha nahi lag raha'), or German. Transcribe exactly as spoken in the detected language. Topics: mental health, legal, government schemes, safety.",
-    }
-    prompt = _PROMPTS.get(lang, _PROMPTS["en"])
-
-    file_tuple = (f"audio.{ext}", io.BytesIO(audio_bytes), mime)
-    kwargs = dict(
-        file=file_tuple,
-        model=GROQ_MODEL_WHISPER,
-        response_format="json",
-        prompt=prompt,
-        temperature=0,  # deterministic — dramatically reduces hallucinations on marginal audio
-    )
-    if whisper_lang:
-        kwargs["language"] = whisper_lang
-
-    resp = await _get().audio.transcriptions.create(**kwargs)
-    return (resp.text or "").strip()

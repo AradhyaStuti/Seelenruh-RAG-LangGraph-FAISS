@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
@@ -115,6 +116,7 @@ else:
     _ports = "|".join(re.escape(p.strip()) for p in DEV_ALLOWED_PORTS.split(",") if p.strip())
     allow_origin_regex = rf"^http://(localhost|127\.0\.0\.1):({_ports})$"
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

@@ -158,6 +158,86 @@ _SOURCES: list[dict] = [
         "topic": "National Cyber Crime Reporting Portal — 1930",
         "section": "safety",
     },
+    # ── Additional scheme portals ─────────────────────────────────────────────
+    {
+        "id": "eshram",
+        "url": "https://en.wikipedia.org/wiki/E-Shram",
+        "domain": "Government Schemes",
+        "topic": "e-Shram Portal — Unorganised Worker Registration and Benefits",
+        "section": "schemes",
+    },
+    {
+        "id": "pmfby_wiki",
+        "url": "https://en.wikipedia.org/wiki/Pradhan_Mantri_Fasal_Bima_Yojana",
+        "domain": "Government Schemes",
+        "topic": "PM Fasal Bima Yojana — Crop Insurance Scheme",
+        "section": "schemes",
+    },
+    {
+        "id": "mgnrega_wiki",
+        "url": "https://en.wikipedia.org/wiki/Mahatma_Gandhi_National_Rural_Employment_Guarantee_Act",
+        "domain": "Government Schemes",
+        "topic": "MGNREGA — 100 Days Rural Employment Guarantee",
+        "section": "schemes",
+    },
+    {
+        "id": "pmay_wiki",
+        "url": "https://en.wikipedia.org/wiki/Pradhan_Mantri_Awas_Yojana",
+        "domain": "Government Schemes",
+        "topic": "PM Awas Yojana — Affordable Housing Scheme (Urban and Rural)",
+        "section": "schemes",
+    },
+    {
+        "id": "disability_india",
+        "url": "https://en.wikipedia.org/wiki/Rights_of_Persons_with_Disabilities_Act,_2016",
+        "domain": "Government Schemes",
+        "topic": "Rights of Persons with Disabilities Act 2016 — RPWD",
+        "section": "schemes",
+    },
+    # ── Additional mental health sources ─────────────────────────────────────
+    {
+        "id": "cbt_wiki",
+        "url": "https://en.wikipedia.org/wiki/Cognitive_behavioral_therapy",
+        "domain": "Mental Health",
+        "topic": "Cognitive Behavioural Therapy (CBT) — Techniques and Uses",
+        "section": "mental_health",
+    },
+    {
+        "id": "anxiety_wiki",
+        "url": "https://en.wikipedia.org/wiki/Anxiety_disorder",
+        "domain": "Mental Health",
+        "topic": "Anxiety Disorders — Types, Symptoms, and Management",
+        "section": "mental_health",
+    },
+    {
+        "id": "depression_wiki",
+        "url": "https://en.wikipedia.org/wiki/Major_depressive_disorder",
+        "domain": "Mental Health",
+        "topic": "Depression — Symptoms, Causes, and Treatment",
+        "section": "mental_health",
+    },
+    # ── Additional legal / women's rights ────────────────────────────────────
+    {
+        "id": "ncw_wiki",
+        "url": "https://en.wikipedia.org/wiki/National_Commission_for_Women",
+        "domain": "Legal",
+        "topic": "National Commission for Women — Complaints and Support",
+        "section": "legal",
+    },
+    {
+        "id": "pocso_wiki",
+        "url": "https://en.wikipedia.org/wiki/Protection_of_Children_from_Sexual_Offences_Act,_2012",
+        "domain": "Legal",
+        "topic": "POCSO Act 2012 — Child Sexual Abuse Protections",
+        "section": "legal",
+    },
+    {
+        "id": "domestic_violence_wiki",
+        "url": "https://en.wikipedia.org/wiki/Protection_of_Women_from_Domestic_Violence_Act,_2005",
+        "domain": "Safety",
+        "topic": "Domestic Violence Act 2005 — Rights, Orders, and Helplines",
+        "section": "safety",
+    },
 ]
 
 

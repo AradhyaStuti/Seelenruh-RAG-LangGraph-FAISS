@@ -670,14 +670,16 @@ async def ingest(chunks: list[dict]) -> int:
 
 
 def _overfetch_k(k: int, domain: Optional[str]) -> int:
-    """Fetch more candidates for Legal/Scheme domains — dense chunks, wording differences matter."""
+    """Fetch more candidates for citation-heavy domains — wider pool improves reranker P@1."""
     if not reranker.is_enabled():
         return k
     base = max(k, RETRIEVAL_OVERFETCH)
     if domain == "Legal":
-        return max(base, 25)  # larger candidate pool — legal chunks are dense and wording matters
+        return max(base, 25)  # legal chunks are dense and wording differences matter
     if domain == "Government Schemes":
         return max(base, 20)
+    if domain == "Mental Health":
+        return max(base, 20)  # broader pool catches CBT/mindfulness chunks missed at 15
     return base
 
 
