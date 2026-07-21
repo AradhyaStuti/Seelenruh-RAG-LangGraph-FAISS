@@ -40,11 +40,12 @@ The app routes user messages to one of four personas:
 - Session history per persona — browse and restore past conversations.
 - Copy, save (bookmark), and thumbs up/down feedback on any response.
 - Export conversation as Markdown (server-side, authenticated).
-- Attach a document (.txt, .md, .pdf, .docx, .csv) to provide as context for your next message.
+- Attach a document (.txt, .md, .pdf, .docx, .csv) or an image (.jpg, .png, .gif, .webp) to provide as context for your next message. Images are processed by a vision model (Groq llama-4-scout first, Anthropic claude-haiku fallback).
 
 ### Retrieval
 
 - Hybrid retrieval: FAISS vector search + BM25 keyword search combined with reciprocal rank fusion.
+- Bilingual Hindi retrieval — for Hindi/Hinglish queries, runs two FAISS passes (bilingual query + English-only tokens) and RRF-fuses both, since the knowledge base is English. Handles queries mixing Devanagari and Roman script.
 - Cross-encoder reranking before the final response.
 - Query rewriting — short queries are expanded by the LLM before retrieval, cached to avoid duplicate calls.
 - Confidence scoring (High / Medium / Low / None) shown per response.
@@ -60,7 +61,7 @@ The app routes user messages to one of four personas:
 - Emotion arc tracking — the rolling emotional trajectory across turns (e.g. calm → anxious → hopeless) is stored per session and surfaced as a TREND FLAG when worsening.
 - Confidence-aware prompting — when RAG confidence is Low or None, the persona is explicitly told to acknowledge uncertainty and ask clarifying questions rather than fabricate details.
 - Conversation depth awareness — after turn 3, the composer is told not to repeat advice already given.
-- Dynamic knowledge updater — a background scheduler (every 24 hours) crawls 14 authoritative government sources, checksums responses, and re-ingests changed content into the knowledge base automatically.
+- Dynamic knowledge updater — a background scheduler (every 6 hours) crawls 14 authoritative government sources, checksums responses, and re-ingests changed content into the knowledge base automatically. JS-heavy gov.in portals are fetched via Jina Reader for full content rendering.
 
 ### Persona-specific tools
 
@@ -82,6 +83,7 @@ The app routes user messages to one of four personas:
 
 - Eligibility checker tool: fill in state, age, income, student/farmer status and get matched schemes instantly without hitting the LLM. Lazy-loaded, opens as a modal from the chat toolbar.
 - 20+ schemes with composable eligibility predicates (income thresholds, age ranges, farmer/student flags, state restrictions).
+- Dynamic scheme overrides — admins can update scheme names, summaries, links, or disable a scheme entirely via the admin API (`PUT /api/admin/schemes/{id}`) without a code deploy. Overrides are stored in MongoDB and merged at query time.
 
 **Raksha (Safety)**
 
@@ -109,6 +111,7 @@ Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
 ### Security
 
 - Field-level Fernet encryption for sensitive MongoDB fields (name, email) when `FIELD_ENCRYPTION_KEY` is set. HMAC-SHA256 digest stored separately for indexed email lookups.
+- Client-side localStorage encryption — session data (chat history, saved moments, mood log) is encrypted in the browser with AES-GCM 256-bit before being written to localStorage. The key is derived from the user's ID + a random per-device salt via PBKDF2 (100,000 iterations, SHA-256). The key exists only in memory during an active session and is wiped on logout, so encrypted data cannot be read without a valid login.
 - Prompt injection detection covering instruction overrides, persona replacement, jailbreak keywords, special LLM tokens (Llama delimiters), and second-order injection via retrieved documents. Attempts are logged to MongoDB for audit.
 - Account lockout after 10 consecutive failed logins (15-minute TTL). Timing-safe bcrypt comparison prevents email enumeration.
 - JWT refresh-token rotation on every use. Revoked tokens stored in MongoDB with TTL index. Password changes invalidate all previously issued refresh tokens. Client-side JWT expiry check — expired tokens are cleared from localStorage before the next request.

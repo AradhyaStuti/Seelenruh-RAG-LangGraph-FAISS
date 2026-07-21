@@ -38,10 +38,18 @@ async def lifespan(_app: FastAPI):
     from config import REDIS_URL, SEELENRUH_ENV, FIELD_ENCRYPTION_KEY
 
     if not REDIS_URL:
-        log.warning(
-            "REDIS_URL not set — rate-limit counters are in-memory and will reset on restart. "
-            "Set REDIS_URL in .env for persistent rate limiting across restarts."
-        )
+        if SEELENRUH_ENV == "prod":
+            log.warning(
+                "REDIS_URL not set in production — rate-limit counters are in-memory and reset on "
+                "every restart/replica. Brute-force protection relies on DB-backed account lockout "
+                "(auth.py: 5 failed attempts → 15-min lock). Set REDIS_URL for persistent "
+                "cross-restart rate limiting."
+            )
+        else:
+            log.warning(
+                "REDIS_URL not set — rate-limit counters are in-memory and will reset on restart. "
+                "Set REDIS_URL in .env for persistent rate limiting across restarts."
+            )
 
     if SEELENRUH_ENV == "prod":
         log.warning(
@@ -68,6 +76,15 @@ async def lifespan(_app: FastAPI):
             log.info("field-level encryption active")
     except Exception as _enc_err:
         log.error("encryption startup check failed", error=str(_enc_err))
+
+    # ── Web search API key check ──────────────────────────────────────────────
+    from config import BRAVE_SEARCH_KEY, TAVILY_API_KEY, SERPAPI_KEY
+    if not any([BRAVE_SEARCH_KEY, TAVILY_API_KEY, SERPAPI_KEY]):
+        log.warning(
+            "No web search API keys configured (BRAVE_SEARCH_KEY, TAVILY_API_KEY, SERPAPI_KEY). "
+            "Web search will fall back to DuckDuckGo and Wikipedia only — results may be limited. "
+            "Set at least one key for reliable web search augmentation."
+        )
 
     # Run DB connect + RAG warmup as background tasks so the lifespan
     # completes immediately and uvicorn starts accepting requests right away.
@@ -130,12 +147,20 @@ app.add_middleware(
 @app.get("/api/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
+    from config import BRAVE_SEARCH_KEY, TAVILY_API_KEY, SERPAPI_KEY
+    index_vectors = retriever._store.size() if retriever.is_ready() else 0
+    # At 384 dims × float32 = 1536 bytes/vec; warn above 50k vectors (~75 MB vectors alone)
+    index_size_warning = index_vectors > 50_000
+    web_search_enabled = bool(BRAVE_SEARCH_KEY or TAVILY_API_KEY or SERPAPI_KEY)
     return HealthResponse(
         ok=True,
         ts=int(time.time() * 1000),
         ragReady=retriever.is_ready(),
         dbConnected=db.is_connected(),
         providers={b.name: b.status() for b in [groq_breaker, ollama_breaker, anthropic_breaker]},
+        indexVectors=index_vectors,
+        indexSizeWarning=index_size_warning,
+        webSearchEnabled=web_search_enabled,
     )
 
 
@@ -150,6 +175,11 @@ async def metrics(x_admin_key: str = _Header(default="")) -> dict:
             "ready": retriever.is_ready(),
             "chunks": retriever._store.size() if retriever.is_ready() else 0,
             "deleted": len(retriever._store._deleted_ids) if retriever.is_ready() else 0,
+            # 384-dim float32: 1536 bytes/vector; add ~500 bytes metadata overhead per doc
+            "memoryEstimateMB": round(
+                retriever._store.size() * 2036 / 1_048_576, 1
+            ) if retriever.is_ready() else 0,
+            "sizeWarning": retriever._store.size() > 50_000 if retriever.is_ready() else False,
         },
         "db": {"connected": db.is_connected()},
         "providers": {

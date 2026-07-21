@@ -50,7 +50,7 @@ import { ChatHistoryDrawer } from "@/components/chat-history";
 import { loadMoments, saveMoment, removeMoment } from "@/components/saved-moments";
 import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
-import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, exportConversation, fetchSessionHistory } from "@/lib/api";
+import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, exportConversation, fetchSessionHistory, sendImageMessage } from "@/lib/api";
 import { ExplainabilityPanel } from "@/components/explainability-panel";
 import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
@@ -212,6 +212,8 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
   const [preEmergency, setPreEmergency] = useState(false);
   // Document context attached for the next message
   const [attachedContext, setAttachedContext] = useState(null); // { name, text }
+  // Pending image for the next message: { b64, mediaType, previewUrl }
+  const [pendingImage, setPendingImage] = useState(null);
   // ID of the assistant message currently being streamed (null when not streaming)
   const [streamingMsgId, setStreamingMsgId] = useState(null);
   // Language preference — drives LLM response lang
@@ -252,6 +254,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
   };
 
   const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -753,6 +756,54 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     reader.readAsText(file);
   };
 
+  const handleImageAttach = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const ALLOWED = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!ALLOWED.includes(file.type)) {
+      toast({ title: "Unsupported image type", description: "Please attach a JPEG, PNG, GIF, or WebP image.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 3.5 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Maximum image size is 3.5 MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result || "";
+      // Strip the data URI prefix to get pure base64
+      const b64 = dataUrl.split(",")[1] || "";
+      const previewUrl = dataUrl;
+      setPendingImage({ b64, mediaType: file.type, previewUrl });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Allow pasting an image from the clipboard
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        if (file.size > 3.5 * 1024 * 1024) {
+          toast({ title: "Image too large", description: "Maximum image size is 3.5 MB.", variant: "destructive" });
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result || "";
+          const b64 = dataUrl.split(",")[1] || "";
+          setPendingImage({ b64, mediaType: file.type, previewUrl: dataUrl });
+        };
+        reader.readAsDataURL(file);
+        e.preventDefault();
+        return;
+      }
+    }
+  };
+
   const composeQuery = (text) => (mood && selectedDomain === "Mental Health" ? moodHints[mood] + text : text);
 
   const sendTextMessage = async (text) => {
@@ -915,7 +966,73 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     }
   };
 
-  const onSubmit = (values) => sendTextMessage(values.message);
+  const sendImageMsg = async (values) => {
+    if (!pendingImage) return sendTextMessage(values.message);
+    const trimmed = (values.message || "").trim();
+    if (submittingRef.current || isLoading) return;
+    submittingRef.current = true;
+    setChatView(true);
+
+    const img = pendingImage;
+    setPendingImage(null);
+
+    const displayText = trimmed || "What is in this image?";
+    const userMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: displayText,
+      timestamp: Date.now(),
+      hasAttachment: true,
+      attachmentName: "image",
+      imagePreview: img.previewUrl,
+    };
+
+    const isFresh = !currentDomainState.activeId;
+    if (isFresh) ensureActiveSession([userMessage]);
+    else updateActiveMessages((msgs) => [...msgs, userMessage]);
+
+    setDomainLoading(true);
+    form.reset();
+
+    // Add a temporary loading assistant message
+    const asstId = crypto.randomUUID();
+    updateActiveMessages((msgs) => [
+      ...msgs,
+      { id: asstId, role: "assistant", content: "", timestamp: Date.now(), streaming: true },
+    ]);
+    setStreamingMsgId(asstId);
+
+    try {
+      const result = await sendImageMessage(img.b64, img.mediaType, displayText, {
+        domain: selectedDomain,
+        lang,
+        sessionId: currentDomainState.activeId || undefined,
+      });
+
+      updateActiveMessages((msgs) =>
+        msgs.map((m) =>
+          m.id === asstId
+            ? { ...m, streaming: false, content: result.response || "", via: result.via }
+            : m
+        )
+      );
+    } catch (err) {
+      updateActiveMessages((msgs) =>
+        msgs.map((m) =>
+          m.id === asstId
+            ? { ...m, streaming: false, content: err?.message || "Image analysis failed." }
+            : m
+        )
+      );
+      toast({ title: "Image error", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setStreamingMsgId(null);
+      setDomainLoading(false);
+      submittingRef.current = false;
+    }
+  };
+
+  const onSubmit = (values) => pendingImage ? sendImageMsg(values) : sendTextMessage(values.message);
 
   const inputValue = form.watch("message");
   const remaining = useMemo(() => 4000 - (inputValue?.length ?? 0), [inputValue]);
@@ -1303,12 +1420,12 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                   aria-busy={isLoading}
                 >
                   <div role="log" aria-label="Conversation" aria-live="off" className="space-y-6">
-                    {lang === "de" && (
+                    {!["en", "hi", "hi-roman"].includes(lang) && (
                       <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-3.5 py-2.5 text-[11.5px] leading-relaxed flex items-start gap-2 text-amber-800">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
                           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
-                        <span>Antworten basieren auf <strong>indischem Recht</strong>, nicht auf deutschem oder EU-Recht. Diese App gilt nur für Indien.</span>
+                        <span>This app covers <strong>Indian law, government schemes, and resources only</strong>. Responses may not apply to your country.</span>
                       </div>
                     )}
 
@@ -1542,8 +1659,8 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                                     </>
                                   )}
 
-                                  {/* Translate button — only in German mode */}
-                                  {lang === "de" && !message.streaming && !message.id?.startsWith("welcome-") && (
+                                  {/* Translate button — available when a non-Indian language is selected */}
+                                  {!["en", "hi", "hi-roman"].includes(lang) && !message.streaming && !message.id?.startsWith("welcome-") && (
                                     <>
                                       <div className="w-px h-4 bg-border/50 mx-0.5" />
                                       <Tooltip>
@@ -1769,6 +1886,15 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                     onChange={handleFileAttach}
                     aria-hidden
                   />
+                  {/* Hidden file input for image attachment */}
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="sr-only"
+                    onChange={handleImageAttach}
+                    aria-hidden
+                  />
 
                   {/* Attached file chip */}
                   {attachedContext && (
@@ -1783,6 +1909,24 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                         onClick={() => setAttachedContext(null)}
                         className="ml-1 rounded-full hover:bg-primary/15 p-0.5 transition"
                         aria-label="Remove attachment"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Pending image preview chip */}
+                  {pendingImage && (
+                    <div className="mb-2 flex items-center gap-2 px-2 py-1.5 rounded-xl bg-indigo-50/80 border border-indigo-200/60 text-[11px] text-indigo-700">
+                      <img src={pendingImage.previewUrl} alt="Pending" className="h-8 w-8 rounded-lg object-cover border border-indigo-200/60 shrink-0" />
+                      <span className="flex-1 truncate font-medium">Image ready — ask a question below</span>
+                      <button
+                        type="button"
+                        onClick={() => setPendingImage(null)}
+                        className="ml-1 rounded-full hover:bg-indigo-100 p-0.5 transition"
+                        aria-label="Remove image"
                       >
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                           <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -1823,6 +1967,30 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                           <TooltipContent>Attach a file (.txt, .md, .pdf, .docx, .csv)</TooltipContent>
                         </Tooltip>
 
+                        {/* Image attach button */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon"
+                              className={cn(
+                                "shrink-0 h-9 w-9 rounded-xl transition-all duration-300",
+                                pendingImage
+                                  ? "bg-indigo-100 text-indigo-600"
+                                  : "bg-accent/20 text-accent-foreground hover:bg-accent/35"
+                              )}
+                              onClick={() => imageInputRef.current?.click()}
+                              disabled={isLoading}
+                              aria-label="Attach an image"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                              </svg>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Attach an image (or paste one)</TooltipContent>
+                        </Tooltip>
+
                         {/* Text input */}
                         <FormField
                           control={form.control}
@@ -1839,6 +2007,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                                   maxLength={4000}
                                   className="border-0 bg-transparent h-9 px-1 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/50"
                                   autoComplete="off"
+                                  onPaste={handlePaste}
                                 />
                               </FormControl>
                             </FormItem>

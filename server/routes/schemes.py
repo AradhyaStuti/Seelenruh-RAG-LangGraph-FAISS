@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Request
 from schemas import EligibilityRequest, EligibilityResponse, SchemeMatch
 from auth import current_user
 from rate_limit import burst_limit
-import schemes
+import db
+import eligibility
 
 router = APIRouter(prefix="/api/schemes", tags=["schemes"])
 
@@ -14,5 +15,6 @@ router = APIRouter(prefix="/api/schemes", tags=["schemes"])
 async def match_endpoint(
     request: Request, req: EligibilityRequest, _user: dict = Depends(current_user)
 ) -> EligibilityResponse:
-    hits = schemes.match(req.model_dump(exclude_none=True))
+    overrides = await db.load_scheme_overrides()
+    hits = eligibility.match(req.model_dump(exclude_none=True), overrides=overrides)
     return EligibilityResponse(matches=[SchemeMatch(**h) for h in hits])

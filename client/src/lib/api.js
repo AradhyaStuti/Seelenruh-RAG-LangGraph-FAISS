@@ -271,6 +271,25 @@ export async function fetchSessionHistory(sessionId) {
   }
 }
 
+/**
+ * Send an image (as base64 string, no data-URI prefix) plus a text query
+ * to the vision endpoint. Returns { response, via }.
+ * @param {string} imageB64 - Pure base64 string
+ * @param {string} mediaType - e.g. "image/jpeg"
+ * @param {string} query - User's question about the image
+ * @param {object} opts - { domain, lang, sessionId }
+ */
+export function sendImageMessage(imageB64, mediaType, query, opts = {}) {
+  return post("/api/chat/image", {
+    imageB64,
+    mediaType,
+    query,
+    domain: opts.domain || "Mental Health",
+    lang: opts.lang || "auto",
+    sessionId: opts.sessionId || null,
+  });
+}
+
 export function buildHistory(messages, n = 6) {
   return messages
     .slice(1)

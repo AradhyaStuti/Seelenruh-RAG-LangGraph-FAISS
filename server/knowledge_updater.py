@@ -41,7 +41,7 @@ import db
 log = get_logger("knowledge_updater")
 
 # How often to check each source (in seconds). Default: every 24 hours.
-_UPDATE_INTERVAL_S = int(__import__("os").getenv("KNOWLEDGE_UPDATE_INTERVAL_HOURS", "24")) * 3600
+_UPDATE_INTERVAL_S = int(__import__("os").getenv("KNOWLEDGE_UPDATE_INTERVAL_HOURS", "6")) * 3600
 
 # Max text to extract per page (keep it lean for embedding quality)
 _MAX_PAGE_CHARS = 4_000
@@ -259,8 +259,8 @@ def _strip_html(html: str) -> str:
     return text
 
 
-async def _fetch_page(url: str) -> Optional[str]:
-    """Fetch a URL and return stripped text, or None on failure."""
+async def _fetch_raw(url: str) -> Optional[str]:
+    """Low-level HTTP fetch → stripped text, or None on failure."""
     try:
         async with httpx.AsyncClient(
             timeout=_FETCH_TIMEOUT,
@@ -273,18 +273,69 @@ async def _fetch_page(url: str) -> Optional[str]:
         ) as client:
             r = await client.get(url)
             if r.status_code != 200:
-                log.warning("fetch_page non-200", url=url, status=r.status_code)
+                log.warning("fetch_raw non-200", url=url, status=r.status_code)
                 return None
             ct = r.headers.get("content-type", "")
             if not any(t in ct for t in ("html", "text", "xml")):
-                log.warning("fetch_page bad content-type", url=url, ct=ct)
+                log.warning("fetch_raw bad content-type", url=url, ct=ct)
                 return None
             text = _strip_html(r.text)
-            log.debug("fetch_page ok", url=url, chars=len(text))
+            log.debug("fetch_raw ok", url=url, chars=len(text))
             return text
     except Exception as err:
-        log.warning("fetch_page failed", url=url, error=str(err))
+        log.warning("fetch_raw failed", url=url, error=str(err))
         return None
+
+
+# Domains that render their content via JavaScript — direct fetch returns empty
+# boilerplate.  Jina Reader (r.jina.ai) renders the page server-side and
+# returns clean Markdown, so we try it first for these domains.
+_JS_HEAVY_DOMAINS = ("gov.in", "mygov.in")
+
+
+async def _fetch_page(url: str) -> Optional[str]:
+    """Fetch a URL and return stripped text, or None on failure.
+
+    For JS-heavy gov.in portals: tries Jina Reader first (which server-side
+    renders and returns clean text) and falls back to a direct fetch.
+    """
+    is_js_heavy = any(d in url for d in _JS_HEAVY_DOMAINS)
+    if is_js_heavy:
+        jina_url = f"https://r.jina.ai/{url}"
+        # Retry Jina up to 3 times with exponential backoff; respect 429 Retry-After header.
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=_FETCH_TIMEOUT,
+                    follow_redirects=True,
+                    headers={
+                        "Accept": "text/plain,text/markdown,text/html;q=0.9",
+                        "User-Agent": "Mozilla/5.0",
+                    },
+                ) as client:
+                    r = await client.get(jina_url)
+                    if r.status_code == 429:
+                        retry_after = int(r.headers.get("Retry-After", 5 * (2 ** attempt)))
+                        log.warning("jina rate-limited", url=url, retry_after=retry_after, attempt=attempt)
+                        await asyncio.sleep(min(retry_after, 30))
+                        continue
+                    if r.status_code == 200:
+                        text = r.text.strip()
+                        if len(text) >= _MIN_CONTENT_CHARS:
+                            log.debug("fetch_page via jina", url=url, chars=len(text), attempt=attempt)
+                            return text
+                        log.debug("fetch_page jina returned short content", url=url, chars=len(text))
+                    else:
+                        log.warning("jina non-200", url=url, status=r.status_code, attempt=attempt)
+                    break  # non-429 failure — fall through to direct fetch
+            except Exception as err:
+                log.warning("jina fetch failed", url=url, error=str(err), attempt=attempt)
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                break
+        log.debug("fetch_page jina miss — falling back to direct", url=url)
+    return await _fetch_raw(url)
 
 
 def _chunk_text(text: str, source: dict, max_chars: int = _MAX_PAGE_CHARS) -> list[dict]:

@@ -550,6 +550,66 @@ async def test_email(
     return result
 
 
+@router.get("/schemes")
+@limiter.limit("30/minute")
+async def list_scheme_overrides(
+    request: Request,
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """List all active scheme overrides stored in MongoDB."""
+    _check_key(x_admin_key)
+    overrides = await db.load_scheme_overrides()
+    return {"overrides": list(overrides.values()), "count": len(overrides)}
+
+
+class SchemeOverrideRequest(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=200)
+    summary: Optional[str] = Field(default=None, max_length=1000)
+    link: Optional[str] = Field(default=None, max_length=500)
+    reason: Optional[str] = Field(default=None, max_length=400)
+    disabled: bool = False
+
+
+@router.put("/schemes/{scheme_id}")
+@limiter.limit("20/minute")
+async def upsert_scheme_override(
+    request: Request,
+    scheme_id: str,
+    req: SchemeOverrideRequest,
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """Override display fields for a scheme or disable it without redeploying."""
+    _check_key(x_admin_key)
+    fields = req.model_dump(exclude_none=True)
+    ok = await db.upsert_scheme_override(scheme_id, fields)
+    if not ok:
+        raise HTTPException(status_code=503, detail="Database not connected.")
+    await db.log_admin_action(
+        action="upsert_scheme_override",
+        detail={"schemeId": scheme_id, "fields": fields},
+    )
+    return {"ok": True, "schemeId": scheme_id}
+
+
+@router.delete("/schemes/{scheme_id}")
+@limiter.limit("20/minute")
+async def delete_scheme_override(
+    request: Request,
+    scheme_id: str,
+    x_admin_key: Optional[str] = Header(default=None),
+) -> dict:
+    """Remove a scheme override, restoring the hard-coded values."""
+    _check_key(x_admin_key)
+    removed = await db.delete_scheme_override(scheme_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="No override found for that scheme ID.")
+    await db.log_admin_action(
+        action="delete_scheme_override",
+        detail={"schemeId": scheme_id},
+    )
+    return {"ok": True, "schemeId": scheme_id}
+
+
 @router.post("/crawler/trigger")
 @limiter.limit("5/minute")
 async def trigger_crawler(

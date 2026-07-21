@@ -615,19 +615,28 @@ SCHEMES = [
 ]
 
 
-def match(applicant: dict) -> list[dict]:
-    """Return every scheme whose rule is satisfied by the applicant."""
+def match(applicant: dict, overrides: dict[str, dict] | None = None) -> list[dict]:
+    """Return every scheme whose rule is satisfied by the applicant.
+
+    *overrides* is a ``{schemeId: fields}`` mapping loaded from MongoDB by the
+    caller.  Any key in *fields* (name, summary, link) replaces the hard-coded
+    value; ``disabled: True`` hides the scheme entirely.
+    """
     out: list[dict] = []
+    _ov = overrides or {}
     for s in SCHEMES:
         try:
+            ov = _ov.get(s["id"], {})
+            if ov.get("disabled"):
+                continue
             if s["match"](applicant):
                 out.append({
                     "id": s["id"],
-                    "name": s["name"],
-                    "summary": s["summary"],
-                    "link": s["link"],
+                    "name": ov.get("name", s["name"]),
+                    "summary": ov.get("summary", s["summary"]),
+                    "link": ov.get("link", s["link"]),
                     "level": s["level"],
-                    "reason": s["reasonIf"],
+                    "reason": ov.get("reason", s["reasonIf"]),
                 })
         except Exception:
             continue

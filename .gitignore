@@ -1,7 +1,9 @@
 # dependencies
-node_modules
+node_modules/
 .pnp
 .pnp.*
+.npm/
+.yarn/
 
 # build output
 client/dist
@@ -21,7 +23,14 @@ yarn-error.log*
 
 # misc
 .DS_Store
+Thumbs.db
+desktop.ini
 *.pem
+*.bak
+*.orig
+*.swp
+*.swo
+*~
 .vscode
 .idea
 .idx
@@ -31,17 +40,28 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.so
 .venv/
 server/.venv/
 *.egg-info/
 dist/
 build/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
 
 # generated FAISS index + BM25 cache (rebuilt on first startup)
 server/rag/.cache/
+*.pkl
+*.faiss
 
-# uploaded files
+# downloaded model weights (pulled at build time by prebuild_rag.py)
+server/models/
+
+# uploaded files (served from disk, not committed)
 server/uploads/
 
 # eval run snapshots — keep canonical + named baselines run, ignore experiments

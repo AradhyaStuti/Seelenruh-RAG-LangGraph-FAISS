@@ -84,6 +84,57 @@ _OFFLINE_RESPONSE = (
 )
 
 
+async def vision_chat(
+    *,
+    image_b64: str,
+    media_type: str = "image/jpeg",
+    text: str,
+    system: str = "",
+    temperature: float = 0.5,
+    max_tokens: int = 1024,
+) -> dict:
+    """Vision inference: Groq llama-4-scout first, Anthropic claude-haiku fallback."""
+    # 1. Groq vision (llama-4-scout — fast, free tier)
+    if GROQ_API_KEY:
+        try:
+            content = await groq_breaker.call(
+                groq_client.vision_chat,
+                image_b64=image_b64, media_type=media_type,
+                text=text, system=system,
+                temperature=temperature, max_tokens=max_tokens,
+            )
+            return {"content": content, "via": "groq-vision"}
+        except Exception as err:
+            log.warning("groq vision failed", error=type(err).__name__, next="anthropic-vision")
+
+    # 2. Anthropic vision fallback
+    if anthropic_client.is_enabled():
+        try:
+            content = await anthropic_breaker.call(
+                anthropic_client.vision_chat,
+                image_b64=image_b64, media_type=media_type,
+                text=text, system=system,
+                temperature=temperature, max_tokens=max_tokens,
+            )
+            return {"content": content, "via": "anthropic-vision"}
+        except Exception as err:
+            log.error("anthropic vision failed", error=str(err))
+
+    raise RuntimeError("No vision-capable provider is available. Set GROQ_API_KEY or ANTHROPIC_API_KEY.")
+
+
+_VISION_SYSTEM = (
+    "You are Seelenruh, a compassionate Indian assistant. "
+    "The user has shared an image — analyse it carefully and answer their question. "
+    "If the image contains a document (court notice, government letter, medical report, legal form), "
+    "extract the key details and explain what it means in plain language. "
+    "Be accurate, brief, and empathetic. Never guess or fabricate text you cannot read clearly. "
+    "If text is unclear, say so and describe what you CAN see."
+)
+
+from config import GROQ_API_KEY  # noqa: E402 — imported here to avoid circular at module load
+
+
 async def chat_safe(**opts) -> dict:
     """Like `chat()` but returns a graceful offline message instead of raising when all providers fail."""
     try:

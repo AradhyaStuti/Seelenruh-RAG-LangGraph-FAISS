@@ -70,6 +70,9 @@ class HealthResponse(BaseModel):
     ragReady: bool
     dbConnected: bool = True
     providers: Optional[dict] = None
+    indexVectors: int = 0           # live vector count (excludes soft-deleted)
+    indexSizeWarning: bool = False  # True when index is approaching RAM limits
+    webSearchEnabled: bool = False  # True when at least one search API key is set
 
 
 class SignupRequest(BaseModel):
@@ -155,3 +158,18 @@ class AllSummariesResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     currentPassword: str = Field(min_length=1, max_length=128)
     newPassword: str = Field(min_length=6, max_length=128)
+
+
+class ImageChatRequest(BaseModel):
+    imageB64: str = Field(min_length=10)     # base64-encoded image, no data URI prefix
+    mediaType: str = Field(default="image/jpeg", max_length=30)  # image/jpeg|png|gif|webp
+    query: str = Field(min_length=1, max_length=2000)
+    domain: Domain
+    lang: Lang = "auto"
+    history: list[HistoryMessage] = Field(default_factory=list, max_length=10)
+    sessionId: Optional[str] = None
+
+
+class ImageChatResponse(BaseModel):
+    response: str
+    via: Optional[str] = None

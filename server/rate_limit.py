@@ -27,8 +27,14 @@ _storage_uri = REDIS_URL if REDIS_URL else "memory://"
 limiter = Limiter(key_func=_user_or_ip, default_limits=[], storage_uri=_storage_uri)
 
 
-def auth_limit(spec: str = "10/minute"):
-    """Stricter limit for auth routes (defends against credential stuffing)."""
+def auth_limit(spec: str = "5/minute"):
+    """Stricter limit for auth routes (defends against credential stuffing).
+
+    Primary brute-force protection is DB-backed account lockout in auth.py
+    (locks after 5 failed attempts for 15 min).  This rate limit is a
+    secondary, stateless guard — tightened to 5/min so Redis-less deployments
+    still provide meaningful protection.
+    """
     return limiter.limit(spec)
 
 

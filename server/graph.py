@@ -127,12 +127,23 @@ def _build_context(state: ChatState, confidence: str = "None", web_searched: boo
         )
 
     # Confidence awareness — low confidence = acknowledge limits, ask if needed
-    if confidence in ("Low", "None"):
+    if confidence == "None":
         ctx_parts.append(
-            f"Knowledge confidence: {confidence}. "
-            "Your knowledge base has limited information on this exact topic. "
-            "Be honest about uncertainty. Prefer asking a clarifying question over fabricating details. "
-            "Cite what you do know, then tell the user where to verify."
+            "Knowledge confidence: None. "
+            "IMPORTANT: Your knowledge base has NO verified information on this specific topic. "
+            "You MUST begin your response with a clear, brief disclaimer such as 'I don\u2019t have verified information on this specific question.' "
+            "Do NOT fabricate figures, section numbers, amounts, or legal provisions. "
+            "Offer to help with a related topic you do know about, or direct the user to an official source. "
+            "Never present uncertain information as fact."
+            + (" Web search results are available but may be unverified." if web_searched else "")
+        )
+    elif confidence == "Low":
+        ctx_parts.append(
+            "Knowledge confidence: Low. "
+            "Your knowledge base has limited information on this topic. "
+            "Be explicit about uncertainty — say 'Based on what I have, ...' or 'I\u2019m not certain, but ...'. "
+            "Prefer asking a clarifying question over fabricating details. "
+            "Always tell the user where to verify any figures or legal details you mention."
             + (" Web search was used to supplement." if web_searched else "")
         )
     elif confidence == "High" and web_searched:
@@ -255,6 +266,7 @@ async def _retrieve(state: ChatState) -> dict:
             state["query"],
             domain=state["routed_domain"],
             history=state.get("history", []),
+            lang=state.get("lang"),
         )
         ids = [f"{h['id']}({h.get('rerank_score', h['score']):.2f})" for h in hits]
         if ids:
@@ -473,7 +485,7 @@ async def stream_run(
     state.update(await _load_memory(state))
     state.update(await _classify(state))
     state.update(await _route(state))
-    state.update(await _retrieve(state))
+    state.update(await _retrieve(state))  # passes lang via state["lang"]
     state.update(await _maybe_search(state))
 
     retrieved = _merge_web_results(state)

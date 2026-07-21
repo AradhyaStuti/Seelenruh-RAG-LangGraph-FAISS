@@ -45,6 +45,39 @@ async def chat_json(*, messages: list[dict], model: str | None = None, temperatu
     return json.loads(raw)
 
 
+_GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+
+async def vision_chat(
+    *,
+    image_b64: str,
+    media_type: str = "image/jpeg",
+    text: str,
+    system: str = "",
+    temperature: float = 0.5,
+    max_tokens: int = 1024,
+) -> str:
+    """Send an image + text to Groq's vision model (llama-4-scout)."""
+    user_content: list[dict] = [
+        {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{image_b64}"}},
+        {"type": "text", "text": text},
+    ]
+    messages: list[dict] = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": user_content})
+    try:
+        resp = await _get().chat.completions.create(
+            model=_GROQ_VISION_MODEL,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except APIStatusError as err:
+        raise GroqError(str(err), status=err.status_code) from err
+
+
 async def stream_chat(
     *,
     messages: list[dict],

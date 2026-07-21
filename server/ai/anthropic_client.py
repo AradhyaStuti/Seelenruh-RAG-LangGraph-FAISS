@@ -71,6 +71,55 @@ async def chat(
     return text
 
 
+async def vision_chat(
+    *,
+    image_b64: str,
+    media_type: str = "image/jpeg",
+    text: str,
+    system: str = "",
+    model: str | None = None,
+    temperature: float = 0.5,
+    max_tokens: int = 1024,
+) -> str:
+    """Send an image + text to the Anthropic vision API and return the response."""
+    if not ANTHROPIC_API_KEY:
+        raise RuntimeError("ANTHROPIC_API_KEY is not set")
+
+    user_content: list[dict] = [
+        {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+        },
+        {"type": "text", "text": text},
+    ]
+    payload: dict = {
+        "model": model or ANTHROPIC_MODEL,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "messages": [{"role": "user", "content": user_content}],
+    }
+    if system:
+        payload["system"] = system
+
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        r = await client.post(
+            _ANTHROPIC_URL,
+            json=payload,
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": _API_VERSION,
+                "Content-Type": "application/json",
+            },
+        )
+
+    if r.status_code != 200:
+        raise RuntimeError(f"Anthropic vision returned {r.status_code}: {r.text[:300]}")
+
+    data = r.json()
+    content = data.get("content", [{}])
+    return content[0].get("text", "").strip() if content else ""
+
+
 async def stream_chat(
     *,
     messages: list[dict],

@@ -69,6 +69,8 @@ async def connect() -> bool:
         await _db["injection_attempts"].create_index("userId")
         await _db["knowledge_sources"].create_index("sourceId", unique=True)
         await _db["knowledge_sources"].create_index("lastUpdated")
+        await _db["scheme_overrides"].create_index("schemeId", unique=True)
+        await _db["scheme_overrides"].create_index("updatedAt")
         host = (_client.address or ("?", 0))[0]
         log.info("MongoDB connected", db=MONGODB_DB, host=host)
         return True
@@ -815,3 +817,45 @@ async def export_user_data(user_id: str) -> dict:
         "goals":         goals,
         "feedback":      feedback,
     }
+
+
+# ── Scheme Overrides ──────────────────────────────────────────────────────────
+# Admins can override scheme display fields (name/summary/link) or disable a
+# scheme entirely without redeploying code.  The schemeId matches SCHEMES[*].id.
+
+async def load_scheme_overrides() -> dict[str, dict]:
+    """Return {schemeId: override_fields} from MongoDB, empty dict if not connected."""
+    if not is_connected():
+        return {}
+    try:
+        cursor = _db["scheme_overrides"].find({}, {"_id": 0})
+        return {doc["schemeId"]: doc async for doc in cursor}
+    except Exception as err:
+        log.warning("failed to load scheme overrides", error=str(err))
+        return {}
+
+
+async def upsert_scheme_override(scheme_id: str, fields: dict) -> bool:
+    if not is_connected():
+        return False
+    try:
+        await _db["scheme_overrides"].update_one(
+            {"schemeId": scheme_id},
+            {"$set": {"schemeId": scheme_id, **fields, "updatedAt": datetime.now(timezone.utc)}},
+            upsert=True,
+        )
+        return True
+    except Exception as err:
+        log.error("failed to upsert scheme override", error=str(err))
+        return False
+
+
+async def delete_scheme_override(scheme_id: str) -> bool:
+    if not is_connected():
+        return False
+    try:
+        result = await _db["scheme_overrides"].delete_one({"schemeId": scheme_id})
+        return bool(result.deleted_count)
+    except Exception as err:
+        log.error("failed to delete scheme override", error=str(err))
+        return False

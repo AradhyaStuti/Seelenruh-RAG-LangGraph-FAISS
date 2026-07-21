@@ -730,9 +730,12 @@ async def retrieve(
     domain: Optional[str] = None,
     k: int = RETRIEVAL_TOP_K,
     history: Optional[list[dict]] = None,
+    lang: Optional[str] = None,
 ) -> list[dict]:
     if not _ready:
         await init()
+
+    import numpy as np
 
     # Multi-turn context injection: for short follow-up queries, prepend the
     # previous user turn so the retriever understands what topic is being continued.
@@ -750,24 +753,48 @@ async def retrieve(
     elif domain == "Government Schemes":
         retrieval_query = _expand_scheme_query(retrieval_query)
 
-    # Use the LRU-cached embed to skip re-encoding repeated queries
-    import numpy as np
-    qv = await asyncio.to_thread(_embed_query_cached, retrieval_query)
-    qv = np.array(qv, dtype="float32")
     fetch_k = _overfetch_k(k, domain)
 
-    # Dense retrieval (FAISS)
-    faiss_hits = _store.search(qv, k=fetch_k, domain=domain)
+    # Bilingual retrieval for Hindi — the knowledge base is English so we do a
+    # second FAISS pass using only the English-normalised query (after stripping
+    # Devanagari tokens) to supplement the cross-lingual multilingual-e5 pass.
+    is_hindi = lang in ("hi", "hi-roman") or bool(_DEVANAGARI_RE.search(query))
+    if is_hindi:
+        # English-only version: remove Devanagari tokens so the embedding is
+        # anchored entirely in the English expansion terms.
+        en_only = " ".join(
+            tok for tok in retrieval_query.split()
+            if not _DEVANAGARI_RE.search(tok)
+        ).strip() or retrieval_query
 
-    # Sparse retrieval (BM25) — only if available
-    if _BM25_AVAILABLE and _bm25_index is not None:
-        bm25_hits = _bm25_search(retrieval_query, k=fetch_k, domain=domain)
-        candidates = _rrf_fuse(faiss_hits, bm25_hits)
+        qv_hi = await asyncio.to_thread(_embed_query_cached, retrieval_query)
+        qv_en = await asyncio.to_thread(_embed_query_cached, en_only)
+        faiss_hits_hi = _store.search(np.array(qv_hi, dtype="float32"), k=fetch_k, domain=domain)
+        faiss_hits_en = _store.search(np.array(qv_en, dtype="float32"), k=fetch_k, domain=domain)
+        # RRF-fuse both FAISS passes
+        faiss_hits = _rrf_fuse(faiss_hits_hi, faiss_hits_en)
+        if _BM25_AVAILABLE and _bm25_index is not None:
+            # Use English-only query for BM25 since the corpus is in English
+            bm25_hits = _bm25_search(en_only, k=fetch_k, domain=domain)
+            candidates = _rrf_fuse(faiss_hits, bm25_hits)
+        else:
+            candidates = faiss_hits
     else:
-        candidates = faiss_hits
+        # Standard mono-lingual path
+        qv = await asyncio.to_thread(_embed_query_cached, retrieval_query)
+        faiss_hits = _store.search(np.array(qv, dtype="float32"), k=fetch_k, domain=domain)
+        if _BM25_AVAILABLE and _bm25_index is not None:
+            bm25_hits = _bm25_search(retrieval_query, k=fetch_k, domain=domain)
+            candidates = _rrf_fuse(faiss_hits, bm25_hits)
+        else:
+            candidates = faiss_hits
 
+    rerank_query = retrieval_query if not is_hindi else (
+        " ".join(tok for tok in retrieval_query.split() if not _DEVANAGARI_RE.search(tok)).strip()
+        or retrieval_query
+    )
     if reranker.is_enabled() and len(candidates) > k:
-        results = await reranker.rerank(retrieval_query, candidates, k=k)
+        results = await reranker.rerank(rerank_query, candidates, k=k)
     else:
         results = candidates[:k]
 

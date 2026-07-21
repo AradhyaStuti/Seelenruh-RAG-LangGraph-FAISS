@@ -7,10 +7,10 @@ from typing import AsyncIterator, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from ai.provider import _AllProvidersFailed, _OFFLINE_RESPONSE
+from ai.provider import _AllProvidersFailed, _OFFLINE_RESPONSE, vision_chat, _VISION_SYSTEM
 import db
 import graph
-from schemas import ChatRequest, ChatResponse
+from schemas import ChatRequest, ChatResponse, ImageChatRequest, ImageChatResponse
 from auth import current_user, verified_user
 from rate_limit import chat_limit, burst_limit
 from logger import get_logger
@@ -186,6 +186,59 @@ async def audio_endpoint(request: Request, req: ChatRequest,
     if req.lang == "auto":
         req = req.model_copy(update={"lang": "en"})
     return await _handle(req, user, fast_mode=True)
+
+
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+# ~3.5 MB base64 ≈ 2.6 MB binary — large enough for a phone photo, small enough to not abuse the API
+_MAX_IMAGE_B64_LEN = 4_700_000
+
+
+@router.post("/chat/image", response_model=ImageChatResponse)
+@chat_limit("10/minute")
+async def image_chat_endpoint(
+    request: Request,
+    req: ImageChatRequest,
+    user: dict = Depends(verified_user),
+) -> ImageChatResponse:
+    """Analyse an image + optional text query using a vision-capable LLM."""
+    if req.mediaType not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail=f"Unsupported image type '{req.mediaType}'. Allowed: jpeg, png, gif, webp.")
+    if len(req.imageB64) > _MAX_IMAGE_B64_LEN:
+        raise HTTPException(status_code=413, detail="Image too large. Maximum size is ~3.5 MB.")
+
+    if _is_injection(req.query):
+        log.warning("injection in image query blocked", user_id=user["id"])
+        raise HTTPException(status_code=400, detail="Your message contains content that cannot be processed.")
+
+    domain_hint = f"Domain context for this conversation: {req.domain}."
+    system_prompt = f"{_VISION_SYSTEM}\n\n{domain_hint}"
+    if req.lang and req.lang != "auto":
+        system_prompt += f" Respond in: {req.lang}."
+
+    try:
+        result = await vision_chat(
+            image_b64=req.imageB64,
+            media_type=req.mediaType,
+            text=req.query or "Please describe and explain this image.",
+            system=system_prompt,
+        )
+    except RuntimeError as err:
+        raise HTTPException(status_code=503, detail=str(err))
+    except Exception as err:
+        log.error("vision_chat failed", error=str(err))
+        raise HTTPException(status_code=500, detail="Image analysis failed. Please try again.")
+
+    session_id = (req.sessionId and req.sessionId.strip()) or user["id"]
+    await db.save_message(
+        user_id=user["id"], session_id=session_id, domain=req.domain,
+        role="user", content=f"[Image] {req.query}",
+    )
+    await db.save_message(
+        user_id=user["id"], session_id=session_id, domain=req.domain,
+        role="assistant", content=result["content"],
+    )
+
+    return ImageChatResponse(response=result["content"], via=result.get("via"))
 
 
 @router.get("/history/{session_id}")
