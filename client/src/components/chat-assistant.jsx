@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   PetalHeart,
   FeatherScale,
@@ -1277,9 +1278,10 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                                       <SafetySteps text={message.content} />
                                     )}
                                     <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
                                       components={{
                                         a: ({ node: _node, ...props }) => (
-                                          <a {...props} target="_blank" rel="noopener noreferrer" />
+                                          <a {...props} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80" />
                                         ),
                                       }}
                                     >
