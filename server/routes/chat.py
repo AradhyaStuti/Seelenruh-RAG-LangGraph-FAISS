@@ -234,7 +234,7 @@ async def image_chat_endpoint(
                     {"role": "user", "content": f"[Note: image could not be processed] {fallback_query}"},
                 ]
             )
-            result = {"content": fallback.get("content", "I couldn't analyse the image. Please describe what you see and I'll help."), "via": "text-fallback"}
+            result = {"content": f"[debug-err: {repr(err)}]\n\n" + fallback.get("content", ""), "via": "text-fallback"}
         except Exception:
             result = {"content": "I'm unable to analyse images right now. Please describe what you see and I'll help.", "via": "offline-fallback"}
 
