@@ -1,6 +1,5 @@
 // Auth state: token + user in localStorage.
 // subscribe() / emit() lets the App re-render on login/logout.
-import { initStorage, clearStorageKey, _keyReady } from "@/lib/storage";
 
 const TOKEN_KEY = "seelenruh:token:v1";
 const REFRESH_KEY = "seelenruh:refresh:v1";
@@ -42,8 +41,6 @@ export function setAuth({ token, refreshToken, user }) {
     if (refreshToken) window.localStorage.setItem(REFRESH_KEY, refreshToken);
     window.localStorage.setItem(USER_KEY, JSON.stringify(user));
   } catch { /* ignore */ }
-  // Derive the session encryption key now that we have a stable user ID
-  if (user?.id) initStorage(user.id).catch(() => {});
   emit();
 }
 
@@ -64,7 +61,6 @@ export function clearAuth({ wipeUserData = false } = {}) {
     window.localStorage.removeItem(USER_KEY);
     if (wipeUserData) USER_DATA_KEYS.forEach((k) => window.localStorage.removeItem(k));
   } catch { /* ignore */ }
-  clearStorageKey(); // discard in-memory AES key so subsequent reads get null
   emit();
 }
 
@@ -92,9 +88,6 @@ export function isAuthed() {
     const payload = JSON.parse(atob(token.split(".")[1]));
     if (payload.exp && Date.now() / 1000 > payload.exp) { clearAuth(); return false; }
   } catch { clearAuth(); return false; }
-  // Re-derive encryption key if the user is already logged in (e.g. page refresh)
-  const user = getUser();
-  if (user?.id && !_keyReady()) initStorage(user.id).catch(() => {});
   return true;
 }
 
