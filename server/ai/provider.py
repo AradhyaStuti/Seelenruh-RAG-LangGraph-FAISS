@@ -108,6 +108,7 @@ async def vision_chat(
             return {"content": content, "via": "openrouter-vision"}
         except Exception as err:
             log.warning("openrouter vision failed", error=repr(err))
+            raise RuntimeError(f"openrouter_err: {repr(err)}")
 
     # 2. Gemini vision fallback
     if gemini_client.is_enabled():
