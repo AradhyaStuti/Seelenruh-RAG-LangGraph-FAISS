@@ -29,8 +29,11 @@ const initialForm = {
   age: "",
   incomeAnnual: "",
   gender: "",
+  casteCategory: "",
   isStudent: false,
   isFarmer: false,
+  isDisabled: false,
+  isWidow: false,
 };
 
 export function EligibilityChecker({ open, onOpenChange }) {
@@ -59,8 +62,11 @@ export function EligibilityChecker({ open, onOpenChange }) {
         age: form.age ? Number(form.age) : undefined,
         incomeAnnual: form.incomeAnnual ? Number(form.incomeAnnual) : undefined,
         gender: form.gender || undefined,
+        casteCategory: form.casteCategory || undefined,
         isStudent: form.isStudent,
         isFarmer: form.isFarmer,
+        isDisabled: form.isDisabled,
+        isWidow: form.isWidow,
       };
       const result = await matchSchemes(payload);
       setMatches(result.matches || []);
@@ -142,6 +148,22 @@ export function EligibilityChecker({ open, onOpenChange }) {
                   <option value="other">{t("elig_gender_other")}</option>
                 </select>
               </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="el-caste" className="text-xs">Caste Category</Label>
+                <select
+                  id="el-caste"
+                  value={form.casteCategory}
+                  onChange={(e) => setForm((f) => ({ ...f, casteCategory: e.target.value }))}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Prefer not to say / General</option>
+                  <option value="sc">SC (Scheduled Caste)</option>
+                  <option value="st">ST (Scheduled Tribe)</option>
+                  <option value="obc">OBC</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-3 pt-1">
@@ -162,6 +184,24 @@ export function EligibilityChecker({ open, onOpenChange }) {
                   className="h-4 w-4 accent-primary"
                 />
                 {t("elig_farmer")}
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-input/60 bg-background/60 px-3 py-2 text-sm hover:bg-accent/30">
+                <input
+                  type="checkbox"
+                  checked={form.isDisabled}
+                  onChange={(e) => setForm((f) => ({ ...f, isDisabled: e.target.checked }))}
+                  className="h-4 w-4 accent-primary"
+                />
+                Person with Disability
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-input/60 bg-background/60 px-3 py-2 text-sm hover:bg-accent/30">
+                <input
+                  type="checkbox"
+                  checked={form.isWidow}
+                  onChange={(e) => setForm((f) => ({ ...f, isWidow: e.target.checked }))}
+                  className="h-4 w-4 accent-primary"
+                />
+                Widow
               </label>
             </div>
 

@@ -1,4 +1,4 @@
-"""Try Groq first, then fall back to Ollama or Anthropic when needed."""
+"""Try Groq first, then Anthropic, then Ollama (local) as last resort."""
 import json
 import time
 
@@ -31,30 +31,30 @@ def _is_fallback_worthy(err: Exception) -> bool:
 
 
 async def chat(**opts) -> dict:
-    # 1. Groq (with circuit breaker + timeout)
+    # 1. Groq (primary — 99.9% uptime, fast)
     try:
         content = await groq_breaker.call(groq_client.chat, **opts)
         return {"content": content, "via": "groq"}
     except Exception as err:
         if not _is_fallback_worthy(err):
             raise
-        log.warning("groq unavailable", error=type(err).__name__, next="ollama")
+        log.warning("groq unavailable", error=type(err).__name__, next="anthropic")
 
-    # 2. Ollama (local)
-    if await _ollama_up():
-        try:
-            content = await ollama_breaker.call(ollama_client.chat, **opts)
-            return {"content": content, "via": "ollama"}
-        except Exception as err:
-            log.warning("ollama failed", error=str(err), next="anthropic")
-
-    # 3. Anthropic (cloud fallback)
+    # 2. Anthropic (cloud fallback — both Groq + Anthropic must fail simultaneously for outage)
     if anthropic_client.is_enabled():
         try:
             content = await anthropic_breaker.call(anthropic_client.chat, **opts)
             return {"content": content, "via": "anthropic"}
         except Exception as err:
-            log.error("anthropic fallback failed", error=str(err))
+            log.warning("anthropic fallback failed", error=str(err), next="ollama")
+
+    # 3. Ollama (local last resort — requires local install, not always available)
+    if await _ollama_up():
+        try:
+            content = await ollama_breaker.call(ollama_client.chat, **opts)
+            return {"content": content, "via": "ollama"}
+        except Exception as err:
+            log.error("ollama last-resort failed", error=str(err))
 
     raise _AllProvidersFailed()
 
@@ -101,22 +101,22 @@ async def chat_json(**opts) -> dict:
     except Exception as err:
         if not _is_fallback_worthy(err):
             raise
-        log.warning("groq json unavailable", next="ollama")
+        log.warning("groq json unavailable", next="anthropic")
 
-    # 2. Ollama
+    # 2. Anthropic
+    if anthropic_client.is_enabled():
+        try:
+            raw = await anthropic_breaker.call(anthropic_client.chat, **opts, json_mode=True)
+            return {"data": json.loads(raw), "via": "anthropic"}
+        except Exception as err:
+            log.warning("anthropic json fallback failed", error=str(err), next="ollama")
+
+    # 3. Ollama (last resort)
     if await _ollama_up():
         try:
             raw = await ollama_breaker.call(ollama_client.chat, **opts, json_mode=True)
             return {"data": json.loads(raw), "via": "ollama"}
         except Exception:
             pass
-
-    # 3. Anthropic
-    if anthropic_client.is_enabled():
-        try:
-            raw = await anthropic_breaker.call(anthropic_client.chat, **opts, json_mode=True)
-            return {"data": json.loads(raw), "via": "anthropic"}
-        except Exception as err:
-            log.error("anthropic json fallback failed", error=str(err))
 
     raise RuntimeError("All LLM providers failed. Please try again later.")

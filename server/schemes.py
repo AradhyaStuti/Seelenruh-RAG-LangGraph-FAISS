@@ -35,6 +35,20 @@ def _farmer(value: bool) -> Callable[[dict], bool]:
     return lambda a: a.get("isFarmer") is None or bool(a["isFarmer"]) is value
 
 
+def _disabled(value: bool) -> Callable[[dict], bool]:
+    return lambda a: a.get("isDisabled") is None or bool(a["isDisabled"]) is value
+
+
+def _widow(value: bool) -> Callable[[dict], bool]:
+    return lambda a: a.get("isWidow") is None or bool(a["isWidow"]) is value
+
+
+def _caste_in(*cats: str) -> Callable[[dict], bool]:
+    """Match if applicant's caste category is one of *cats* (sc/st/obc/general)."""
+    s = {x.lower() for x in cats}
+    return lambda a: not a.get("casteCategory") or a["casteCategory"].lower() in s
+
+
 SCHEMES = [
     {
         "id": "pmjay",
@@ -473,6 +487,117 @@ SCHEMES = [
         "level": "central",
         "match": _and(_age_in(14, 35), _student(False)),
         "reasonIf": "Young adult not currently in formal education — apprenticeship can provide skills + income.",
+    },
+    # ── Disability ────────────────────────────────────────────────────────────
+    {
+        "id": "pm-viklang",
+        "name": "PM Vishwas (Divyangjan) — Disability Pension",
+        "summary": "State-administered disability pension of ₹300–₹1,500/month for persons with ≥ 40% disability from BPL families.",
+        "link": "https://disabilityaffairs.gov.in",
+        "level": "central",
+        "match": _disabled(True),
+        "reasonIf": "You indicated a disability — this covers persons with ≥ 40% certified disability.",
+    },
+    {
+        "id": "nhfdc",
+        "name": "NHFDC — Low-Interest Loans for Disabled Persons",
+        "summary": "Loans up to ₹30 lakh at 5–8% p.a. through channelising agencies for self-employment, education, and assistive devices.",
+        "link": "https://www.nhfdc.nic.in",
+        "level": "central",
+        "match": _disabled(True),
+        "reasonIf": "Persons with disability — NHFDC finances education, livelihood, and assistive technology.",
+    },
+    {
+        "id": "adip",
+        "name": "ADIP Scheme (Assistive Devices)",
+        "summary": "Free/subsidised aids and appliances (wheelchairs, hearing aids, crutches, Braille kits) for persons with ≥ 40% disability below income threshold.",
+        "link": "https://alimco.in",
+        "level": "central",
+        "match": _and(_disabled(True), _income_lt(2 * LPA)),
+        "reasonIf": "Person with ≥ 40% disability in a low-income household — assistive devices at no or subsidised cost.",
+    },
+    {
+        "id": "nrega-disabled",
+        "name": "MGNREGA — Priority Allocation for Disabled",
+        "summary": "Disabled persons get priority in MGNREGA work allocation and must be assigned tasks suited to their capability.",
+        "link": "https://nrega.nic.in",
+        "level": "central",
+        "match": _and(_disabled(True), _age_in(18, 99), _income_lt(3 * LPA)),
+        "reasonIf": "Adult with disability in a low-income household — entitled to priority MGNREGA work.",
+    },
+    # ── Widows ───────────────────────────────────────────────────────────────
+    {
+        "id": "ignoaps-widow",
+        "name": "Indira Gandhi National Widow Pension Scheme",
+        "summary": "₹300/month central share (states add more; total often ₹500–₹2,000/month) for widows aged 40+ from BPL families.",
+        "link": "https://nsap.nic.in",
+        "level": "central",
+        "match": _and(_widow(True), _gender_in("female", "f", "woman"), _age_in(40, 99), _income_lt(3 * LPA)),
+        "reasonIf": "Widow aged 40+ in a BPL household — central pension with state top-up.",
+    },
+    {
+        "id": "nfbs",
+        "name": "National Family Benefit Scheme",
+        "summary": "₹20,000 one-time lump sum to BPL families where the primary breadwinner (18–59) dies due to any cause.",
+        "link": "https://nsap.nic.in",
+        "level": "central",
+        "match": _and(_income_lt(3 * LPA), _age_in(18, 99)),
+        "reasonIf": "BPL household that has lost its primary earner — one-time relief payment.",
+    },
+    # ── SC / ST / OBC ─────────────────────────────────────────────────────────
+    {
+        "id": "pre-matric-scst",
+        "name": "Pre-Matric Scholarship for SC/ST Students",
+        "summary": "Annual scholarship for class 9–10 SC/ST students: maintenance allowance + book grants. Income ceiling ₹2.5 LPA.",
+        "link": "https://scholarships.gov.in",
+        "level": "central",
+        "match": _and(_student(True), _age_in(12, 20), _caste_in("sc", "st"), _income_lt(2.5 * LPA)),
+        "reasonIf": "SC/ST student in class 9–10 from a low-income family.",
+    },
+    {
+        "id": "post-matric-scst",
+        "name": "Post-Matric Scholarship for SC/ST Students",
+        "summary": "Full tuition fees + maintenance allowance for SC students (income < ₹2.5 LPA) and ST students (income < ₹2.5 LPA) from class 11 onwards.",
+        "link": "https://scholarships.gov.in",
+        "level": "central",
+        "match": _and(_student(True), _age_in(15, 35), _caste_in("sc", "st"), _income_lt(2.5 * LPA)),
+        "reasonIf": "SC/ST student in class 11 or higher education from a low-income family.",
+    },
+    {
+        "id": "obc-prepost-matric",
+        "name": "Pre/Post-Matric Scholarship for OBC Students",
+        "summary": "Scholarship for OBC students from families earning < ₹1 LPA (pre-matric) or < ₹1 LPA (post-matric). Maintenance + book grants.",
+        "link": "https://scholarships.gov.in",
+        "level": "central",
+        "match": _and(_student(True), _age_in(12, 35), _caste_in("obc"), _income_lt(1 * LPA)),
+        "reasonIf": "OBC student from a family earning below ₹1 LPA.",
+    },
+    {
+        "id": "standup-scst",
+        "name": "Stand-Up India — SC/ST Entrepreneurs",
+        "summary": "Bank loans of ₹10 lakh–₹1 crore for SC/ST entrepreneurs for greenfield enterprises. At least one loan per bank branch reserved for SC/ST.",
+        "link": "https://www.standupmitra.in",
+        "level": "central",
+        "match": _and(_age_in(18, 65), _caste_in("sc", "st")),
+        "reasonIf": "SC/ST adult entrepreneur — at least one Stand-Up India loan per branch reserved for you.",
+    },
+    {
+        "id": "nsfdc",
+        "name": "NSFDC — Low-Interest Loans for SC Families",
+        "summary": "Loans at 5–8% p.a. for self-employment, education, and micro-enterprise for SC families with annual income < ₹3 LPA.",
+        "link": "https://nsfdc.nic.in",
+        "level": "central",
+        "match": _and(_caste_in("sc"), _income_lt(3 * LPA), _age_in(18, 65)),
+        "reasonIf": "SC family below ₹3 LPA — NSFDC provides concessional finance through SCAs.",
+    },
+    {
+        "id": "tribal-development",
+        "name": "PM JANMAN — Particularly Vulnerable Tribal Group Scheme",
+        "summary": "Saturation of 11 critical interventions (housing, roads, telecom, health, education) for the 75 most vulnerable tribal communities.",
+        "link": "https://pib.gov.in",
+        "level": "central",
+        "match": _caste_in("st"),
+        "reasonIf": "ST community member — PVTG saturation benefits if you belong to one of the 75 notified groups.",
     },
 ]
 

@@ -104,6 +104,9 @@ class EligibilityRequest(BaseModel):
     gender: Optional[str] = Field(default=None, max_length=20)
     isStudent: Optional[bool] = None
     isFarmer: Optional[bool] = None
+    isDisabled: Optional[bool] = None
+    isWidow: Optional[bool] = None
+    casteCategory: Optional[str] = Field(default=None, max_length=20)  # sc | st | obc | general
 
 
 class SchemeMatch(BaseModel):

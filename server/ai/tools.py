@@ -309,43 +309,33 @@ def _merge_unique(base: list[dict], additions: list[dict], seen: set[str]) -> No
 
 
 async def web_search(query: str, max_results: int = 4) -> list[dict]:
-    """Cascading search: Brave → Tavily → DuckDuckGo → SerpAPI → Wikipedia.
+    """Parallel search across all 5 sources: Brave · Tavily · DDG · SerpAPI · Wikipedia.
 
-    Each source is tried only when the previous yields fewer than
-    MIN_RESULTS_BEFORE_FALLBACK results. Results are re-ranked by domain
-    trust so Indian government sources surface first.
+    All sources run simultaneously — total latency is bounded by the slowest
+    single source (SEARCH_TIMEOUT) rather than the sum of all sources.
+    Results are deduplicated and re-ranked by domain trust so Indian government
+    sources surface first.
     """
+    raw = await asyncio.gather(
+        _with_retry(_brave_search,     query, max_results),
+        _with_retry(_tavily_search,    query, max_results),
+        _with_retry(_ddg_search,       query, max_results),
+        _with_retry(_serpapi_search,   query, max_results),
+        _with_retry(_wikipedia_search, query, max_results),
+        return_exceptions=False,
+    )
+
     combined: list[dict] = []
     seen: set[str] = set()
-    source_chain = "?"
+    sources_hit: list[str] = []
+    source_labels = ["Brave", "Tavily", "DDG", "SerpAPI", "Wikipedia"]
 
-    # 1. Brave (best quality, requires API key)
-    brave_results = await _with_retry(_brave_search, query, max_results)
-    _merge_unique(combined, brave_results, seen)
-    if len(combined) >= MIN_RESULTS_BEFORE_FALLBACK:
-        source_chain = "Brave"
-    else:
-        # 2. Tavily (no key needed on free tier, AI-enhanced)
-        tavily_results = await _with_retry(_tavily_search, query, max_results)
-        _merge_unique(combined, tavily_results, seen)
-        if len(combined) >= MIN_RESULTS_BEFORE_FALLBACK:
-            source_chain = "Brave+Tavily"
-        else:
-            # 3. DuckDuckGo (free, no key)
-            ddg_results = await _with_retry(_ddg_search, query, max_results)
-            _merge_unique(combined, ddg_results, seen)
-            if len(combined) >= MIN_RESULTS_BEFORE_FALLBACK:
-                source_chain = "Brave+Tavily+DDG"
-            else:
-                # 4. SerpAPI (optional)
-                serp_results = await _with_retry(_serpapi_search, query, max_results)
-                _merge_unique(combined, serp_results, seen)
-                # 5. Wikipedia (always free, last resort)
-                wiki_results = await _with_retry(_wikipedia_search, query, max_results)
-                _merge_unique(combined, wiki_results, seen)
-                source_chain = "all-sources"
+    for label, bucket in zip(source_labels, raw):
+        if bucket:
+            _merge_unique(combined, bucket, seen)
+            sources_hit.append(label)
 
     sorted_results = _sort_by_trust(combined)[:max_results]
     if sorted_results:
-        log.info("web_search complete", results=len(sorted_results), source=source_chain)
+        log.info("web_search complete", results=len(sorted_results), sources="+".join(sources_hit) or "none")
     return sorted_results
