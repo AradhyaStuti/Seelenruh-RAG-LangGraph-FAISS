@@ -120,7 +120,7 @@ async def vision_chat(
         except Exception as err:
             log.error("anthropic vision failed", error=str(err))
 
-    raise RuntimeError("No vision-capable provider is available. Set GROQ_API_KEY or ANTHROPIC_API_KEY.")
+    raise RuntimeError("Image analysis is temporarily unavailable. Please try again later or send your question as text.")
 
 
 _VISION_SYSTEM = (
