@@ -2,7 +2,8 @@
 import json
 import time
 
-from ai import groq_client, ollama_client, anthropic_client, gemini_client
+from ai import groq_client, ollama_client, anthropic_client
+import ai.gemini_client as gemini_client
 from ai.circuit_breaker import groq_breaker, ollama_breaker, anthropic_breaker
 from config import GROQ_API_KEY
 from logger import get_logger
