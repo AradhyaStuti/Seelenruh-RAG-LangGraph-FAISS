@@ -105,7 +105,7 @@ async def vision_chat(
             )
             return {"content": content, "via": "groq-vision"}
         except Exception as err:
-            log.warning("groq vision failed", error=type(err).__name__, next="anthropic-vision")
+            log.warning("groq vision failed", error=str(err), next="anthropic-vision")
 
     # 2. Anthropic vision fallback
     if anthropic_client.is_enabled():
