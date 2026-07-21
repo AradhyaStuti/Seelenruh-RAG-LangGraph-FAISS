@@ -73,13 +73,6 @@ export function LoginScreen() {
 
   const strength = passwordStrength(password);
 
-  const personaColors = [
-    { color: "#7CB9E8", label: "Usha" },
-    { color: "#C9B38A", label: "Umang" },
-    { color: "#8FC9A3", label: "Aarogya" },
-    { color: "#E87C7C", label: "Raksha" },
-  ];
-
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
       <div className="w-full max-w-sm">
@@ -97,15 +90,6 @@ export function LoginScreen() {
           </h1>
           <p className="text-sm text-muted-foreground/70 mt-1.5">Wellbeing, rights, and safety — one place.</p>
 
-          {/* Persona dots */}
-          <div className="flex items-center justify-center gap-2.5 mt-3.5">
-            {personaColors.map(({ color, label }) => (
-              <div key={label} className="flex flex-col items-center gap-1">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}70` }} />
-                <span className="text-[9px] text-muted-foreground/40 font-medium">{label}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Card */}
