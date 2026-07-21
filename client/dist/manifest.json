@@ -1,0 +1,48 @@
+{
+  "name": "Seelenruh",
+  "short_name": "Seelenruh",
+  "description": "A soft, judgement-free companion for mental wellness, legal rights, government schemes, and personal safety.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/seelenruh_icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Mental Health — Usha",
+      "short_name": "Usha",
+      "description": "Talk to Usha about mental wellness",
+      "url": "/?domain=mental-health"
+    },
+    {
+      "name": "Legal Aid — Umang",
+      "short_name": "Umang",
+      "description": "Get legal guidance from Umang",
+      "url": "/?domain=legal"
+    },
+    {
+      "name": "Govt Schemes — Aarogya",
+      "short_name": "Aarogya",
+      "description": "Discover government schemes with Aarogya",
+      "url": "/?domain=schemes"
+    },
+    {
+      "name": "Safety — Raksha",
+      "short_name": "Raksha",
+      "description": "Stay safe with Raksha",
+      "url": "/?domain=safety"
+    }
+  ]
+}

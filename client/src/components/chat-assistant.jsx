@@ -49,7 +49,7 @@ import { ChatHistoryDrawer } from "@/components/chat-history";
 import { loadMoments, saveMoment, removeMoment } from "@/components/saved-moments";
 import { RoutingTrace } from "@/components/routing-trace";
 import { SafetySteps } from "@/components/safety-steps";
-import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, transcribeAudio, synthesizeSpeech, exportConversation } from "@/lib/api";
+import { streamUserMessage, buildHistory, summarizeConversation, fetchAllSummaries, submitFeedbackToServer, parseDocument, exportConversation } from "@/lib/api";
 import { ExplainabilityPanel } from "@/components/explainability-panel";
 import { LegalTimeline, detectTimelineKey } from "@/components/legal-timeline";
 import { loadAll, saveAll, newSession, titleFromMessages } from "@/lib/sessions";
@@ -207,17 +207,6 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
   const [streamingMsgId, setStreamingMsgId] = useState(null);
   // Language preference — drives LLM response lang
   const [lang, setLangState] = useState(() => getLang());
-
-  // Mic / STT state
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-
-  // TTS state — id of the assistant message currently being spoken
-  const [ttsPlayingId, setTtsPlayingId] = useState(null);
-  const ttsAudioRef = useRef(null); // current Audio object
-  const ttsUrlRef = useRef(null);   // current object URL (revoked on stop)
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -852,67 +841,6 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     }
   };
 
-  // ── Mic / STT ─────────────────────────────────────────────────────────────
-  const startRecording = async () => {
-    if (isLoading || isTranscribing) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunksRef.current = [];
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        setIsTranscribing(true);
-        try {
-          const text = await transcribeAudio(blob, lang === "hi-roman" ? "hi" : lang);
-          form.setValue("message", text, { shouldValidate: true });
-          inputRef.current?.focus();
-        } catch (err) {
-          toast({ title: "Transcription failed", description: err.message, variant: "destructive" });
-        } finally {
-          setIsTranscribing(false);
-        }
-      };
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setIsRecording(true);
-    } catch {
-      toast({ title: "Microphone unavailable", description: "Please allow microphone access and try again.", variant: "destructive" });
-    }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    mediaRecorderRef.current = null;
-    setIsRecording(false);
-  };
-
-  // ── TTS ───────────────────────────────────────────────────────────────────
-  const stopTTS = () => {
-    if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current = null; }
-    if (ttsUrlRef.current) { URL.revokeObjectURL(ttsUrlRef.current); ttsUrlRef.current = null; }
-    setTtsPlayingId(null);
-  };
-
-  const speakMessage = async (msgId, text) => {
-    if (ttsPlayingId === msgId) { stopTTS(); return; }
-    stopTTS();
-    setTtsPlayingId(msgId);
-    try {
-      const url = await synthesizeSpeech(text, selectedDomain, lang === "hi-roman" ? "hi" : lang);
-      ttsUrlRef.current = url;
-      const audio = new Audio(url);
-      ttsAudioRef.current = audio;
-      audio.onended = () => { stopTTS(); };
-      audio.onerror = () => { stopTTS(); toast({ title: "Playback failed", variant: "destructive" }); };
-      await audio.play();
-    } catch (err) {
-      stopTTS();
-      toast({ title: "Speech unavailable", description: err.message, variant: "destructive" });
-    }
-  };
-
   return (
     <TooltipProvider delayDuration={150}>
       {/* Screen-reader live region — visually hidden, announces loading / new replies */}
@@ -1525,40 +1453,6 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                                     </>
                                   )}
 
-                                  {/* TTS / Speak button */}
-                                  {!message.streaming && message.content && (
-                                    <>
-                                      <div className="w-px h-4 bg-border/50 mx-0.5" />
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className={cn(
-                                              "h-7 w-7 rounded-full transition-all",
-                                              ttsPlayingId === message.id && "text-primary bg-primary/10 animate-pulse"
-                                            )}
-                                            onClick={() => speakMessage(message.id, message.content)}
-                                            aria-label={ttsPlayingId === message.id ? "Stop speaking" : "Read aloud"}
-                                          >
-                                            {ttsPlayingId === message.id ? (
-                                              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                                                <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
-                                              </svg>
-                                            ) : (
-                                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-                                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                                              </svg>
-                                            )}
-                                            <span className="sr-only">{ttsPlayingId === message.id ? "Stop" : "Read aloud"}</span>
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>{ttsPlayingId === message.id ? "Stop" : "Read aloud"}</TooltipContent>
-                                      </Tooltip>
-                                    </>
-                                  )}
                                 </div>
                               )}
                             </div>
@@ -1744,11 +1638,11 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                             <FormItem className="flex-grow">
                               <FormControl>
                                 <Input
-                                  placeholder={isRecording ? "Listening…" : isTranscribing ? "Transcribing…" : `Message ${currentPersona.persona}...`}
+                                  placeholder={`Message ${currentPersona.persona}...`}
                                   aria-label={`Message to ${domainConfig[selectedDomain].persona}`}
                                   {...field}
                                   ref={(el) => { field.ref(el); inputRef.current = el; }}
-                                  disabled={isLoading || isRecording || isTranscribing}
+                                  disabled={isLoading}
                                   maxLength={4000}
                                   className="border-0 bg-transparent h-9 px-1 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/50"
                                   autoComplete="off"
@@ -1758,9 +1652,9 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                           )}
                         />
 
-                        {/* Char counter + mic + send */}
+                        {/* Char counter + send */}
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {inputValue?.length > 0 && !isRecording && (
+                          {inputValue?.length > 0 && (
                             <span className={cn(
                               "text-[10px] tabular-nums",
                               remaining < 200 ? "text-amber-500 font-semibold" : "text-muted-foreground/40"
@@ -1768,53 +1662,11 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                               {remaining}
                             </span>
                           )}
-                          {/* Mic / STT button */}
-                          {!inputValue?.trim() && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  disabled={isLoading || isTranscribing}
-                                  onClick={isRecording ? stopRecording : startRecording}
-                                  className={cn(
-                                    "h-9 w-9 rounded-xl transition-all duration-300",
-                                    isRecording
-                                      ? "bg-red-500 text-white hover:bg-red-600 animate-pulse"
-                                      : isTranscribing
-                                      ? "bg-primary/20 text-primary"
-                                      : "bg-muted/60 text-muted-foreground hover:bg-primary/15 hover:text-primary"
-                                  )}
-                                  aria-label={isRecording ? "Stop recording" : "Record voice message"}
-                                >
-                                  {isTranscribing ? (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin" aria-hidden>
-                                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                                    </svg>
-                                  ) : isRecording ? (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                                      <rect x="6" y="6" width="12" height="12" rx="2" />
-                                    </svg>
-                                  ) : (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                      <line x1="12" y1="19" x2="12" y2="23" />
-                                      <line x1="8" y1="23" x2="16" y2="23" />
-                                    </svg>
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {isRecording ? "Stop — transcribe" : isTranscribing ? "Transcribing…" : "Voice input"}
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 type="submit"
-                                disabled={isLoading || isRecording || isTranscribing || !inputValue?.trim()}
+                                disabled={isLoading || !inputValue?.trim()}
                                 size="icon"
                                 className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/85 text-primary-foreground petal-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-40 disabled:hover:scale-100"
                               >

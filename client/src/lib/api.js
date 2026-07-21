@@ -232,64 +232,6 @@ export async function parseDocument(file) {
   return res.json();
 }
 
-/**
- * Transcribe audio via Groq Whisper.
- * @param {Blob} audioBlob - recorded audio blob
- * @param {string} lang - language code e.g. "en", "hi", "auto"
- * @returns {Promise<string>} transcribed text
- */
-export async function transcribeAudio(audioBlob, lang = "auto") {
-  const token = getToken();
-  // Convert blob to base64
-  const arrayBuf = await audioBlob.arrayBuffer();
-  const bytes = new Uint8Array(arrayBuf);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  const audio = btoa(binary);
-
-  const res = await fetch("/api/transcribe", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ audio, lang }),
-  });
-  if (res.status === 429) throw new Error("Too many requests. Please wait a moment.");
-  if (res.status === 413) throw new Error("Recording is too long. Please keep it under 25MB.");
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data?.detail || data?.error || "Transcription failed.");
-  }
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  if (!data.text) throw new Error("No speech detected. Please try again.");
-  return data.text;
-}
-
-/**
- * Convert text to speech via ElevenLabs / gTTS.
- * @returns {Promise<string>} object URL for the audio blob (caller must revoke when done)
- */
-export async function synthesizeSpeech(text, domain = "Mental Health", lang = "en") {
-  const token = getToken();
-  const res = await fetch("/api/tts", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ text: text.slice(0, 1000), domain, lang }),
-  });
-  if (res.status === 429) throw new Error("Too many requests. Please wait a moment.");
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data?.detail || "Speech synthesis unavailable.");
-  }
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
-}
-
 /** Fire-and-forget feedback — never throws so localStorage stays as primary. */
 export async function submitFeedbackToServer(messageId, vote, domain, extra = {}) {
   try {
