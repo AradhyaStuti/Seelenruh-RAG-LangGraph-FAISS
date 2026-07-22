@@ -265,6 +265,11 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
 
   const { toast } = useToast();
 
+  // Derive current domain state early — before any hooks — to avoid TDZ in minified bundles.
+  // Using var (not const) ensures hoisting, so minifiers cannot reorder it after its first use.
+  // eslint-disable-next-line no-var
+  var currentDomainState = domainSessions[selectedDomain];
+
   // Track mounted state to prevent setState after unmount
   useEffect(() => () => { isMountedRef.current = false; }, []);
 
@@ -347,8 +352,6 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     return () => { cancelled = true; };
   }, []);
 
-  const currentDomainState = domainSessions[selectedDomain];
-
   // Server message recovery: when a session has no messages (localStorage was cleared but
   // server summary existed), fetch message history and restore the thread.
   useEffect(() => {
@@ -390,7 +393,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, currentDomainState.activeId, selectedDomain]);
+  }, [hydrated, domainSessions[selectedDomain]?.activeId, selectedDomain]);
 
   // Persist sessions + active domain
   useEffect(() => {
@@ -602,7 +605,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
     }
     handleDomainSwitch(value);
     setChatView(true);
-  }, [currentDomainState?.activeId, handleDomainSwitch, messageCount, selectedDomain]);
+  }, [domainSessions[selectedDomain]?.activeId, handleDomainSwitch, messageCount, selectedDomain]);
 
   const copyMessage = async (id, text) => {
     try {
