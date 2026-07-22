@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense, startTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -1209,7 +1209,7 @@ export default function ChatAssistant({ onDomainChange, initialDomain = "Mental 
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => setEligOpen(true)}
+                            onClick={() => startTransition(() => setEligOpen(true))}
                             className="text-[11px] gap-1.5 h-8 rounded-full hover:bg-primary/10 hover:text-primary"
                           >
                             <SunBloom className="h-3.5 w-3.5" />

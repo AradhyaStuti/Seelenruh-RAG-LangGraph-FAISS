@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, lazy, Suspense } from "react";
+import { useEffect, useState, useRef, lazy, Suspense, startTransition } from "react";
 import { BlossomLogo, BreathLungs, HeartBookmark } from "@/components/icons";
 import { LangToggle } from "@/components/lang-toggle";
 import { Button } from "@/components/ui/button";
@@ -124,7 +124,7 @@ export function AppHeader() {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.shiftKey && (e.key === "Q" || e.key === "q")) {
         e.preventDefault();
-        if (getUser()) setSignOutOpen(true);
+        if (getUser()) startTransition(() => setSignOutOpen(true));
       }
     }
     window.addEventListener("keydown", onKey);
@@ -158,7 +158,7 @@ export function AppHeader() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setBreatheOpen(true)}
+                onClick={() => startTransition(() => setBreatheOpen(true))}
                 aria-label="Breathing"
                 className="rounded-full hover:bg-primary/10 hover:text-primary transition"
               >
@@ -186,9 +186,9 @@ export function AppHeader() {
           {user && (
             <AccountMenu
               user={user}
-              onSignOut={() => setSignOutOpen(true)}
-              onChangePassword={() => setChangePwOpen(true)}
-              onAdmin={() => setAdminOpen(true)}
+              onSignOut={() => startTransition(() => setSignOutOpen(true))}
+              onChangePassword={() => startTransition(() => setChangePwOpen(true))}
+              onAdmin={() => startTransition(() => setAdminOpen(true))}
             />
           )}
         </div>
