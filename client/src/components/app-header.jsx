@@ -114,8 +114,19 @@ export function AppHeader() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(
+    () => sessionStorage.getItem("seelenruh:admin-open") === "1"
+  );
   const [user, setUser] = useState(() => getUser());
+
+  const openAdmin = () => {
+    sessionStorage.setItem("seelenruh:admin-open", "1");
+    startTransition(() => setAdminOpen(true));
+  };
+  const closeAdmin = () => {
+    sessionStorage.removeItem("seelenruh:admin-open");
+    setAdminOpen(false);
+  };
 
   useEffect(() => subscribe(() => setUser(getUser())), []);
 
@@ -188,7 +199,7 @@ export function AppHeader() {
               user={user}
               onSignOut={() => startTransition(() => setSignOutOpen(true))}
               onChangePassword={() => startTransition(() => setChangePwOpen(true))}
-              onAdmin={() => startTransition(() => setAdminOpen(true))}
+              onAdmin={openAdmin}
             />
           )}
         </div>
@@ -200,7 +211,7 @@ export function AppHeader() {
         {signOutOpen && <SignOutDialog      open={signOutOpen} onOpenChange={setSignOutOpen} user={user} />}
         {changePwOpen && <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />}
       </Suspense>
-      {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
+      {adminOpen && <AdminDashboard onClose={closeAdmin} />}
     </>
   );
 }
