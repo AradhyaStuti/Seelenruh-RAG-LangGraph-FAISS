@@ -93,7 +93,7 @@ The app routes user messages to one of four personas:
 
 ### Knowledge Dashboard (Admin)
 
-A full-screen admin panel accessible from the account menu → **Knowledge dashboard**. Requires `ADMIN_KEY` to unlock — the key is verified against the server and stored in sessionStorage for the browser session.
+A full-screen admin panel accessible from the account menu → **Knowledge dashboard**. Requires `ADMIN_KEY` to unlock — the key is verified against the server and stored in sessionStorage for the browser session. Dashboard open/close state is also persisted in sessionStorage, so a page refresh reopens the dashboard automatically instead of dropping you back to the chat.
 
 Six tabs:
 
@@ -398,6 +398,7 @@ A few things that were harder than expected:
 - **Hallucination** — LLMs will confidently cite IPC Section 600 (which doesn't exist). I built pattern-based guardrails that check section numbers against known ranges and flag anything suspicious before the response goes out.
 - **Persona voice** — getting Umang to sound like a knowledgeable advisor rather than a disclaimer machine, while still being accurate, took a lot of prompt iteration.
 - **Streaming + memory** — combining SSE streaming with background memory saves without blocking the main response path was tricky to get right.
+- **Temporal Dead Zone in production builds** — a `const` declaration in the main React component was being reordered by the Docker build's esbuild version relative to its use in a hook dependency array, causing a `ReferenceError` in production that didn't appear locally. Fixed by switching to `var` (which hoists to function scope and has no TDZ) and moving the reference out of dependency arrays entirely, using raw state variables instead.
 - **Mood + domain isolation** — the mood check-in should only influence Usha's responses, not Aarogya or Umang. Took careful scoping to make sure the mood hint doesn't leak into unrelated queries.
 - **Emotion granularity** — the first version had six emotional states. In practice, the difference between "hopeless" and "sad" or between "overwhelmed" and "anxious" matters a lot for how the persona should respond. Expanding to eleven states and writing distinct tone guidance for each made a noticeable difference in response quality.
 - **Crisis safety** — I deliberately don't rely on the LLM for crisis detection. Hard-coded phrase matching in 35+ English, Hinglish, Hindi, and German phrases runs in microseconds and never hallucinates. The LLM gets the final response but the safety routing is deterministic.
