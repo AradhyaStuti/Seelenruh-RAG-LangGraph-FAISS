@@ -425,11 +425,15 @@ async def _save_memory(state: ChatState) -> dict:
 
 
 def _build_sources(hits: list[dict]) -> list[dict]:
-    return [
-        knowledge_meta.build_source_meta(h)
-        for h in hits
-        if not str(h.get("id", "")).startswith("web_")
-    ]
+    out = []
+    for h in hits:
+        if str(h.get("id", "")).startswith("web_"):
+            continue
+        meta = knowledge_meta.build_source_meta(h)
+        if not meta.get("sourceUrl"):
+            continue
+        out.append(meta)
+    return out
 
 
 def _confidence_from(hits: list[dict]) -> str:
