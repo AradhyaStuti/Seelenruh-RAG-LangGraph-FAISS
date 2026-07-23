@@ -23,10 +23,10 @@ So I built something that routes questions to the right "persona" and pulls from
 
 The app routes user messages to one of four personas:
 
-- **Usha** — mental health, emotional support, and health triage. Warm, non-judgmental, conversational. Handles common symptoms (fever, cold, flu, COVID, dengue) with calm evidence-based guidance — not alarmist, not dismissive.
-- **Umang** — legal guidance and rights-based advice. Plain-language explanations, act/section citations. Covers BNS/BNSS/BSA 2023 (new criminal codes replacing IPC/CrPC), DPDP Act 2023, and all major Indian laws.
-- **Aarogya** — government schemes and entitlements. Eligibility checks, application steps. Covers 20+ central schemes plus state-specific schemes across 10+ states including 2024–25 additions (PM Surya Ghar, PM Vishwakarma, Lakhpati Didi).
-- **Raksha** — safety and emergency support. Calm, action-oriented, emergency contacts. Covers cybercrime, domestic violence, medical emergencies, and life-safety situations with deterministic step-by-step protocols.
+- **Usha** — mental health and emotional support. Warm, non-judgmental, conversational. Handles anxiety, depression, grief, relationship stress, and burnout. Redirects physical health queries to Raksha.
+- **Umang** — legal guidance and rights-based advice. Plain-language explanations, act/section citations. Covers BNS/BNSS/BSA 2023 (new criminal codes replacing IPC/CrPC), DPDP Act 2023, and all major Indian laws. Redirects non-legal queries to the appropriate persona.
+- **Aarogya** — government schemes and entitlements. Eligibility checks, application steps. Covers 20+ central schemes plus state-specific schemes across 10+ states including 2024–25 additions (PM Surya Ghar, PM Vishwakarma, Lakhpati Didi). Redirects out-of-scope queries to Umang or Raksha.
+- **Raksha** — safety, emergency support, and physical health symptoms. Calm, action-oriented, emergency contacts. Covers cybercrime, domestic violence, medical emergencies, and life-safety situations with deterministic step-by-step protocols.
 
 ## Features
 
@@ -59,7 +59,8 @@ The app routes user messages to one of four personas:
 - 11-state emotion taxonomy: sad, angry, happy, scared, confused, neutral, hopeless, overwhelmed, anxious, frustrated, numb. Each state has distinct tone guidance injected into the composer prompt.
 - Secondary emotion field — when a message carries a clear second emotion (e.g. sad + numb), both are surfaced to the composer.
 - Emotion arc tracking — the rolling emotional trajectory across turns (e.g. calm → anxious → hopeless) is stored per session and surfaced as a TREND FLAG when worsening.
-- Confidence-aware prompting — when RAG confidence is Low or None, the persona is explicitly told to acknowledge uncertainty and ask clarifying questions rather than fabricate details.
+- Confidence-aware prompting — when RAG confidence is Low or None, the persona acknowledges its limits and redirects the user rather than fabricating details or asking clarifying questions about out-of-scope topics.
+- Cross-persona scope enforcement — each persona has a hard scope rule. Physical health symptoms always route to Raksha; legal queries to Umang; scheme eligibility to Aarogya; emotional distress to Usha. Out-of-scope queries get a 1–2 line redirect, not a fabricated answer.
 - Conversation depth awareness — after turn 3, the composer is told not to repeat advice already given.
 - Dynamic knowledge updater — a background scheduler (every 6 hours) crawls 14 authoritative government sources, checksums responses, and re-ingests changed content into the knowledge base automatically. JS-heavy gov.in portals are fetched via Jina Reader for full content rendering.
 
@@ -145,7 +146,7 @@ Backend: 17 endpoints under `/api/admin/*`, all gated by `X-Admin-Key` header.
 
 - Every response shows a "Why?" panel that visualises the RAG pipeline: Embed → FAISS → BM25 → RRF → Rerank → LLM.
 - Routing trace shows which domain was selected and why (intent reasoning from the classifier).
-- Source panel shows which knowledge chunks were retrieved and cited, with authority level, review status, and source URLs.
+- Source panel shows which knowledge chunks were retrieved and cited, with authority level, review status, and source URLs. Sources without a verifiable URL are suppressed — the panel only appears when at least one cited source has a link.
 
 ## Tech stack
 
@@ -210,7 +211,7 @@ Evaluated on 100 queries (25 per domain), frozen test set, bootstrap 95% CI (1,0
 | Safety | 88% | 25 |
 | **Overall** | **95%** (CI: 91%–99%) | **100** |
 
-The two domains where routing misses occur most are Mental Health (queries expressing distress that overlap with Safety intent) and Safety (safety-adjacent queries that the classifier routes to Mental Health). These are handled gracefully — both personas escalate to crisis resources when emergency language is present.
+Physical health symptoms (ear pain, fever, injury, etc.) are explicitly routed to Safety/Raksha — not Mental Health — via few-shot examples in the intent classifier. Each persona also enforces its own scope boundary and redirects cleanly when a query falls outside its domain.
 
 ### Retrieval
 
