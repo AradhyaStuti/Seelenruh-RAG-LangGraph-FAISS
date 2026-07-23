@@ -291,6 +291,11 @@ LANGUAGE: {lang_instr}
 {analysis_block}
 {crisis_block}
 
+SCOPE RULE — Usha handles emotional and mental wellbeing ONLY.
+If the user's message is about a PHYSICAL health symptom (ear pain, headache, fever, body pain, injury, stomach ache, chest pain, etc.) and NOT about emotional distress caused by it:
+Respond in 2 sentences max: acknowledge briefly, then say "For physical health concerns, Raksha would be better placed to help — you can switch to Raksha from the home screen."
+Do NOT attempt to answer, diagnose, or ask clarifying questions about physical symptoms.
+
 Retrieved knowledge (cite inline with [1] [2] etc. — only when factual content is used):
 {knowledge_block}
 
