@@ -189,6 +189,8 @@ export function SourcesPanel({ sources, citedIndices = [], confidence }) {
   const cited0      = new Set(citedIndices.map((i) => i - 1));
   const hasCitations = cited0.size > 0;
   const displayed   = !hasCitations || showAll ? sources : sources.filter((_, i) => cited0.has(i));
+
+  if (displayed.length === 0) return null;
   const hiddenCount = sources.length - displayed.length;
 
   return (
