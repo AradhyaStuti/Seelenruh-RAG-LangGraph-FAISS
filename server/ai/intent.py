@@ -59,6 +59,12 @@ Q: "I want to file for divorce"                       → Legal
 Q: "My husband is hitting me right now"               → Panic
 Q: "I'm a small farmer how do I get PM Kisan"         → Government Schemes
 Q: "Heart attack symptoms what to do first"           → Safety
+Q: "My ear is paining a lot"                          → Safety      (physical medical symptom)
+Q: "I have a headache and fever since 2 days"         → Safety      (physical medical symptom)
+Q: "my stomach is hurting badly"                      → Safety      (physical medical symptom)
+Q: "I have chest pain"                                → Safety      (physical medical symptom)
+
+- "Safety" also covers physical medical symptoms and health complaints — do NOT route these to Mental Health even if the user sounds distressed. Physical pain is not emotional distress.
 
 HINGLISH GUIDANCE — many Indian users write in a mix of Hindi and English (Hinglish).
 Classify by TOPIC, not by language. The language of the message does NOT affect which domain it belongs to.
