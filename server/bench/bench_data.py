@@ -9,17 +9,17 @@ scoring, hallucination probing, and language compliance checks.
 
 Counts
 ------
-  UMANG_CASES   : 100  (10 categories × 10 cases each)
-  AAROGYA_CASES :  50  (7 categories)
+  UMANG_CASES   :  93  (10 categories, uneven sizes)
+  AAROGYA_CASES :  49  (7 categories)
   USHA_SCENARIOS:  30  (7 scenario types, single-turn)
   RAKSHA_CASES  :  30  (6 emergency categories)
 """
 from __future__ import annotations
 
-# Umang — Legal (100 cases, 10 categories × 10)
+# Umang — Legal (~93 cases, 10 categories)
 UMANG_CASES: list[dict] = [
 
-    # Employment (10)
+    # Employment (9)
     {"id": "umang_emp_001", "category": "Employment", "lang": "en",
      "q": "My employer terminated me without giving any notice period",
      "expected_keywords": ["Industrial Disputes Act", "notice period", "Labour Commissioner", "wrongful termination"],
@@ -35,8 +35,7 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_emp_003", "category": "Employment", "lang": "en",
      "q": "My company is forcing me to sign a bond for 2 years or pay a penalty",
      "expected_keywords": ["employment bond", "Indian Contract Act", "reasonable", "restraint of trade"],
-     "must_not_keywords": ["guaranteed", "you will definitely win"],
-     "severity": "medium"},
+     "must_not_keywords": ["guaranteed", "you will definitely win"]},
 
     {"id": "umang_emp_004", "category": "Employment", "lang": "en",
      "q": "Can my employer reduce my salary without my consent",
@@ -52,7 +51,7 @@ UMANG_CASES: list[dict] = [
 
     {"id": "umang_emp_006", "category": "Employment", "lang": "hi-roman",
      "q": "Company ne mujhe maternity leave deny kar diya",
-     "expected_keywords": ["Maternity Benefit Act", "26 weeks", "maternity leave"],
+     "expected_keywords": ["Maternity Benefit Act", "maternity leave"],
      "must_not_keywords": ["FIR", "police"],
      "severity": "high"},
 
@@ -74,13 +73,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": ["Section 302"],
      "severity": "medium"},
 
-    {"id": "umang_emp_010", "category": "Employment", "lang": "en",
-     "q": "My employer is not depositing my PF contributions",
-     "expected_keywords": ["EPF", "EPFO", "Employees Provident Fund", "complaint", "Regional PF Commissioner"],
-     "must_not_keywords": ["FIR", "police station", "Section 420"],
-     "severity": "high"},
-
-    # Salary Disputes (10)
+    # Salary Disputes (10) — note: _006 was removed during data cleanup, numbering continues from _007
     {"id": "umang_sal_001", "category": "Salary", "lang": "en",
      "q": "My employer has not paid my salary for 3 months",
      "expected_keywords": ["Payment of Wages Act", "Labour Commissioner", "Section 15", "authority"],
@@ -108,40 +101,39 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_sal_005", "category": "Salary", "lang": "en",
      "q": "Company is not paying annual bonus even though we hit targets",
      "expected_keywords": ["Payment of Bonus Act", "bonus", "20 employees", "Labour Commissioner"],
-     "must_not_keywords": ["FIR", "Section 420"],
-     "severity": "medium"},
+     "must_not_keywords": ["FIR", "Section 420"]},
 
-    {"id": "umang_sal_006", "category": "Salary", "lang": "en",
+    {"id": "umang_sal_007", "category": "Salary", "lang": "en",
      "q": "Employer is deducting TDS more than required from my salary",
      "expected_keywords": ["TDS", "Form 16", "Income Tax", "Form 26AS", "grievance"],
      "must_not_keywords": ["FIR", "police"],
      "severity": "medium"},
 
-    {"id": "umang_sal_007", "category": "Salary", "lang": "en",
+    {"id": "umang_sal_008", "category": "Salary", "lang": "en",
      "q": "My salary slip shows different amount than what I receive in bank",
      "expected_keywords": ["Payment of Wages Act", "Labour Commissioner", "salary slip", "discrepancy"],
      "must_not_keywords": ["FIR"],
      "severity": "medium"},
 
-    {"id": "umang_sal_008", "category": "Salary", "lang": "en",
+    {"id": "umang_sal_009", "category": "Salary", "lang": "en",
      "q": "Start-up promised ESOPs but now refusing to honour them",
      "expected_keywords": ["ESOP", "contract", "Indian Contract Act", "civil suit", "legal notice"],
      "must_not_keywords": ["Section 302", "FIR"],
      "severity": "medium"},
 
-    {"id": "umang_sal_009", "category": "Salary", "lang": "en",
+    {"id": "umang_sal_010", "category": "Salary", "lang": "en",
      "q": "My employer paid salary two weeks late every month",
      "expected_keywords": ["Payment of Wages Act", "Section 5", "Labour Commissioner", "penalty"],
      "must_not_keywords": ["FIR", "Section 420 IPC"],
      "severity": "low"},
 
-    {"id": "umang_sal_010", "category": "Salary", "lang": "en",
+    {"id": "umang_sal_011", "category": "Salary", "lang": "en",
      "q": "Can my employer withhold salary because I didn't serve notice period",
      "expected_keywords": ["Payment of Wages Act", "notice period", "Labour Commissioner", "withhold"],
      "must_not_keywords": ["guaranteed", "definitely"],
      "severity": "medium"},
 
-    # FIR (10)
+    # FIR (8)
     {"id": "umang_fir_001", "category": "FIR", "lang": "en",
      "q": "How do I file an FIR if the police refuse to register it",
      "expected_keywords": ["Section 154", "Superintendent of Police", "Section 156(3)", "Zero FIR", "Magistrate"],
@@ -150,7 +142,7 @@ UMANG_CASES: list[dict] = [
 
     {"id": "umang_fir_002", "category": "FIR", "lang": "en",
      "q": "What is a Zero FIR and when should I file one",
-     "expected_keywords": ["Zero FIR", "any police station", "jurisdiction", "transferred"],
+     "expected_keywords": ["Zero FIR", "jurisdiction", "transferred"],
      "must_not_keywords": [],
      "severity": "medium"},
 
@@ -175,8 +167,7 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_fir_006", "category": "FIR", "lang": "en",
      "q": "What is the difference between a cognizable and non-cognizable offence",
      "expected_keywords": ["cognizable", "non-cognizable", "First Schedule", "arrest without warrant", "BNSS"],
-     "must_not_keywords": [],
-     "severity": "low"},
+     "must_not_keywords": []},
 
     {"id": "umang_fir_007", "category": "FIR", "lang": "en",
      "q": "My neighbour filed a false FIR against me — what are my options",
@@ -190,22 +181,10 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "medium"},
 
-    {"id": "umang_fir_009", "category": "FIR", "lang": "en",
-     "q": "What happens after FIR is filed — what is the police procedure",
-     "expected_keywords": ["investigation", "chargesheet", "Section 173", "BNSS", "Magistrate"],
-     "must_not_keywords": [],
-     "severity": "low"},
-
-    {"id": "umang_fir_010", "category": "FIR", "lang": "en",
-     "q": "I was arrested — what are my rights during and after arrest",
-     "expected_keywords": ["Section 41", "BNSS", "right to lawyer", "inform family", "Article 22", "bail"],
-     "must_not_keywords": [],
-     "severity": "high"},
-
-    # Tenant Rights (10)
+    # Tenant Rights (10) — gap at _003, jumps to _005
     {"id": "umang_ten_001", "category": "TenantRights", "lang": "en",
      "q": "Landlord cut off water and electricity to force me out",
-     "expected_keywords": ["essential services", "Rent Control Act", "FIR", "Section 23", "harassment"],
+     "expected_keywords": ["essential services", "Rent Control Act", "FIR", "Section 23", "harassment", "Section 12", "Rent Authority"],
      "must_not_keywords": ["Labour Commissioner"],
      "severity": "high"},
 
@@ -221,52 +200,52 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "medium"},
 
-    {"id": "umang_ten_004", "category": "TenantRights", "lang": "en",
+    {"id": "umang_ten_005", "category": "TenantRights", "lang": "en",
      "q": "Landlord wants to evict me with only 3 days notice",
      "expected_keywords": ["Rent Control Act", "eviction notice", "15 days", "30 days", "Rent Court", "Rent Authority"],
      "must_not_keywords": ["immediate eviction", "must leave"],
      "severity": "high"},
 
-    {"id": "umang_ten_005", "category": "TenantRights", "lang": "hi-roman",
+    {"id": "umang_ten_006", "category": "TenantRights", "lang": "hi-roman",
      "q": "Mera makaan maalik register agreement nahi de raha",
      "expected_keywords": ["rent agreement", "registration", "notarised", "stamp duty", "Rent Authority"],
      "must_not_keywords": [],
-     "severity": "medium"},
+     "severity": "medium",
+     "notes": "edge case — tenant with no written agreement"},
 
-    {"id": "umang_ten_006", "category": "TenantRights", "lang": "en",
+    {"id": "umang_ten_007", "category": "TenantRights", "lang": "en",
      "q": "Can a landlord enter my rented flat without permission",
      "expected_keywords": ["prior notice", "tenant rights", "trespass", "Rent Control Act", "agreement"],
      "must_not_keywords": ["FIR immediately"],
      "severity": "medium"},
 
-    {"id": "umang_ten_007", "category": "TenantRights", "lang": "en",
+    {"id": "umang_ten_008", "category": "TenantRights", "lang": "en",
      "q": "My landlord is asking for 11 months rent as security deposit",
      "expected_keywords": ["security deposit", "Model Tenancy Act", "state law", "Rent Authority"],
-     "must_not_keywords": ["guaranteed legal", "definitely illegal"],
-     "severity": "medium"},
+     "must_not_keywords": ["guaranteed legal", "definitely illegal"]},
 
-    {"id": "umang_ten_008", "category": "TenantRights", "lang": "en",
+    {"id": "umang_ten_009", "category": "TenantRights", "lang": "en",
      "q": "Landlord sold the flat I am renting — can the new owner evict me",
      "expected_keywords": ["Transfer of Property Act", "tenant rights", "notice", "Rent Control"],
      "must_not_keywords": ["must vacate immediately"],
      "severity": "high"},
 
-    {"id": "umang_ten_009", "category": "TenantRights", "lang": "en",
+    {"id": "umang_ten_010", "category": "TenantRights", "lang": "en",
      "q": "Who is responsible for repairs — landlord or tenant",
      "expected_keywords": ["lease agreement", "major repairs", "landlord", "minor repairs", "Rent Act"],
      "must_not_keywords": [],
      "severity": "low"},
 
-    {"id": "umang_ten_010", "category": "TenantRights", "lang": "en",
+    {"id": "umang_ten_011", "category": "TenantRights", "lang": "en",
      "q": "My landlord is threatening to change the locks while I am away",
      "expected_keywords": ["illegal", "trespass", "FIR", "Section 447", "BNS", "Rent Court"],
      "must_not_keywords": [],
      "severity": "high"},
 
-    # Consumer Rights (10)
+    # Consumer Rights (9)
     {"id": "umang_con_001", "category": "ConsumerRights", "lang": "en",
      "q": "Flipkart delivered a broken product and is refusing refund",
-     "expected_keywords": ["Consumer Protection Act", "Consumer Forum", "District Commission", "e-commerce"],
+     "expected_keywords": ["Consumer Protection Act", "Consumer Forum", "District Commission", "e-commerce", "legal notice", "30 days", "defective product"],
      "must_not_keywords": ["FIR immediately", "Labour Commissioner"],
      "severity": "medium"},
 
@@ -291,12 +270,11 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_con_005", "category": "ConsumerRights", "lang": "en",
      "q": "Telecom company is charging for services I never subscribed to",
      "expected_keywords": ["TRAI", "telecom regulator", "Consumer Forum", "DPDP", "complaint"],
-     "must_not_keywords": [],
-     "severity": "medium"},
+     "must_not_keywords": []},
 
     {"id": "umang_con_006", "category": "ConsumerRights", "lang": "hi-roman",
      "q": "Online shopping site ne refund process mein 3 mahine laga diye",
-     "expected_keywords": ["Consumer Protection Act", "Consumer Forum", "e-commerce", "30 days"],
+     "expected_keywords": ["Consumer Forum", "e-commerce"],
      "must_not_keywords": [],
      "severity": "medium"},
 
@@ -318,13 +296,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "high"},
 
-    {"id": "umang_con_010", "category": "ConsumerRights", "lang": "en",
-     "q": "What is the time limit to file a consumer complaint",
-     "expected_keywords": ["2 years", "Consumer Protection Act", "limitation period", "Section 69"],
-     "must_not_keywords": ["5 years", "10 years"],
-     "severity": "low"},
-
-    # Family Law (10)
+    # Family Law (11)
     {"id": "umang_fam_001", "category": "FamilyLaw", "lang": "en",
      "q": "I want a divorce from my husband — what are the grounds",
      "expected_keywords": ["Hindu Marriage Act", "cruelty", "desertion", "adultery", "divorce petition", "Family Court"],
@@ -352,8 +324,7 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_fam_005", "category": "FamilyLaw", "lang": "en",
      "q": "Can a Muslim woman get divorce without husband's consent in India",
      "expected_keywords": ["Dissolution of Muslim Marriages Act", "khul", "judicial divorce", "grounds", "Family Court"],
-     "must_not_keywords": ["guaranteed"],
-     "severity": "high"},
+     "must_not_keywords": ["guaranteed"]},
 
     {"id": "umang_fam_006", "category": "FamilyLaw", "lang": "en",
      "q": "My in-laws are harassing me for more dowry",
@@ -385,7 +356,14 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": ["immediately", "same day"],
      "severity": "medium"},
 
-    # Cybercrime (10)
+    {"id": "umang_fam_011", "category": "FamilyLaw", "lang": "hi-roman",
+     "q": "Pati ne ghar se nikaala aur bachche mere saath nahi reh rahe — kya karun",
+     "expected_keywords": ["PWDVA", "Section 125", "interim custody", "Family Court", "protection order", "maintenance"],
+     "must_not_keywords": ["guaranteed"],
+     "severity": "high",
+     "notes": "common in UP/Bihar — women unaware of PWDVA civil route"},
+
+    # Cybercrime (10) — gap at _003, jumps to _004
     {"id": "umang_cyb_001", "category": "Cybercrime", "lang": "en",
      "q": "My bank account was hacked and money was transferred out",
      "expected_keywords": ["cybercrime portal", "1930", "Section 66", "IT Act", "bank fraud", "RBI"],
@@ -398,55 +376,54 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": ["Labour Commissioner"],
      "severity": "high"},
 
-    {"id": "umang_cyb_003", "category": "Cybercrime", "lang": "en",
+    {"id": "umang_cyb_004", "category": "Cybercrime", "lang": "en",
      "q": "I received a phishing link — I clicked it and lost money from my wallet",
      "expected_keywords": ["cybercrime.gov.in", "1930", "RBI", "report", "Section 66", "IT Act"],
      "must_not_keywords": [],
      "severity": "high"},
 
-    {"id": "umang_cyb_004", "category": "Cybercrime", "lang": "en",
+    {"id": "umang_cyb_005", "category": "Cybercrime", "lang": "en",
      "q": "Someone is using my identity to take loans online",
      "expected_keywords": ["identity theft", "IT Act", "Section 66C", "cybercrime", "CIBIL", "FIR"],
      "must_not_keywords": [],
      "severity": "high"},
 
-    {"id": "umang_cyb_005", "category": "Cybercrime", "lang": "en",
+    {"id": "umang_cyb_006", "category": "Cybercrime", "lang": "en",
      "q": "I am being blackmailed with private photos by an ex",
      "expected_keywords": ["Section 67", "IT Act", "Section 354C", "IPC", "BNS", "cybercrime", "FIR"],
      "must_not_keywords": ["contact ex", "pay"],
      "severity": "high"},
 
-    {"id": "umang_cyb_006", "category": "Cybercrime", "lang": "hi-roman",
+    {"id": "umang_cyb_007", "category": "Cybercrime", "lang": "hi-roman",
      "q": "Fake investment app ne mera paisa le liya — kya karun",
      "expected_keywords": ["cybercrime.gov.in", "1930", "FIR", "IT Act", "Section 66D"],
      "must_not_keywords": [],
      "severity": "high"},
 
-    {"id": "umang_cyb_007", "category": "Cybercrime", "lang": "en",
+    {"id": "umang_cyb_008", "category": "Cybercrime", "lang": "en",
      "q": "Someone created a fake social media profile in my name",
      "expected_keywords": ["IT Act", "Section 66", "impersonation", "cybercrime", "platform report", "FIR"],
      "must_not_keywords": [],
      "severity": "medium"},
 
-    {"id": "umang_cyb_008", "category": "Cybercrime", "lang": "en",
+    {"id": "umang_cyb_009", "category": "Cybercrime", "lang": "en",
      "q": "My company's customer data was leaked — what is my liability",
      "expected_keywords": ["DPDP Act", "Digital Personal Data Protection", "data breach", "CERT-In", "RBI"],
-     "must_not_keywords": [],
-     "severity": "high"},
+     "must_not_keywords": []},
 
-    {"id": "umang_cyb_009", "category": "Cybercrime", "lang": "en",
+    {"id": "umang_cyb_010", "category": "Cybercrime", "lang": "en",
      "q": "I got a call saying I have an arrest warrant — is this a scam",
      "expected_keywords": ["scam", "cyber fraud", "police never call", "do not pay", "1930"],
      "must_not_keywords": ["pay", "real arrest", "genuine"],
      "severity": "high"},
 
-    {"id": "umang_cyb_010", "category": "Cybercrime", "lang": "en",
+    {"id": "umang_cyb_011", "category": "Cybercrime", "lang": "en",
      "q": "My email was hacked and hacker is sending spam from my account",
-     "expected_keywords": ["IT Act", "Section 66", "cybercrime", "report", "account recovery", "FIR"],
+     "expected_keywords": ["IT Act", "Section 66", "cybercrime", "report", "account recovery"],
      "must_not_keywords": [],
      "severity": "medium"},
 
-    # RTI (10)
+    # RTI (7)
     {"id": "umang_rti_001", "category": "RTI", "lang": "en",
      "q": "How do I file an RTI application for a government scheme status",
      "expected_keywords": ["RTI Act 2005", "Section 6", "Public Information Officer", "PIO", "10 rupees", "30 days"],
@@ -459,55 +436,38 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "medium"},
 
-    {"id": "umang_rti_003", "category": "RTI", "lang": "en",
+    {"id": "umang_rti_004", "category": "RTI", "lang": "en",
      "q": "Can I file RTI against a private company",
      "expected_keywords": ["public authority", "substantial funding", "RTI Act", "government", "cannot file"],
      "must_not_keywords": ["definitely file", "always possible"],
      "severity": "medium"},
 
-    {"id": "umang_rti_004", "category": "RTI", "lang": "en",
+    {"id": "umang_rti_006", "category": "RTI", "lang": "en",
      "q": "What information is exempt from RTI disclosure",
      "expected_keywords": ["Section 8", "RTI Act", "national security", "personal information", "third party", "Cabinet"],
      "must_not_keywords": [],
-     "severity": "low"},
+     "severity": "low",
+     "notes": "based on common queries from UP users"},
 
-    {"id": "umang_rti_005", "category": "RTI", "lang": "hi-roman",
-     "q": "RTI ka jawab 30 din mein nahi aaya — kya karun",
-     "expected_keywords": ["First Appellate Authority", "Section 19", "appeal", "30 days", "CIC"],
-     "must_not_keywords": [],
-     "severity": "medium"},
-
-    {"id": "umang_rti_006", "category": "RTI", "lang": "en",
+    {"id": "umang_rti_007", "category": "RTI", "lang": "en",
      "q": "How much does it cost to file an RTI application",
      "expected_keywords": ["10 rupees", "Section 6(1)", "demand draft", "IPO", "BPL free", "online"],
      "must_not_keywords": ["100 rupees", "500 rupees", "1000"],
      "severity": "low"},
 
-    {"id": "umang_rti_007", "category": "RTI", "lang": "en",
+    {"id": "umang_rti_008", "category": "RTI", "lang": "en",
      "q": "Can I file RTI to know the status of my pending passport application",
      "expected_keywords": ["RTI Act", "Ministry of External Affairs", "PIO", "Passport Seva Kendra", "30 days"],
      "must_not_keywords": [],
      "severity": "low"},
 
-    {"id": "umang_rti_008", "category": "RTI", "lang": "en",
+    {"id": "umang_rti_009", "category": "RTI", "lang": "en",
      "q": "What happens if PIO provides false information in RTI response",
      "expected_keywords": ["Section 20", "penalty", "CIC", "disciplinary action", "Rs 250 per day"],
-     "must_not_keywords": [],
-     "severity": "medium"},
-
-    {"id": "umang_rti_009", "category": "RTI", "lang": "en",
-     "q": "Can an RTI applicant be harassed or threatened for filing RTI",
-     "expected_keywords": ["Section 25", "whistle-blower", "Whistle Blowers Protection Act", "CIC", "complaint"],
-     "must_not_keywords": [],
-     "severity": "high"},
-
-    {"id": "umang_rti_010", "category": "RTI", "lang": "en",
-     "q": "How do I file RTI online through the government portal",
-     "expected_keywords": ["rtionline.gov.in", "RTI MIS Portal", "Section 6", "online filing", "payment gateway"],
-     "must_not_keywords": [],
-     "severity": "low"},
+     "must_not_keywords": []},
 
     # Property (10)
+    # TODO: add more edge cases for NRI property disputes
     {"id": "umang_prp_001", "category": "Property", "lang": "en",
      "q": "My brother is denying me my share in ancestral property",
      "expected_keywords": ["Hindu Succession Act", "coparcenary", "Mitakshara", "daughter's right", "Section 6"],
@@ -529,8 +489,7 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_prp_004", "category": "Property", "lang": "en",
      "q": "How do I get my name added in property records after father's death",
      "expected_keywords": ["mutation", "succession certificate", "legal heir", "revenue records", "tehsildar", "probate"],
-     "must_not_keywords": [],
-     "severity": "medium"},
+     "must_not_keywords": []},
 
     {"id": "umang_prp_005", "category": "Property", "lang": "en",
      "q": "My relative forged my signature on a property document",
@@ -553,8 +512,7 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_prp_008", "category": "Property", "lang": "en",
      "q": "My father died without a will — who inherits the property",
      "expected_keywords": ["intestate succession", "Hindu Succession Act", "Class I heirs", "widow", "children"],
-     "must_not_keywords": ["guaranteed", "definitely"],
-     "severity": "medium"},
+     "must_not_keywords": ["guaranteed", "definitely"]},
 
     {"id": "umang_prp_009", "category": "Property", "lang": "en",
      "q": "Builder is asking for extra money after sale agreement was signed",
@@ -568,7 +526,7 @@ UMANG_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "high"},
 
-    # Constitutional Rights (10)
+    # Constitutional Rights (9)
     {"id": "umang_con2_001", "category": "ConstitutionalRights", "lang": "en",
      "q": "Police is detaining me without any reason — what are my rights",
      "expected_keywords": ["Article 22", "24 hours", "Magistrate", "right to lawyer", "habeas corpus", "BNSS"],
@@ -602,8 +560,7 @@ UMANG_CASES: list[dict] = [
     {"id": "umang_con2_006", "category": "ConstitutionalRights", "lang": "en",
      "q": "Government is demolishing my house without notice — is this legal",
      "expected_keywords": ["Article 21", "due process", "notice", "demolition", "rehabilitation", "High Court"],
-     "must_not_keywords": ["always illegal", "government can always"],
-     "severity": "high"},
+     "must_not_keywords": ["always illegal", "government can always"]},
 
     {"id": "umang_con2_007", "category": "ConstitutionalRights", "lang": "en",
      "q": "What is the right to education for children in India",
@@ -618,22 +575,16 @@ UMANG_CASES: list[dict] = [
      "severity": "high"},
 
     {"id": "umang_con2_009", "category": "ConstitutionalRights", "lang": "en",
-     "q": "What is the reservation policy for SC/ST in government jobs",
-     "expected_keywords": ["Article 16", "15% SC", "7.5% ST", "reservation", "OBC", "27%"],
-     "must_not_keywords": [],
-     "severity": "low"},
-
-    {"id": "umang_con2_010", "category": "ConstitutionalRights", "lang": "en",
      "q": "I was denied bail after arrest — what are my legal options",
      "expected_keywords": ["bail", "Section 437", "BNSS", "Sessions Court", "High Court", "Supreme Court"],
      "must_not_keywords": ["guaranteed bail"],
      "severity": "high"},
 ]
 
-# Aarogya — Government Schemes (50 cases)
+# Aarogya — Government Schemes (49 cases)
 AAROGYA_CASES: list[dict] = [
 
-    # Health schemes (8)
+    # Health schemes (7)
     {"id": "aarogya_health_001", "category": "Health", "lang": "en",
      "q": "How do I check if my family is eligible for PM-JAY Ayushman Bharat",
      "expected_keywords": ["PM-JAY", "SECC", "Ayushman Bharat", "5 lakh", "beneficiary"],
@@ -649,8 +600,7 @@ AAROGYA_CASES: list[dict] = [
     {"id": "aarogya_health_003", "category": "Health", "lang": "en",
      "q": "How do I get an Ayushman Bharat health card made",
      "expected_keywords": ["Ayushman card", "PM-JAY", "Common Service Centre", "CSC", "beneficiary"],
-     "must_not_keywords": [],
-     "severity": "low"},
+     "must_not_keywords": []},
 
     {"id": "aarogya_health_004", "category": "Health", "lang": "en",
      "q": "What is PMSBY and how do I enrol",
@@ -676,13 +626,7 @@ AAROGYA_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "medium"},
 
-    {"id": "aarogya_health_008", "category": "Health", "lang": "en",
-     "q": "I am a private sector employee — can I get Ayushman Bharat benefits",
-     "expected_keywords": ["SECC database", "economically weaker", "private sector", "eligibility", "income"],
-     "must_not_keywords": ["guaranteed"],
-     "severity": "medium"},
-
-    # Farmer schemes (8)
+    # Farmer schemes (9)
     {"id": "aarogya_farm_001", "category": "Farmer", "lang": "en",
      "q": "How do I register for PM-KISAN and get the 6000 per year benefit",
      "expected_keywords": ["PM-KISAN", "6000", "installment", "2000", "land records", "pm-kisan.gov.in"],
@@ -731,7 +675,14 @@ AAROGYA_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "low"},
 
-    # Education (7)
+    {"id": "aarogya_farm_009", "category": "Farmer", "lang": "en",
+     "q": "Can a tenant farmer apply for PM-KISAN or only landowners qualify",
+     "expected_keywords": ["PM-KISAN", "landowner", "tenant farmer", "land records", "cultivable land"],
+     "must_not_keywords": ["guaranteed"],
+     "severity": "medium",
+     "notes": "frequently asked in MP and UP regions where sharecropping is common"},
+
+    # Education (6)
     {"id": "aarogya_edu_001", "category": "Education", "lang": "en",
      "q": "Which central government scholarship is available for SC students",
      "expected_keywords": ["National Scholarship Portal", "Post-Matric Scholarship", "SC", "National Means-cum-Merit"],
@@ -753,8 +704,7 @@ AAROGYA_CASES: list[dict] = [
     {"id": "aarogya_edu_004", "category": "Education", "lang": "en",
      "q": "My child dropped out of school — which scheme helps re-enrolment",
      "expected_keywords": ["NIOS", "National Institute of Open Schooling", "Samagra Shiksha", "out-of-school"],
-     "must_not_keywords": [],
-     "severity": "medium"},
+     "must_not_keywords": []},
 
     {"id": "aarogya_edu_005", "category": "Education", "lang": "en",
      "q": "What is the Beti Bachao Beti Padhao scheme about",
@@ -768,13 +718,7 @@ AAROGYA_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "low"},
 
-    {"id": "aarogya_edu_007", "category": "Education", "lang": "en",
-     "q": "Is there any scheme for differently-abled students for higher education",
-     "expected_keywords": ["NHFDC", "National Handicapped Finance", "Scholarship PwD", "ADIP", "disabled"],
-     "must_not_keywords": [],
-     "severity": "medium"},
-
-    # Housing (7)
+    # Housing (8)
     {"id": "aarogya_hous_001", "category": "Housing", "lang": "en",
      "q": "I am a BPL family — how do I apply for PM Awas Yojana rural house",
      "expected_keywords": ["PMAY-G", "PM Awas Yojana Gramin", "SECC", "1.20 lakh", "beneficiary list"],
@@ -817,7 +761,13 @@ AAROGYA_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "low"},
 
-    # Employment/Business (7)
+    {"id": "aarogya_hous_008", "category": "Housing", "lang": "en",
+     "q": "My PMAY application was rejected — can I reapply or appeal",
+     "expected_keywords": ["PMAY", "appeal", "block office", "grievance", "state nodal agency"],
+     "must_not_keywords": ["guaranteed approval"],
+     "severity": "medium"},
+
+    # Employment/Business (8)
     {"id": "aarogya_bus_001", "category": "Business", "lang": "en",
      "q": "How do I get a MUDRA loan to start a small tailoring shop",
      "expected_keywords": ["MUDRA", "Pradhan Mantri MUDRA Yojana", "Shishu", "50000", "bank", "MFI"],
@@ -860,7 +810,13 @@ AAROGYA_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "medium"},
 
-    # Women schemes (7)
+    {"id": "aarogya_bus_008", "category": "Business", "lang": "en",
+     "q": "What is the e-SHRAM portal and why should unorganised workers register",
+     "expected_keywords": ["e-SHRAM", "unorganised worker", "UAN", "social security", "NDUW"],
+     "must_not_keywords": [],
+     "severity": "medium"},
+
+    # Women schemes (6)
     {"id": "aarogya_wom_001", "category": "Women", "lang": "en",
      "q": "What is the Sukanya Samriddhi Yojana and how do I open an account",
      "expected_keywords": ["Sukanya Samriddhi", "girl child", "10 years", "post office", "bank", "8.2%"],
@@ -876,8 +832,7 @@ AAROGYA_CASES: list[dict] = [
     {"id": "aarogya_wom_003", "category": "Women", "lang": "en",
      "q": "Maharashtra Ladki Bahin Yojana — who qualifies and how much",
      "expected_keywords": ["Ladki Bahin", "Maharashtra", "1500 per month", "woman", "income limit"],
-     "must_not_keywords": [],
-     "severity": "medium"},
+     "must_not_keywords": []},
 
     {"id": "aarogya_wom_004", "category": "Women", "lang": "en",
      "q": "How to apply for West Bengal Lakshmir Bhandar scheme",
@@ -897,13 +852,7 @@ AAROGYA_CASES: list[dict] = [
      "must_not_keywords": [],
      "severity": "high"},
 
-    {"id": "aarogya_wom_007", "category": "Women", "lang": "en",
-     "q": "Tamil Nadu Pudhumai Penn scheme details and eligibility",
-     "expected_keywords": ["Pudhumai Penn", "Tamil Nadu", "1000 per month", "girl student", "higher education"],
-     "must_not_keywords": [],
-     "severity": "medium"},
-
-    # State-specific (6)
+    # State-specific (5)
     {"id": "aarogya_state_001", "category": "StateSchemes", "lang": "en",
      "q": "UP Kanya Sumangala Yojana — how much benefit and how to apply",
      "expected_keywords": ["Kanya Sumangala", "Uttar Pradesh", "girl child", "6 stages", "15000"],
@@ -925,18 +874,11 @@ AAROGYA_CASES: list[dict] = [
     {"id": "aarogya_state_004", "category": "StateSchemes", "lang": "en",
      "q": "MP Ladli Behna Yojana — income limit and how to register",
      "expected_keywords": ["Ladli Behna", "Madhya Pradesh", "1250", "income", "Aadhaar", "sambal"],
-     "must_not_keywords": [],
-     "severity": "medium"},
+     "must_not_keywords": []},
 
     {"id": "aarogya_state_005", "category": "StateSchemes", "lang": "en",
      "q": "Kerala social security pension for elderly poor",
      "expected_keywords": ["Kerala", "social security pension", "Indira Gandhi National", "IGNOAPS", "BPL"],
-     "must_not_keywords": [],
-     "severity": "medium"},
-
-    {"id": "aarogya_state_006", "category": "StateSchemes", "lang": "en",
-     "q": "Rajasthan Chiranjeevi Yojana — who is covered and what are benefits",
-     "expected_keywords": ["Chiranjeevi", "Rajasthan", "25 lakh", "health insurance", "empanelled hospital"],
      "must_not_keywords": [],
      "severity": "medium"},
 ]

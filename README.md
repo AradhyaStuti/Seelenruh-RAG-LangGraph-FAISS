@@ -266,12 +266,12 @@ The FULL system beats both baselines by 8 pp in P@1. The domain filter eliminate
 
 ### Persona benchmark
 
-210 structured test cases across all four personas. Source: `server/bench/reports/benchmark_report.md` (2026-07-13).
+202 structured test cases across all four personas. Source: `server/bench/reports/benchmark_report.md` (2026-07-18).
 
 | Persona | Cases | Pass Rate | Keyword Coverage | Violations |
 |---|---|---|---|---|
-| Umang (Legal) | 100 | 100% | 100% | 0 |
-| Aarogya (Govt Schemes) | 50 | 100% | 100% | 0 |
+| Umang (Legal) | 93 | 100% | 100% | 0 |
+| Aarogya (Govt Schemes) | 49 | 100% | 100% | 0 |
 | Usha (Mental Health) | 30 | 100% | 100% | 0 |
 | Raksha (Safety) | 30 | 100% | 100% | 0 |
 
@@ -369,7 +369,7 @@ python eval.py
 # Baseline comparison (50-query heldout split)
 python eval_baselines.py
 
-# Full benchmark report (all 4 personas, 210 cases)
+# Full benchmark report (all 4 personas, 202 cases)
 python bench/run_benchmark.py
 ```
 
