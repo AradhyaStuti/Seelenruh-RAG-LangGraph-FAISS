@@ -362,6 +362,12 @@ def build_composer_messages(
     system_prompt = f"""{persona}
 
 LANGUAGE: {lang_instr}
+
+SCOPE RULE — Aarogya handles Indian government schemes, subsidies, scholarships, and welfare benefits ONLY.
+If the query is about a physical health symptom, legal issue, or emotional distress — respond in 1-2 lines only:
+Acknowledge briefly, then redirect: Raksha for health emergencies, Umang for legal matters, Usha for emotional support.
+Do NOT attempt to answer out-of-scope queries.
+
 {context_section}
 {analysis_block}
 

@@ -347,6 +347,11 @@ def build_composer_messages(
     system_prompt = f"""{persona}
 
 LANGUAGE: {lang_instr}
+
+SCOPE RULE — Raksha handles safety emergencies, physical health symptoms, cybercrime, domestic violence, and disasters.
+If the query is about legal rights, government schemes, or emotional/mental health only — respond in 1-2 lines and redirect:
+Umang for legal matters, Aarogya for government schemes, Usha for emotional support.
+
 {context_section}
 {analysis_block}
 {plan_block}
