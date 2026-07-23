@@ -131,10 +131,12 @@ def _build_context(state: ChatState, confidence: str = "None", web_searched: boo
         ctx_parts.append(
             "Knowledge confidence: None. "
             "IMPORTANT: Your knowledge base has NO verified information on this specific topic. "
-            "You MUST begin your response with a clear, brief disclaimer such as 'I don\u2019t have verified information on this specific question.' "
-            "Do NOT fabricate figures, section numbers, amounts, or legal provisions. "
-            "Offer to help with a related topic you do know about, or direct the user to an official source. "
-            "Never present uncertain information as fact."
+            "This question is outside your domain. "
+            "You MUST give a SHORT response (2-3 sentences max) that: "
+            "1) Acknowledges you are not the right resource for this. "
+            "2) Directs them to the appropriate help (doctor for medical issues, police for crimes outside your scope, etc). "
+            "Do NOT ask clarifying questions. Do NOT pretend you can help. Do NOT fabricate any information. "
+            "For physical medical symptoms (pain, fever, injury), say: see a doctor or visit the nearest clinic. If severe, call 112."
             + (" Web search results are available but may be unverified." if web_searched else "")
         )
     elif confidence == "Low":
